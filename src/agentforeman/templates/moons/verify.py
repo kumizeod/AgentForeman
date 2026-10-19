@@ -40,6 +40,6 @@ try:
 except Exception as exc:
     result["error"] = f"{type(exc).__name__}: {exc}"
 args.output.parent.mkdir(parents=True, exist_ok=True)
-args.output.write_text(json.dumps(result, indent=2, allow_nan=False))
+args.output.write_text(json.dumps(result, indent=2, allow_nan=False), encoding="utf-8")
 print(json.dumps(result))
 sys.exit(0 if result["valid"] else 1)

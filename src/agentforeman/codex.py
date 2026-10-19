@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
+import os
 import shutil
+import sys
 
 from .files import atomic_json, atomic_text, read_json
 
@@ -18,10 +21,43 @@ SCHEMA = {
 }
 
 
-def make_spec(run: Path, state: dict, config: dict) -> dict:
-    executable = shutil.which(config["codex"]["executable"])
-    if not executable:
+def resolve_command(config: dict) -> list[str]:
+    """Resolve native binaries or npm's Windows shim without cmd.exe parsing."""
+    prefix = config.get("command") or [config.get("executable", "codex")]
+    first = Path(prefix[0]).expanduser()
+    # Preserve executable symlinks: resolving a venv's Python to the base binary
+    # would silently discard that environment's installed dependencies.
+    found = os.path.abspath(first) if first.is_file() and (first.is_absolute() or first.parent != Path(".")) else shutil.which(prefix[0])
+    if not found:
         raise ValueError("Codex CLI not found. Install @openai/codex, run codex login, then resume this run.")
+    path = Path(found)
+    if sys.platform == "win32" and path.suffix.lower() in {".cmd", ".bat"}:
+        package = path.parent / "node_modules" / "@openai" / "codex"
+        manifest = package / "package.json"
+        if manifest.is_file():
+            metadata = json.loads(manifest.read_text(encoding="utf-8"))
+            entry = metadata.get("bin", {})
+            entry = entry.get("codex") if isinstance(entry, dict) else entry
+            script = (package / entry).resolve() if isinstance(entry, str) else None
+            if script and script.is_file() and script.is_relative_to(package.resolve()):
+                node = shutil.which("node")
+                if node:
+                    return [node, str(script), *prefix[1:]]
+        raise ValueError("Found a Windows batch shim but cannot resolve its npm Codex entry. "
+                         'Set codex.command = ["C:/path/to/codex.exe"] or '
+                         '["node", "C:/path/to/@openai/codex/bin/codex.js"] in foreman.toml.')
+    if path.suffix.lower() == ".py":
+        return [sys.executable, str(path), *prefix[1:]]
+    if path.suffix.lower() in {".js", ".mjs"}:
+        node = shutil.which("node")
+        if not node:
+            raise ValueError("Node.js is required for the configured Codex JavaScript entry")
+        return [node, str(path), *prefix[1:]]
+    return [str(path), *prefix[1:]]
+
+
+def make_spec(run: Path, state: dict, config: dict) -> dict:
+    prefix = resolve_command(config["codex"])
     work = run / "workspace"
     control = run / "worker"
     control.mkdir(exist_ok=True)
@@ -40,7 +76,7 @@ You may run short syntax checks. Return the requested JSON summary when finished
 This is a single candidate, not an open-ended research loop.
 """
     atomic_text(control / "prompt.txt", prompt)
-    argv = [executable, "--ask-for-approval", "never", "exec", "--sandbox", "workspace-write",
+    argv = [*prefix, "--ask-for-approval", "never", "exec", "--sandbox", "workspace-write",
             "--skip-git-repo-check", "--json", "--output-schema", str(control / "schema.json"),
             "--output-last-message", str(control / "answer.json")]
     if config["codex"].get("model"):
@@ -48,7 +84,7 @@ This is a single candidate, not an open-ended research loop.
     argv.append("-")
     return {"argv": argv, "cwd": str(work), "stdin": str(control / "prompt.txt"),
             "timeout_seconds": config["codex"]["timeout_seconds"],
-            "env": {"PYTHONDONTWRITEBYTECODE": "1"}}
+            "env": {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONUTF8": "1"}}
 
 
 def check_answer(run: Path) -> dict:

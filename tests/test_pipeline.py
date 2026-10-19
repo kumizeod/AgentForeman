@@ -22,6 +22,7 @@ from agentforeman.files import atomic_json, read_json
 from agentforeman.job import alive, launch, wait_for_job
 from agentforeman.report import verify_archive
 from agentforeman.store import Store, run_lock
+from agentforeman.platforms import stop_process
 
 
 @contextmanager
@@ -32,10 +33,10 @@ def quiet():
 
 class PipelineTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="foreman test ")
+        self.temp = tempfile.TemporaryDirectory(prefix="foreman 中文 test ")
         self.base = Path(self.temp.name)
         self.project = self.base / "project"
-        self.worker = self.base / "fixture-codex"
+        self.worker = self.base / "fixture-codex.py"
         shutil.copy2(Path(__file__).with_name("fixture_codex.py"), self.worker)
         self.worker.chmod(0o755)
         with quiet():
@@ -158,6 +159,12 @@ class PipelineTests(unittest.TestCase):
             self.execute(self.create())
 
     def test_symlink_edit_is_rejected(self):
+        probe = self.base / "link-probe"
+        try:
+            probe.symlink_to(self.worker)
+            probe.unlink()
+        except OSError:
+            self.skipTest("This account is not permitted to create symlinks")
         os.environ["FOREMAN_TEST_MODE"] = "symlink"
         with self.assertRaisesRegex(ValueError, "Symlinks"):
             self.execute(self.create())
@@ -293,6 +300,15 @@ class PipelineTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "positive finite"):
             load_config(self.project)
 
+    def test_project_root_symlink_is_canonicalized(self):
+        alias = self.base / "project-alias"
+        try:
+            alias.symlink_to(self.project, target_is_directory=True)
+        except OSError:
+            self.skipTest("This account is not permitted to create directory symlinks")
+        run_id = create_run(alias, "Canonical project root smoke test")
+        self.assertTrue((self.root(run_id) / "config.json").exists())
+
 
 class JobTests(unittest.TestCase):
     def setUp(self):
@@ -345,7 +361,13 @@ class JobTests(unittest.TestCase):
             self.assertTrue(alive(child))
         finally:
             if child and alive(child):
-                os.killpg(child["pid"], signal.SIGKILL)
+                if sys.platform == "win32":
+                    import psutil
+                    process = psutil.Process(child["pid"])
+                    process.kill()
+                    process.wait(timeout=5)
+                else:
+                    os.killpg(child["pid"], signal.SIGKILL)
             if wrapper.poll() is None:
                 wrapper.kill()
                 wrapper.wait()

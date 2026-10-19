@@ -16,6 +16,7 @@ test_missing_or_invalid_checkpoint_is_rejected_by_external_verifier (test_pipeli
 test_noop_worker_is_rejected (test_pipeline.PipelineTests.test_noop_worker_is_rejected) ... ok
 test_only_one_manager_can_own_run (test_pipeline.PipelineTests.test_only_one_manager_can_own_run) ... ok
 test_pause_before_codex_and_resume (test_pipeline.PipelineTests.test_pause_before_codex_and_resume) ... ok
+test_project_root_symlink_is_canonicalized (test_pipeline.PipelineTests.test_project_root_symlink_is_canonicalized) ... ok
 test_protected_edit_is_rejected (test_pipeline.PipelineTests.test_protected_edit_is_rejected) ... ok
 test_real_training_verification_archive_and_replay (test_pipeline.PipelineTests.test_real_training_verification_archive_and_replay) ... ok
 test_symlink_edit_is_rejected (test_pipeline.PipelineTests.test_symlink_edit_is_rejected) ... ok
@@ -23,8 +24,20 @@ test_training_failure_is_not_a_success (test_pipeline.PipelineTests.test_trainin
 test_untrusted_metrics_are_ignored (test_pipeline.PipelineTests.test_untrusted_metrics_are_ignored) ... ok
 test_verifier_protocol_rejects_nan_wrong_metric_and_false_validity (test_pipeline.PipelineTests.test_verifier_protocol_rejects_nan_wrong_metric_and_false_validity) ... ok
 test_worker_failure_requires_explicit_retry (test_pipeline.PipelineTests.test_worker_failure_requires_explicit_retry) ... ok
+test_access_denied_is_conservatively_alive (test_platforms.PlatformTests.test_access_denied_is_conservatively_alive) ... ok
+test_explicit_python_prefix_preserves_arguments (test_platforms.PlatformTests.test_explicit_python_prefix_preserves_arguments) ... ok
+test_posix_detaches_both_supervisor_and_child (test_platforms.PlatformTests.test_posix_detaches_both_supervisor_and_child) ... ok
+test_receipt_from_another_platform_is_not_a_local_process (test_platforms.PlatformTests.test_receipt_from_another_platform_is_not_a_local_process) ... ok
+test_unknown_windows_batch_shim_fails_with_configuration_hint (test_platforms.PlatformTests.test_unknown_windows_batch_shim_fails_with_configuration_hint) ... ok
+test_windows_and_mac_identity_use_creation_time_without_os_kill (test_platforms.PlatformTests.test_windows_and_mac_identity_use_creation_time_without_os_kill) ... ok
+test_windows_atomic_write_does_not_open_directory_for_fsync (test_platforms.PlatformTests.test_windows_atomic_write_does_not_open_directory_for_fsync) ... ok
+test_windows_byte_lock_acquires_and_releases_same_region (test_platforms.PlatformTests.test_windows_byte_lock_acquires_and_releases_same_region) ... ok
+test_windows_flags_do_not_use_posix_sessions (test_platforms.PlatformTests.test_windows_flags_do_not_use_posix_sessions) ... ok
+test_windows_lock_contention_is_nonblocking (test_platforms.PlatformTests.test_windows_lock_contention_is_nonblocking) ... ok
+test_windows_npm_shim_resolves_to_node_argv_without_shell (test_platforms.PlatformTests.test_windows_npm_shim_resolves_to_node_argv_without_shell) ... ok
+test_windows_stop_terminates_known_descendants_and_root (test_platforms.PlatformTests.test_windows_stop_terminates_known_descendants_and_root) ... ok
 
 ----------------------------------------------------------------------
-Ran 25 tests in 24.276s
+Ran 38 tests in 25.341s
 
 OK

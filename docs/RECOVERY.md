@@ -3,17 +3,17 @@
 | Event | Behavior on resume |
 | --- | --- |
 | Ctrl-C manager | Reattach to active supervisor; finished stages reuse receipts |
-| SIGKILL manager | Same reconciliation; stored status may remain running until resume |
+| Force-terminate manager (SIGKILL / TerminateProcess) | Same reconciliation; stored status may remain running until resume |
 | Command finishes while manager is absent | Consume its atomic result without rerunning it |
-| Multiple managers for one run | Exclusive run lock rejects the second manager |
+| Multiple managers for one run | Native exclusive run lock rejects the second manager |
 | Multiple supervisors for one job | Job lock allows only one to execute the command |
-| Training/worker timeout | Kill command process group; persist timeout; require explicit retry |
-| Explicit cancellation | Supervisor terminates command process group and records cancellation |
+| Training/worker timeout | Stop POSIX process group or known Windows tree; persist timeout; require explicit retry |
+| Explicit cancellation | Supervisor terminates command group/tree and records cancellation |
 | CLI missing before launch | Fail visibly; install CLI, then explicit retry is supported |
 | CLI login/limit/error exit | Keep stderr; no simulated fallback; explicit retry |
 | Supervisor disappears, child still alive | Fail as ambiguous; never launch another training job automatically |
 | Supervisor disappears, child gone | Fail as ambiguous; inspect output before explicit retry |
-| Host reboot | Boot identity detects stale PIDs; interrupted job is ambiguous, not silently replayed |
+| Host reboot | Process birth identity detects stale PIDs; interrupted job is ambiguous, not silently replayed |
 | Archive interrupted | Rebuild archive from existing verified evidence |
 
 ## Retry is an explicit new attempt
@@ -36,6 +36,12 @@ neither process nor result receipt, the CLI deliberately refuses a blind retry;
 inspect `supervisor.log`. There is no generic exactly-once guarantee for arbitrary
 external effects. Database/job IDs and locks prevent the supported duplicate
 launch cases; they do not make external APIs transactional.
+
+Windows uses PID + creation time, native byte locks and detached process flags;
+macOS uses PID + creation time, flock and POSIX sessions. Linux also records its
+boot identity and /proc start ticks. Windows cancellation snapshots and terminates
+known descendants; it is not a kernel Job Object containment boundary. See
+`PLATFORMS.md` for platform-specific limits and validation status.
 
 ## Inspecting jobs
 

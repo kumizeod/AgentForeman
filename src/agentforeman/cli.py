@@ -11,6 +11,8 @@ from .engine import PHASES, create_run, drive, load_config
 from .files import atomic_text
 from .report import verify_archive
 from .store import Store
+from .platforms import SUPPORTED
+from .codex import resolve_command
 
 
 CONFIG = '''version = 1
@@ -107,11 +109,16 @@ def main(argv: list[str] | None = None) -> int:
         project = args.project.expanduser().resolve()
         if args.command == "doctor":
             cfg = load_config(project)
-            found = shutil.which(cfg["codex"]["executable"])
-            print(json.dumps({"linux_supported": sys.platform == "linux", "codex": found,
+            try:
+                found = resolve_command(cfg["codex"])
+                resolution_error = None
+            except ValueError as exc:
+                found, resolution_error = None, str(exc)
+            print(json.dumps({"platform": sys.platform, "platform_supported": sys.platform in SUPPORTED, "codex_command": found,
                               "python": sys.executable, "config_valid": True,
+                              "resolution_error": resolution_error,
                               "note": "CLI presence does not verify login, model access, or sandbox compatibility."}, indent=2))
-            return 0 if found and sys.platform == "linux" else 2
+            return 0 if found and sys.platform in SUPPORTED else 2
         if args.command in {"start", "resume"}:
             run_id = create_run(project, args.goal) if args.command == "start" else args.run_id
             print(f"Run ID: {run_id}", flush=True)
@@ -135,13 +142,13 @@ def main(argv: list[str] | None = None) -> int:
                 report = run / "report.md"
                 if not report.exists():
                     raise ValueError(f"Report not ready: status={state['status']}, phase={state['phase']}, error={state.get('error')}")
-                print(report.read_text())
+                print(report.read_text(encoding="utf-8"))
             elif args.command == "cancel":
                 job = state.get("active_job")
                 if not job or not (run / "jobs" / job / "process.json").exists():
                     raise ValueError("No active supervised job. Stop the manager with Ctrl-C to pause between stages.")
                 atomic_text(run / "jobs" / job / "cancel.request", "cancel\n")
-                print("Cancellation requested. The supervisor will terminate the command process group.")
+                print("Cancellation requested. The supervisor will stop the command and its known descendants.")
         finally:
             store.close()
         return 0

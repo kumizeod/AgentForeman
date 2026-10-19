@@ -24,7 +24,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="foreman-evidence-") as temp:
         root = Path(temp)
         project = root / "project"
-        worker = root / "TEST-ONLY-fixture-codex"
+        worker = root / "TEST-ONLY-fixture-codex.py"
         shutil.copy2(Path(__file__).with_name("fixture_codex.py"), worker)
         worker.chmod(0o755)
         init_demo(project)

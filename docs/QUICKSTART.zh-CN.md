@@ -10,19 +10,41 @@ Codex CLI/登录，真实模型调用尚未现场验证。测试里使用明确�
 
 ## 1. 在你的机器上安装
 
-建议在 5090 所在的 Linux 上运行；Windows 使用 WSL2。这个示例先用 CPU 和 NumPy，
-不依赖 CUDA，也不下载数据。以后换 PyTorch 训练命令即可使用 GPU。
+支持 Windows 原生 PowerShell、macOS 和 Linux，也可使用 WSL2。这个示例先用
+CPU 和 NumPy，不依赖 CUDA，也不下载数据。以后换 PyTorch 训练命令即可使用 GPU。
+当前环境只实测了 Linux；Windows/macOS 分支有契约测试，并配置了三平台完整 CI，
+原生测试结果要以对应系统执行后的记录为准，不能把分支测试当作原生实测。
 
 解压项目，在含有 `pyproject.toml` 的目录执行：
 
+macOS / Linux：
+
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -e '.[demo]'
+python3 -m venv .venv
+./.venv/bin/python -m pip install -e '.[demo]'
 npm install -g @openai/codex
 codex login
 codex --version
 ```
+
+Windows PowerShell（不需要 WSL，也不需要修改 PowerShell 执行策略）：
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[demo]"
+npm install -g @openai/codex
+codex login
+codex --version
+```
+
+下文的 `python` 都指安装项目的虚拟环境解释器：Windows 替换为
+`.\.venv\Scripts\python.exe`，macOS/Linux 替换为 `./.venv/bin/python`。
+所有后续 CLI 参数在三种系统中一致。含空格或中文的路径请加引号。
+多行命令中的反斜杠是 Bash 语法；PowerShell 请写成一行或使用反引号续行。
+
+Windows npm 安装产生的 `codex.cmd` 会自动解析到其 Node 程序；自定义安装位置若
+无法解析，可在 `[codex]` 中设置 `command = ["C:/路径/codex.exe"]`，或
+`command = ["node", "C:/路径/@openai/codex/bin/codex.js"]`。它是程序参数数组。
 
 CLI 登录按你的 Codex 账号和官方支持方式完成。模型访问、额度、订阅与 API
 计费取决于你采用的认证方式；本项目不会自动购买额度或切换到付费认证。
@@ -78,7 +100,8 @@ python -m agentforeman resume RUN_ID --project ./my-experiment
 在终端按 Ctrl-C 退出管理器。已启动的后台作业会继续。重新执行同一个 `resume`
 会检查已有作业和结果，继续原来的阶段。**不要重新 start**，那会创建新实验。
 
-断开 SSH 时建议把管理器放在 tmux 中；监督进程使用独立 session，但机器或
+Linux/macOS 断开 SSH 时可把管理器放在 tmux 中；监督进程使用独立 session，
+Windows 监督进程使用原生 detached 标志。机器或
 容器的生命周期策略仍可能清理整个用户会话。关机重启不会让内存中的训练自动继续；
 详情见 `RECOVERY.md`。
 

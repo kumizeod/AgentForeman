@@ -17,6 +17,9 @@ agent independently discovering a better architecture.
 
 ## Automated verification
 
+The v0.2.0 local suite contains 38 tests (including 12 platform contract tests).
+All were executed on Linux; Windows/macOS contract mocks are labeled as such.
+
 `test-results.txt` contains the final unittest run. It covers normal execution,
 manager SIGKILL while training survives, checkpoint/verifier rejection, restart
 receipt reuse, concurrent run/supervisor ownership, CLI failure/retry, missing CLI
@@ -38,9 +41,12 @@ python -m tests.record_evidence --output ./evidence-new
 - A live, authenticated `codex exec` inference run. This environment has no
   Codex CLI installed and no model account was configured for this project.
 - GPU execution, PyTorch integration or 5090 performance.
-- Native Windows/macOS, remote/multi-host execution, multi-user isolation.
+- Native Windows/macOS execution: platform branches are implemented and their
+  contract tests run here, but no Windows/macOS runner is available in this
+  environment. The 3-OS x 3-Python GitHub CI matrix is configured and not remotely executed here.
+- Remote/multi-host execution and multi-user isolation.
 - Multi-seed scientific improvements or a multi-round autonomous manager.
 
 The real adapter follows the cited official headless interface; validate CLI
-version, sandbox behavior and model access on your own Linux/WSL2 installation.
+version, sandbox behavior and model access on your own Windows/macOS/Linux installation.
 No test fixture is selected by a production CLI fallback.

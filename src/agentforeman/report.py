@@ -9,6 +9,7 @@ import sys
 import zipfile
 
 from .files import atomic_json, atomic_text, digest
+from . import __version__
 
 
 REPRODUCE = '''#!/usr/bin/env python3
@@ -24,14 +25,14 @@ root = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser()
 parser.add_argument("--baseline", action="store_true")
 args = parser.parse_args()
-cfg = json.loads((root / "config.json").read_text())
+cfg = json.loads((root / "config.json").read_text(encoding="utf-8"))
 kind = "baseline" if args.baseline else "candidate"
 code = root / kind / "code"
 output = root / "reproduced" / kind
 output.mkdir(parents=True, exist_ok=True)
 values = dict(python=sys.executable, workspace=str(code), artifacts=str(output), trusted=str(root / "trusted"))
 env = os.environ.copy()
-env.update(PYTHONDONTWRITEBYTECODE="1", OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1")
+env.update(PYTHONDONTWRITEBYTECODE="1", PYTHONUTF8="1", OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1")
 for stage in ("train", "verify"):
     argv = []
     for item in cfg[stage]["command"]:
@@ -41,7 +42,7 @@ for stage in ("train", "verify"):
     print("Running:", argv, flush=True)
     subprocess.run(argv, cwd=code if stage == "train" else root / "trusted", env=env,
                    timeout=cfg[stage]["timeout_seconds"], check=True)
-print((output / "verification.json").read_text())
+print((output / "verification.json").read_text(encoding="utf-8"))
 '''
 
 
@@ -51,7 +52,7 @@ def archive_run(run: Path, state: dict, events: list):
     atomic_json(run / "report.json", {
         "run_id": state["id"], "goal": state["goal"],
         "worker_backend": "codex-cli-adapter",
-        "worker_executable": state["config"]["codex"]["executable"],
+        "worker_command": state["config"]["codex"].get("command") or [state["config"]["codex"]["executable"]],
         "baseline": state["baseline_verdict"], "candidate": state["candidate_verdict"],
         "improvement": state["improvement"], "objective_met": state["objective_met"],
         "changed_files": state["changed_files"], "worker": state["worker_answer"],
@@ -60,7 +61,7 @@ def archive_run(run: Path, state: dict, events: list):
     })
     atomic_json(run / "events.json", events)
     atomic_json(run / "environment.json", {
-        "python": sys.version, "platform": platform.platform(), "foreman_version": "0.1.0",
+        "python": sys.version, "platform": platform.platform(), "foreman_version": __version__,
         "note": "Dependency versions used by the bundled trainer are recorded in training.json. No credentials collected.",
     })
     outcome = "met" if state["objective_met"] else "not met"

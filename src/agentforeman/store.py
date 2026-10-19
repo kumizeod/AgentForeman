@@ -2,16 +2,17 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-import fcntl
 import json
 from pathlib import Path
 import sqlite3
 import time
 
+from .platforms import file_lock
+
 
 class Store:
     def __init__(self, project: Path):
-        self.root = project / ".foreman"
+        self.root = project.expanduser().resolve() / ".foreman"
         self.root.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(self.root / "state.sqlite3", timeout=15)
         self.db.execute("PRAGMA journal_mode=WAL")
@@ -61,12 +62,8 @@ class Store:
 
 @contextmanager
 def run_lock(run_dir: Path):
-    with (run_dir / "manager.lock").open("a") as stream:
-        try:
-            fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            raise ValueError("Another manager owns this run; use status or wait for it to exit.") from None
-        try:
+    try:
+        with file_lock(run_dir / "manager.lock"):
             yield
-        finally:
-            fcntl.flock(stream, fcntl.LOCK_UN)
+    except BlockingIOError:
+        raise ValueError("Another manager owns this run; use status or wait for it to exit.") from None

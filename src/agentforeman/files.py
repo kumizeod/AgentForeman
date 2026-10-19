@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import hashlib
+import errno
 import json
 import os
 from pathlib import Path
 import shutil
+import sys
 import tempfile
+import time
 
 
 def atomic_json(path: Path, value: object) -> None:
@@ -21,12 +24,26 @@ def atomic_text(path: Path, value: str) -> None:
             stream.write(value)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(name, path)
-        directory = os.open(path.parent, os.O_RDONLY)
-        try:
-            os.fsync(directory)
-        finally:
-            os.close(directory)
+        # Windows readers may briefly hold a handle without FILE_SHARE_DELETE.
+        deadline = time.monotonic() + 1
+        while True:
+            try:
+                os.replace(name, path)
+                break
+            except PermissionError:
+                if sys.platform != "win32" or time.monotonic() >= deadline:
+                    raise
+                time.sleep(0.01)
+        if sys.platform != "win32":
+            directory = os.open(path.parent, os.O_RDONLY)
+            try:
+                try:
+                    os.fsync(directory)
+                except OSError as exc:
+                    if sys.platform != "darwin" or exc.errno not in {errno.EINVAL, errno.ENOTSUP}:
+                        raise
+            finally:
+                os.close(directory)
     finally:
         Path(name).unlink(missing_ok=True)
 

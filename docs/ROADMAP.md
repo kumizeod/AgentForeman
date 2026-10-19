@@ -5,7 +5,8 @@ independent artifact verification, archive/replay, manager crash recovery.
 
 Next milestones, in suggested order:
 
-1. Run the real Codex path on Linux with an authenticated account. Record CLI
+1. Execute the configured native Windows/macOS/Linux CI matrix and run real
+   authenticated Codex on each platform. Record CLI
    version, sandbox behavior, completed handoff and model usage evidence.
 2. Add a PyTorch/CUDA example with a well-defined external evaluator and model
    checkpoint continuation. Verify it on an actual GPU.

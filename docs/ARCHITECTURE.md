@@ -18,10 +18,11 @@
 ## Process separation
 
 The manager writes a job spec and starts a detached supervisor. The supervisor
-holds a job `flock`, persists its process birth identity, and starts a child shim
-in another session. The shim records its own identity, then `exec`s the command,
-preserving that birth identity. This avoids PID guesses across process/runtime
-namespaces. The supervisor monitors timeout/cancellation and writes an atomic
+holds a native job lock and persists its process birth identity. On POSIX it
+starts a child shim in another session; the shim records its own identity then
+`exec`s the command. On Windows it starts the native command directly with
+appropriate creation flags and records PID + creation time using psutil.
+The supervisor monitors timeout/cancellation and writes an atomic
 exit receipt. It does not depend on the manager's stdout or lifetime.
 
 Training stdout/stderr go directly to files. There are no shell command strings,
@@ -67,6 +68,7 @@ isolation, credential brokerage, artifact signing and quotas are future work.
 | `codex.py` | Headless Codex CLI argv/prompt/schema/handoff |
 | `job.py` | Detached supervisor, process identities, timeout/cancel, receipts |
 | `store.py` | SQLite state/events, exclusive run ownership |
+| `platforms.py` | Native OS file locks, process identities, detachment and cancellation |
 | `files.py` | Atomic metadata, snapshots, hashes, argv placeholders |
 | `report.py` | Comparison, portable archive, checksum verification/replay |
 

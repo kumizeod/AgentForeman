@@ -15,12 +15,14 @@ from . import codex
 from .files import atomic_json, atomic_text, inventory, read_json, render_argv, replace_snapshot, snapshot
 from .job import alive, wait_for_job
 from .store import Store, run_lock
+from .platforms import SUPPORTED
 
 
 PHASES = ["baseline_train", "baseline_verify", "codex", "check_edits", "train", "verify", "archive", "done"]
 
 
 def load_config(project: Path) -> dict:
+    project = project.expanduser().resolve()
     with (project / "foreman.toml").open("rb") as stream:
         cfg = tomllib.load(stream)
     if cfg.get("version") != 1:
@@ -53,8 +55,13 @@ def load_config(project: Path) -> dict:
         value = cfg[key]["timeout_seconds"]
         if isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value) or value <= 0:
             raise ValueError(f"{key}.timeout_seconds must be a positive finite number")
+    cfg["codex"].setdefault("executable", "codex")
     if not isinstance(cfg["codex"]["executable"], str) or not cfg["codex"]["executable"]:
         raise ValueError("codex.executable must be a nonempty string")
+    prefix = cfg["codex"].get("command")
+    if prefix is not None and (not isinstance(prefix, list) or not prefix or
+                               not all(isinstance(x, str) and x for x in prefix)):
+        raise ValueError("codex.command must be a nonempty argv array")
     metric = cfg["metric"]
     if metric["direction"] not in {"maximize", "minimize"}:
         raise ValueError("metric.direction must be maximize or minimize")
@@ -68,8 +75,9 @@ def load_config(project: Path) -> dict:
 
 
 def create_run(project: Path, goal: str) -> str:
-    if sys.platform != "linux":
-        raise ValueError("This release supports Linux / WSL2 only")
+    project = project.expanduser().resolve()
+    if sys.platform not in SUPPORTED:
+        raise ValueError("Supported platforms: Windows, macOS and Linux")
     if not goal.strip():
         raise ValueError("Goal cannot be empty")
     cfg = load_config(project)
@@ -113,7 +121,7 @@ def command_spec(run: Path, state: dict, section: str, baseline: bool) -> dict:
                        trusted=str(run / "trusted"))
     return {"argv": argv, "cwd": str(root / "code" if section == "train" else run / "trusted"),
             "timeout_seconds": cfg[section]["timeout_seconds"],
-            "env": {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONUNBUFFERED": "1",
+            "env": {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1",
                     "OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1"}}
 
 

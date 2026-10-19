@@ -66,6 +66,24 @@ Ignored cache/VCS directories are not part of source manifests. Put only relevan
 code/data in the source subtree: copied files may become part of the archive.
 The current textual patch generator expects editable files to be UTF-8 text.
 
+## Codex launch prefixes
+
+`[codex].executable` defaults to `codex` on PATH. Native binaries are launched
+directly. A Windows npm `.cmd` shim is resolved through the adjacent
+`node_modules/@openai/codex/package.json` bin entry and launched with Node,
+without passing the goal or paths through cmd.exe. For nonstandard installations:
+
+```toml
+[codex]
+command = ["node", "C:/custom/node_modules/@openai/codex/bin/codex.js"]
+timeout_seconds = 600
+```
+
+`command` overrides `executable` and must be an argv array. Use forward slashes
+or TOML literal strings for Windows paths; unescaped backslashes in a double-
+quoted TOML string are escape characters. Python `.py` and Node `.js` entry paths
+are also supported explicitly; no production fixture is selected automatically.
+
 ## Future adapters
 
 The first extraction points for further development are `codex.make_spec`,

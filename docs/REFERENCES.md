@@ -14,6 +14,12 @@ was copied or vendored into this implementation.
 - [LangGraph persistence](https://docs.langchain.com/oss/python/langgraph/persistence)
   — durable progress and explicit recovery boundaries. AgentForeman does not
   depend on LangGraph.
+- [Python subprocess](https://docs.python.org/3/library/subprocess.html)
+  — native creation flags, session/process-group differences, and Windows batch-file parsing.
+- [psutil documentation](https://psutil.readthedocs.io/stable/)
+  — native process creation time, descendant discovery and process termination.
+- [Codex native Windows sandbox](https://learn.chatgpt.com/docs/windows/windows-sandbox)
+  — native Windows workflow and sandbox configuration; WSL is optional.
 
 References were reviewed on 2026-10-19. CLI interfaces can change. A live Codex
 compatibility check is explicitly pending in this release's validation notes.
