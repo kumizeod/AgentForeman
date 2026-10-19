@@ -1,0 +1,9 @@
+Processing ./.
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: agentforeman
+  Building wheel for agentforeman (pyproject.toml): started
+  Building wheel for agentforeman (pyproject.toml): finished with status 'done'
+  Created wheel for agentforeman: filename=agentforeman-0.1.0-py3-none-any.whl size=25897 sha256=42669186bd39ca897e517c6a5c598f0207ec5a60d7b0af8c499f0ca299cbd2d4
+  Stored in directory: /tmp/pip-ephem-wheel-cache-t31rhv7n/wheels/43/d6/85/e7c61c70dd5ca5bbeeb1b5b545321af972b1a28ecc5f60c030
+Successfully built agentforeman

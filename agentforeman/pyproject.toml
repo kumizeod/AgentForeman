@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentforeman"
+version = "0.1.0"
+description = "Resumable, verifiable experiment jobs driven by Codex"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+dependencies = []
+
+[project.optional-dependencies]
+demo = ["numpy>=1.24,<3"]
+
+[project.scripts]
+foreman = "agentforeman.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+agentforeman = ["templates/moons/*"]

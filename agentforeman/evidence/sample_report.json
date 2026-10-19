@@ -1,0 +1,48 @@
+{
+  "run_id": "fd2ff51f2df4",
+  "goal": "TEST FIXTURE editing; actual training, independent verification and archive replay",
+  "worker_backend": "codex-cli-adapter",
+  "worker_executable": "/tmp/foreman-evidence-0ypp7cgu/TEST-ONLY-fixture-codex",
+  "baseline": {
+    "valid": true,
+    "metric_name": "accuracy",
+    "metric": 0.66,
+    "validation_rows": 600,
+    "checkpoint_sha256": "16af29c7f140482813fb0f2a486457710106a2c8b941b793c60513cb0e44a212",
+    "data_sha256": "0950db9b9ce1df19329081f9f6ec8bdd6e90a8341bae386e2b82d74aed1fdd87",
+    "parameters": 33
+  },
+  "candidate": {
+    "valid": true,
+    "metric_name": "accuracy",
+    "metric": 0.975,
+    "validation_rows": 600,
+    "checkpoint_sha256": "6ecd64565a662c6bf6d60ca76afa54803c14276373a620d5c93d0654ec18ded7",
+    "data_sha256": "0950db9b9ce1df19329081f9f6ec8bdd6e90a8341bae386e2b82d74aed1fdd87",
+    "parameters": 129
+  },
+  "improvement": 0.31499999999999995,
+  "objective_met": true,
+  "changed_files": [
+    "config.json"
+  ],
+  "worker": {
+    "summary": "TEST FIXTURE ONLY: deterministic edit, no LLM call",
+    "hypothesis": "Fixture increases optimization budget/width to exercise the real pipeline",
+    "changes": [
+      "config.json"
+    ]
+  },
+  "code_hashes": {
+    "CONTRACT.md": "b89192860f21cecb595ae5328db17498da44041739ff6b7a3597d4d5f62df333",
+    "config.json": "e0a4900f94aac2ad2b91294455769737de66a67e1d24f2eacacdef0a32efc0a7",
+    "model.py": "81306b04dfaac657e1eb221480e085053dc733206d2c01d01f6084c594c1950c",
+    "train.csv": "d7959165635d49c3f8f52f7a47b3f204117fe1a2f055412b28e3eb7d89b5c065",
+    "train.py": "92883682ace8c26602893338cbd3a8e04a4235d99baf2a3f55557edbb9899b77"
+  },
+  "trusted_hashes": {
+    "validation.csv": "0950db9b9ce1df19329081f9f6ec8bdd6e90a8341bae386e2b82d74aed1fdd87",
+    "verify.py": "2a27157209e95ad829f18979216d9ae8105a7bd0ace76687ada6fa19a4248cc7"
+  },
+  "retries": {}
+}

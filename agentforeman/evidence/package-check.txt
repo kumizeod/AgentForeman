@@ -1,0 +1,20 @@
+Processing ./dist/agentforeman-0.1.0-py3-none-any.whl
+Installing collected packages: agentforeman
+Successfully installed agentforeman-0.1.0
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+
+Imported built wheel: /tmp/foreman-wheel-check-ko53belo/installed/agentforeman/__init__.py
+Created demo project: /tmp/foreman-wheel-demo-_xv10d1p/demo
+Run ID: 420b70b53cc9
+[420b70b53cc9] baseline_train
+[420b70b53cc9] baseline_verify
+{
+  "id": "420b70b53cc9",
+  "status": "paused",
+  "phase": "codex",
+  "baseline_metric": 0.66,
+  "candidate_metric": null,
+  "objective_met": null
+}
+Built-wheel baseline training and external verification: PASS
+No Codex inference was attempted by this smoke test.

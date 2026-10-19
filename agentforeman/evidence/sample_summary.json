@@ -1,0 +1,8 @@
+{
+  "source_editing": "deterministic test fixture, NOT an LLM",
+  "training": "real NumPy gradient descent on CSV",
+  "verification": "external checkpoint recomputation",
+  "baseline_metric": 0.66,
+  "candidate_metric": 0.975,
+  "live_codex_validated": false
+}
