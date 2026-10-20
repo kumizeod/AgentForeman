@@ -18,6 +18,11 @@ test fixtures. This demonstrates orchestration, not autonomous model discovery.
 Live Codex planning and coding still require validation with an authenticated CLI.
 Historical v0.2 sample artifacts and their original test log below are unchanged.
 
+The v0.3 implementation commit `3a83afe` passed native GitHub Actions suites on
+Windows/macOS/Linux with Python 3.11/3.12/3.13 (all nine jobs successful).
+See [run 39427543907](https://github.com/kumizeod/AgentForeman/actions/runs/39427543907)
+and `campaign-ci.json`. This expands platform validation, not model inference validation.
+
 ## What the recorded run proves
 
 `sample_archive.zip`, `sample_report.json`, `sample_summary.json` and
@@ -58,9 +63,6 @@ python -m tests.record_campaign_evidence --output ./evidence-new/campaign-summar
 - A live, authenticated `codex exec` inference run. This environment has no
   Codex CLI installed and no model account was configured for this project.
 - GPU execution, PyTorch integration or 5090 performance.
-- Native Windows/macOS execution: platform branches are implemented and their
-  contract tests run here, but no Windows/macOS runner is available in this
-  environment. The 3-OS x 3-Python GitHub CI matrix is configured and not remotely executed here.
 - Remote/multi-host execution and multi-user isolation.
 - Multi-seed scientific improvements or live model-led multi-round experiments.
 

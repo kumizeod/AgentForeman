@@ -13,8 +13,9 @@ Codex CLI/登录，真实模型调用尚未现场验证。测试里使用明确�
 
 支持 Windows 原生 PowerShell、macOS 和 Linux，也可使用 WSL2。这个示例先用
 CPU 和 NumPy，不依赖 CUDA，也不下载数据。以后换 PyTorch 训练命令即可使用 GPU。
-当前环境只实测了 Linux；Windows/macOS 分支有契约测试，并配置了三平台完整 CI，
-原生测试结果要以对应系统执行后的记录为准，不能把分支测试当作原生实测。
+v0.3 实现提交 `3a83afe` 已通过三平台原生 CI，Python 3.11/3.12/3.13 共 9 个组合全部成功。
+见 [CI 结果](https://github.com/kumizeod/AgentForeman/actions/runs/39427543907)。
+CI 的管理与编码仍使用测试脚本；真实 Codex 模型调用需要另外验证。
 
 解压项目，在含有 `pyproject.toml` 的目录执行：
 

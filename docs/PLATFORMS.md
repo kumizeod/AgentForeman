@@ -1,4 +1,4 @@
-# Native platform support (v0.2.0)
+# Native platform support (v0.3.0)
 
 AgentForeman's CLI, project format, SQLite state and experiment protocol are
 shared across Windows, macOS and Linux. WSL2 uses the Linux implementation.
@@ -48,11 +48,13 @@ interruption, not a universal power-loss guarantee across every filesystem.
 ## Validation status
 
 - Linux: complete local training/verification/recovery/archive tests and wheel smoke test.
-- Windows/macOS: native branches plus local mocked contract tests for platform
-  selection, birth identity, locking, creation flags, cancellation and npm entry resolution.
-- GitHub Actions: full suite configured for ubuntu-latest, windows-latest and
-  macos-latest with Python 3.11, 3.12 and 3.13. This delivery does not include a
-  completed remote CI run. Upload the project to GitHub to obtain those results.
+- Windows/macOS: native integration suites passed in GitHub Actions, in addition
+  to local mocked contract tests for platform selection, birth identity, locking,
+  creation flags, cancellation and npm entry resolution.
+- GitHub Actions: all nine combinations of ubuntu-latest, windows-latest and
+  macos-latest with Python 3.11, 3.12 and 3.13 passed on implementation commit
+  `3a83afe`. [Run results](https://github.com/kumizeod/AgentForeman/actions/runs/39427543907).
+  Machine-readable job results are in `evidence/campaign-ci.json`.
 - Live authenticated Codex inference remains pending on all three platforms.
 
 Mocks verify branch contracts; they are not a substitute for executing a native

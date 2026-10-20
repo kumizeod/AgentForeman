@@ -1,0 +1,63 @@
+{
+  "repository": "kumizeod/AgentForeman",
+  "tested_commit": "3a83afeb97b3336a9553b1cccd8b16e0c5e3d597",
+  "workflow_run": 39427543907,
+  "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39427543907",
+  "disclosure": "Native CI suites use explicitly labeled test-only planner/editor fixtures. No live Codex inference is verified.",
+  "jobs": [
+    {
+      "id": 118643784543,
+      "name": "test (macos-latest, 3.13)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 118643784918,
+      "name": "test (windows-latest, 3.12)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 118643784956,
+      "name": "test (ubuntu-latest, 3.13)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 118643785027,
+      "name": "test (ubuntu-latest, 3.11)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 118643785198,
+      "name": "test (windows-latest, 3.11)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 118643785211,
+      "name": "test (macos-latest, 3.12)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 118643785244,
+      "name": "test (windows-latest, 3.13)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 118643785256,
+      "name": "test (ubuntu-latest, 3.12)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 118643785302,
+      "name": "test (macos-latest, 3.11)",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ]
+}

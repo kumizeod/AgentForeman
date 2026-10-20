@@ -49,11 +49,13 @@ No production command silently falls back to a fixture. See `evidence/VALIDATION
 | Platform | Native implementation | Verified in this delivery |
 | --- | --- | --- |
 | Linux / WSL2 | flock, /proc birth receipts, detached sessions/process groups | Full local integration suite on Linux |
-| macOS | flock, psutil creation time, detached sessions/process groups | Platform contract tests; native CI run pending |
-| Windows PowerShell | msvcrt byte locks, psutil creation time, detached supervisors, known-tree cancellation, npm shim resolution | Platform contract tests; native CI run pending |
+| macOS | flock, psutil creation time, detached sessions/process groups | Native integration CI passed on Python 3.11/3.12/3.13 |
+| Windows PowerShell | msvcrt byte locks, psutil creation time, detached supervisors, known-tree cancellation, npm shim resolution | Native integration CI passed on Python 3.11/3.12/3.13 |
 
 The GitHub workflow runs the complete suite on Ubuntu, Windows and macOS with
-Python 3.11/3.12/3.13. The matrix is configured, not executed remotely here.
+Python 3.11/3.12/3.13. All nine combinations passed for the v0.3 implementation
+commit `3a83afe`: [CI results](https://github.com/kumizeod/AgentForeman/actions/runs/39427543907).
+These tests use explicit planner/editor fixtures; live Codex inference is still pending.
 See [platform details](docs/PLATFORMS.md) for exact behavior and limits.
 
 ## Quick start
