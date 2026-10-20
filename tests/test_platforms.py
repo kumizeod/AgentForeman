@@ -12,11 +12,24 @@ from unittest.mock import Mock, patch
 import psutil
 
 from agentforeman.codex import resolve_command
-from agentforeman.files import atomic_text
+from agentforeman.files import atomic_text, read_json
 from agentforeman.platforms import alive, detached_options, file_lock, identity, stop_process
 
 
 class PlatformTests(unittest.TestCase):
+    def test_windows_receipt_read_retries_transient_denial_with_a_bound(self):
+        path = Path("receipt.json")
+        with patch("sys.platform", "win32"), patch.object(Path, "read_text", side_effect=[PermissionError("sharing violation"), '{"ok": true}']), patch("agentforeman.files.time.sleep") as sleep:
+            self.assertEqual(read_json(path), {"ok": True})
+            sleep.assert_called_once_with(0.01)
+        with patch("sys.platform", "win32"), patch.object(Path, "read_text", side_effect=PermissionError("permanent")), patch("agentforeman.files.time.monotonic", side_effect=[0, 2]):
+            with self.assertRaises(PermissionError):
+                read_json(path)
+        with patch("sys.platform", "linux"), patch.object(Path, "read_text", side_effect=PermissionError("permanent")), patch("agentforeman.files.time.sleep") as sleep:
+            with self.assertRaises(PermissionError):
+                read_json(path)
+            sleep.assert_not_called()
+
     def test_windows_flags_do_not_use_posix_sessions(self):
         with patch("sys.platform", "win32"):
             supervisor = detached_options(supervisor=True)

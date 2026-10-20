@@ -49,7 +49,16 @@ def atomic_text(path: Path, value: str) -> None:
 
 
 def read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
+    deadline = time.monotonic() + 1
+    while True:
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except PermissionError:
+            # A Windows replace/antivirus scan can briefly deny opening a receipt.
+            # Do not fail a live supervisor on that transient sharing violation.
+            if sys.platform != "win32" or time.monotonic() >= deadline:
+                raise
+            time.sleep(0.01)
 
 
 def digest(path: Path) -> str:

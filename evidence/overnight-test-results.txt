@@ -100,3 +100,24 @@ test_background_timer_automatically_wakes_and_completes (tests.test_overnight.Ov
 Ran 10 tests in 26.887s
 
 OK
+
+Windows transient receipt-read regression checks:
+test_access_denied_is_conservatively_alive (tests.test_platforms.PlatformTests.test_access_denied_is_conservatively_alive) ... ok
+test_explicit_python_prefix_preserves_arguments (tests.test_platforms.PlatformTests.test_explicit_python_prefix_preserves_arguments) ... ok
+test_posix_detaches_both_supervisor_and_child (tests.test_platforms.PlatformTests.test_posix_detaches_both_supervisor_and_child) ... ok
+test_receipt_from_another_platform_is_not_a_local_process (tests.test_platforms.PlatformTests.test_receipt_from_another_platform_is_not_a_local_process) ... ok
+test_unknown_windows_batch_shim_fails_with_configuration_hint (tests.test_platforms.PlatformTests.test_unknown_windows_batch_shim_fails_with_configuration_hint) ... ok
+test_windows_and_mac_identity_use_creation_time_without_os_kill (tests.test_platforms.PlatformTests.test_windows_and_mac_identity_use_creation_time_without_os_kill) ... ok
+test_windows_atomic_write_does_not_open_directory_for_fsync (tests.test_platforms.PlatformTests.test_windows_atomic_write_does_not_open_directory_for_fsync) ... ok
+test_windows_byte_lock_acquires_and_releases_same_region (tests.test_platforms.PlatformTests.test_windows_byte_lock_acquires_and_releases_same_region) ... ok
+test_windows_flags_do_not_use_posix_sessions (tests.test_platforms.PlatformTests.test_windows_flags_do_not_use_posix_sessions) ... ok
+test_windows_lock_contention_is_nonblocking (tests.test_platforms.PlatformTests.test_windows_lock_contention_is_nonblocking) ... ok
+test_windows_npm_shim_resolves_to_node_argv_without_shell (tests.test_platforms.PlatformTests.test_windows_npm_shim_resolves_to_node_argv_without_shell) ... ok
+test_windows_receipt_read_retries_transient_denial_with_a_bound (tests.test_platforms.PlatformTests.test_windows_receipt_read_retries_transient_denial_with_a_bound) ... ok
+test_windows_stop_terminates_known_descendants_and_root (tests.test_platforms.PlatformTests.test_windows_stop_terminates_known_descendants_and_root) ... ok
+test_completed_result_before_state_commit_does_not_repeat_training (tests.test_pipeline.PipelineTests.test_completed_result_before_state_commit_does_not_repeat_training) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 4.515s
+
+OK
