@@ -98,22 +98,32 @@ def main(argv: list[str] | None = None) -> int:
     doctor.add_argument("--project", type=Path, default=Path.cwd())
     check = sub.add_parser("verify-archive")
     check.add_argument("path", type=Path)
-    campaign = sub.add_parser("campaign", help="Manage bounded multi-round experiments")
-    actions = campaign.add_subparsers(dest="campaign_command", required=True)
-    for name in ("start", "resume", "status", "list", "events", "report"):
-        p = actions.add_parser(name)
-        p.add_argument("--project", type=Path, default=Path.cwd())
-        if name not in {"start", "list"}:
-            p.add_argument("campaign_id")
-        if name in {"start", "resume"}:
-            p.add_argument("--until", choices=["baseline", "decide", "execute", "record"])
-        if name == "start":
-            p.add_argument("--goal", required=True)
-            p.add_argument("--max-rounds", type=int, default=3)
-            p.add_argument("--budget-seconds", type=float, default=1800)
-            p.add_argument("--target", type=float)
-        if name == "resume":
-            p.add_argument("--retry-failed", action="store_true")
+    for command in ("campaign", "overnight"):
+        campaign = sub.add_parser(command, help="Manage experiments" if command == "campaign" else "Submit overnight work with model-free quota waiting")
+        actions = campaign.add_subparsers(dest="campaign_command", required=True)
+        for name in ("start", "resume", "status", "list", "events", "report", "stop"):
+            p = actions.add_parser(name)
+            p.add_argument("--project", type=Path, default=Path.cwd())
+            if name not in {"start", "list"}:
+                p.add_argument("campaign_id")
+            if name in {"start", "resume"}:
+                if command == "campaign":
+                    p.add_argument("--until", choices=["baseline", "decide", "execute", "record"])
+                else:
+                    p.add_argument("--foreground", action="store_true", help="Keep controller in this terminal; default is detached")
+            if name == "start":
+                p.add_argument("--goal", required=True)
+                p.add_argument("--max-rounds", type=int, default=5 if command == "overnight" else 3)
+                p.add_argument("--target", type=float)
+                if command == "campaign":
+                    p.add_argument("--budget-seconds", type=float, default=1800)
+                else:
+                    p.add_argument("--deadline", default="08:00", help="Next local HH:MM or full ISO time with offset; default 08:00")
+                    p.add_argument("--quota-retry-seconds", type=float, default=18000, help="Conservative fallback if reset time is unavailable")
+                    p.add_argument("--max-quota-retries", type=int, default=8)
+                    p.add_argument("--no-quota-probe", action="store_true", help="Disable model-free app-server quota metadata lookup")
+            if name == "resume":
+                p.add_argument("--retry-failed", action="store_true")
     args = parser.parse_args(argv)
     try:
         if args.command == "init":
@@ -123,14 +133,36 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(verify_archive(args.path), indent=2))
             return 0
         project = args.project.expanduser().resolve()
-        if args.command == "campaign":
+        if args.command in {"campaign", "overnight"}:
             from .campaign import create_campaign, drive_campaign
             if args.campaign_command in {"start", "resume"}:
-                cid = (create_campaign(project, args.goal, args.max_rounds, args.budget_seconds, args.target)
-                       if args.campaign_command == "start" else args.campaign_id)
+                if args.campaign_command == "start":
+                    if args.command == "overnight":
+                        from .overnight import parse_deadline
+                        cid = create_campaign(project, args.goal, args.max_rounds, 86400, args.target,
+                                              deadline_at=parse_deadline(args.deadline),
+                                              quota_policy={"fallback_seconds": args.quota_retry_seconds,
+                                                            "max_retries": args.max_quota_retries,
+                                                            "probe": not args.no_quota_probe})
+                    else:
+                        cid = create_campaign(project, args.goal, args.max_rounds, args.budget_seconds, args.target)
+                else:
+                    cid = args.campaign_id
                 print(f"Campaign ID: {cid}", flush=True)
-                result = drive_campaign(project, cid, until=args.until,
-                                        retry_failed=getattr(args, "retry_failed", False))
+                if args.command == "overnight":
+                    from .overnight import launch, serve
+                    retry = getattr(args, "retry_failed", False)
+                    if args.foreground:
+                        result = serve(project, cid, retry_failed=retry)
+                    else:
+                        receipt = launch(project, cid, retry_failed=retry)
+                        print(json.dumps({"controller": receipt, "note": "Detached controller; safe to close this terminal. Keep the computer awake."}, indent=2))
+                        print(f"Report: {project / '.foreman' / 'campaigns' / cid / 'report.md'}")
+                        print(f"Inspect: python -m agentforeman overnight status {cid} --project \"{project}\"")
+                        return 0
+                else:
+                    result = drive_campaign(project, cid, until=args.until,
+                                            retry_failed=getattr(args, "retry_failed", False))
                 print(json.dumps({k: result.get(k) for k in ("id", "status", "phase", "stop_reason", "best")}, indent=2))
                 print(f"Report: {project / '.foreman' / 'campaigns' / cid / 'report.md'}")
             else:
@@ -144,8 +176,19 @@ def main(argv: list[str] | None = None) -> int:
                         path = store.root / "campaigns" / args.campaign_id / "report.md"
                         print(path.read_text(encoding="utf-8"))
                         return 0
+                    elif args.campaign_command == "stop":
+                        store.get_campaign(args.campaign_id)
+                        atomic_text(store.root / "campaigns" / args.campaign_id / "stop.request", "stop\n")
+                        print("Stop requested. The controller will finish/reconcile the current round and write its report; no further rounds will start.")
+                        return 0
                     else:
                         result = store.get_campaign(args.campaign_id)
+                        from .files import read_json
+                        from .platforms import alive
+                        path = store.root / "campaigns" / args.campaign_id / "runner.json"
+                        receipt = read_json(path) if path.exists() else {}
+                        result["controller_alive"] = alive(receipt.get("process"))
+                        result["controller"] = receipt
                     print(json.dumps(result, ensure_ascii=False, indent=2))
                 finally:
                     store.close()

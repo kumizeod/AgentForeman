@@ -1,5 +1,22 @@
 # 中文上手指南
 
+## v0.4：晚上布置作业，早上查看结果
+
+更新并安装代码后，使用已初始化的实验项目：
+
+```powershell
+python -m pip install -e ".[demo]"
+python -m agentforeman overnight start --project .\my-experiment --goal "提高验证准确率，尝试不同方案并保留最佳结果，保持 checkpoint 契约" --deadline 08:00 --max-rounds 5
+python -m agentforeman overnight status CAMPAIGN_ID --project .\my-experiment
+python -m agentforeman overnight report CAMPAIGN_ID --project .\my-experiment
+```
+
+提交后默认后台运行，可以关闭提交终端；电脑需要保持开机、不休眠。
+`08:00` 是电脑本地时区的下一个早上八点，也可用带时区的完整日期。
+额度耗尽后保存现场、停止模型调用，优先读取真实重置时间，读不到才采用保守的五小时回退等待。
+恢复后继续同一任务；截止时交付已有结果和未完成原因，不保证每次都能达成研究目标。
+完整规则、暂停恢复和停止命令见 [夜间托管指南](OVERNIGHT.md)。
+
 这份代码提供可恢复的单次实验，以及 v0.3 新增的多轮管理闭环。
 多轮命令见文末或 [Campaigns](CAMPAIGNS.md)。单轮执行流程是：
 

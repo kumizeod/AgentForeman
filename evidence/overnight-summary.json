@@ -1,0 +1,112 @@
+{
+  "version": "0.4.0",
+  "disclosure": "TEST ONLY planner/editor and quota metadata; 0.25-second fixture resets, not real account exhaustion or a five-hour wait. Real CSV training, NPZ checkpoints and independent verification.",
+  "status": "completed",
+  "stop_reason": "max_rounds",
+  "initial_metric": 0.66,
+  "best_metric": 0.975,
+  "metric_criterion_met": true,
+  "quota_resumptions": 2,
+  "quota_wait_seconds": 0.6031436920166016,
+  "fixture_model_invocations": [
+    {
+      "role": "manager",
+      "time": 1792509955.4806938
+    },
+    {
+      "role": "manager",
+      "time": 1792509958.52837
+    },
+    {
+      "role": "worker",
+      "time": 1792509970.8827002
+    },
+    {
+      "role": "worker",
+      "time": 1792509973.7317033
+    }
+  ],
+  "quota_events": [
+    {
+      "sequence": 3,
+      "timestamp": 1792509956.6170483,
+      "kind": "quota_waiting",
+      "payload": {
+        "wait": {
+          "reason": "You've hit your usage limit. TEST ONLY",
+          "reported_reset_at": 1792509955.7314067,
+          "detection": "cli_error",
+          "scope": "manager",
+          "run_id": null,
+          "job_name": "job",
+          "started_at": 1792509956.6168666,
+          "wake_at": 1792509956.904991,
+          "reset_source": "account_rate_limits"
+        }
+      }
+    },
+    {
+      "sequence": 4,
+      "timestamp": 1792509956.9368916,
+      "kind": "quota_woke",
+      "payload": {
+        "previous_wait": {
+          "reason": "You've hit your usage limit. TEST ONLY",
+          "reported_reset_at": 1792509955.7314067,
+          "detection": "cli_error",
+          "scope": "manager",
+          "run_id": null,
+          "job_name": "job",
+          "started_at": 1792509956.6168666,
+          "wake_at": 1792509956.904991,
+          "reset_source": "account_rate_limits"
+        }
+      }
+    },
+    {
+      "sequence": 7,
+      "timestamp": 1792509971.6694424,
+      "kind": "quota_waiting",
+      "payload": {
+        "wait": {
+          "reason": "You've hit your usage limit. TEST ONLY",
+          "reported_reset_at": 1792509971.134566,
+          "detection": "cli_error",
+          "scope": "worker",
+          "run_id": "a03355aa8ace",
+          "job_name": "codex-00",
+          "started_at": 1792509971.6685722,
+          "wake_at": 1792509971.953144,
+          "reset_source": "account_rate_limits"
+        }
+      }
+    },
+    {
+      "sequence": 8,
+      "timestamp": 1792509972.0089,
+      "kind": "quota_woke",
+      "payload": {
+        "previous_wait": {
+          "reason": "You've hit your usage limit. TEST ONLY",
+          "reported_reset_at": 1792509971.134566,
+          "detection": "cli_error",
+          "scope": "worker",
+          "run_id": "a03355aa8ace",
+          "job_name": "codex-00",
+          "started_at": 1792509971.6685722,
+          "wake_at": 1792509971.953144,
+          "reset_source": "account_rate_limits"
+        }
+      }
+    }
+  ],
+  "rounds": [
+    {
+      "number": 1,
+      "action": "experiment",
+      "status": "completed",
+      "metric": 0.975,
+      "promoted": true
+    }
+  ]
+}

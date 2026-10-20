@@ -1,6 +1,20 @@
 # AgentForeman
 
-**Give Codex an experiment goal. Manage bounded rounds, independently verify results, keep the best candidate, and resume after exit.**
+**Assign Codex an experiment tonight. Wait through quota resets without model calls. Review verified results tomorrow.**
+
+v0.4 adds [overnight assignments](docs/OVERNIGHT.md): detached submission, a morning
+deadline, persistent quota waiting, model-free reset lookup, partial-code continuation
+and a report explaining completed and unfinished work.
+
+```powershell
+python -m agentforeman overnight start --project .\my-experiment --goal "Improve validation accuracy within the checkpoint contract" --deadline 08:00 --max-rounds 5
+python -m agentforeman overnight status CAMPAIGN_ID --project .\my-experiment
+python -m agentforeman overnight report CAMPAIGN_ID --project .\my-experiment
+```
+
+Install/update the package and configure Codex first using the instructions below.
+`08:00` means the next local 08:00. Keep the computer awake. See the overnight guide
+for exact quota detection, reset fallback and recovery limits.
 
 AgentForeman is an early, local-first experiment manager. Its v0.3 campaign layer
 asks a read-only Codex manager to propose an experiment, repair, retest or stop.
@@ -11,7 +25,7 @@ remain available. The small Python control plane uses psutil for native
 Windows/macOS process identity and Windows process-tree cancellation.
 
 [中文上手指南](docs/QUICKSTART.zh-CN.md) · [Architecture](docs/ARCHITECTURE.md) ·
-[Campaign manager](docs/CAMPAIGNS.md) · [Recovery](docs/RECOVERY.md) · [Extending experiments](docs/EXTENDING.md) ·
+[Overnight jobs](docs/OVERNIGHT.md) · [Campaign manager](docs/CAMPAIGNS.md) · [Recovery](docs/RECOVERY.md) · [Extending experiments](docs/EXTENDING.md) ·
 [Roadmap](docs/ROADMAP.md) · [References](docs/REFERENCES.md)
 
 ## Status and scope

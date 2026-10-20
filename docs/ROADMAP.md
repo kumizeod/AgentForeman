@@ -1,5 +1,11 @@
 # Roadmap
 
+v0.4 product target: a researcher submits a configured experiment at night and
+reviews verifiable results the next morning. Detached controllers, quota waiting,
+read-only reset metadata, deadline handoff and partial-code continuation are now
+implemented. Prioritize live CLI quota/reset validation and clearer recovery logs
+before remote worker scheduling or a web UI.
+
 Implemented through v0.3: real Codex CLI adapters, baseline/candidate jobs,
 independent artifact verification, archive/replay, controller crash recovery,
 bounded multi-round campaigns with model decisions (experiment/repair/retest/stop),

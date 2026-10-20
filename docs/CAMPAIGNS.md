@@ -1,5 +1,9 @@
 # Campaign manager (v0.3)
 
+For sleep-time submission, background execution, quota waiting and a morning
+deadline, use the v0.4 [overnight command](OVERNIGHT.md). Campaigns created with
+the commands below retain their original fail-fast quota behavior.
+
 Submit a goal; the controller evaluates the original project, asks a model manager
 for a decision, runs a bounded candidate, records independently verified evidence,
 then asks for the next decision. This is a local, sequential Agent Manager MVP.
@@ -75,8 +79,9 @@ sets an absolute elapsed wall-clock deadline at creation, including pauses and
 baseline/planning/training time. Every new command's timeout is capped to remaining
 time. Existing jobs are reconciled before stopping; atomic writes, archive generation
 and process cleanup can finish after the deadline. This is not a hard CPU/GPU quota,
-a token budget or a money limit. Budget expiry can leave a failed diagnostic state
-if it interrupts baseline/planning; it does not authorize another model call.
+a token budget or a money limit. Budget expiry preserves interrupted job receipts
+and produces a deadline summary; uncertain supervisor outcomes still block for
+inspection. It does not authorize another model call.
 
 ## Failure recovery
 

@@ -72,6 +72,10 @@ Keep the trainer interface and checkpoint contract described in CONTRACT.md.
 You may run short syntax checks. Return the requested JSON summary when finished.
 This is a single candidate, not an open-ended research loop.
 """
+    if state.get("quota_resumed_jobs"):
+        prompt += ("\nThis task resumes after a usage-limit interruption. Your workspace retains the previous "
+                   "attempt's partial edits. Inspect and continue those edits rather than restarting blindly. "
+                   "The manager has preserved baseline training and previous attempt logs.\n")
     return json_spec(control, work, prompt, SCHEMA, config["codex"], sandbox="workspace-write")
 
 

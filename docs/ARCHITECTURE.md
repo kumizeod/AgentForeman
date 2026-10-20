@@ -1,5 +1,13 @@
 # Architecture
 
+v0.4 wraps campaigns with `overnight.py`: a detached controller owns a lifetime
+runner lock, acknowledges startup with its process birth identity, drives a campaign,
+and sleeps locally on `waiting_quota`. `quota.py` classifies explicit CLI usage-limit
+errors and optionally reads rate-limit metadata without starting a model turn.
+Campaign state persists the original phase/child, wake time and quota attempt count.
+Wake transitions are transactional; child quota recovery is idempotent across the
+child/campaign databases. See [OVERNIGHT.md](OVERNIGHT.md).
+
 ## Execution flow
 
 The optional campaign layer wraps this executor with a persisted

@@ -1,5 +1,10 @@
 # Recovery semantics
 
+v0.4 overnight controllers persist quota waits and resume the same task after a
+reset. Closing the submission terminal normally leaves the detached controller
+alive. After shutdown or controller death, use `overnight resume`; automatic OS
+service startup is not installed. See [overnight recovery](OVERNIGHT.md).
+
 | Event | Behavior on resume |
 | --- | --- |
 | Ctrl-C manager | Reattach to active supervisor; finished stages reuse receipts |
