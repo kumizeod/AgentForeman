@@ -2,6 +2,14 @@
 
 ## v0.4 overnight validation
 
+The current suite contains 66 tests. The initial 62-test implementation `f966437`
+passed all nine native OS/Python combinations in
+[run 39448938675](https://github.com/kumizeod/AgentForeman/actions/runs/39448938675).
+Four further tests cover absolute deadlines at supervisor launch/runtime, context
+preparation crossing the deadline, and a reset that passes while receipts are
+processed. Ten targeted checks passed after those changes. A passed reset now uses
+short bounded backoff instead of unnecessarily sleeping another five hours.
+
 `overnight-test-results.txt` records 62 passing Linux tests (the previous 48 plus
 14 overnight/quota tests). After the full run exposed a benign detached-Popen
 ResourceWarning, the launcher was updated to reap background children from a daemon

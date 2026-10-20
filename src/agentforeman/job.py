@@ -53,6 +53,9 @@ def _supervise_locked(job_dir: Path) -> int:
             stdin_path = spec.get("stdin")
             source = open(stdin_path, "rb") if stdin_path else open(os.devnull, "rb")
             try:
+                if time.time() >= spec.get("deadline_at", float("inf")):
+                    timed_out = True
+                    raise RuntimeError("Absolute deadline expired before child launch")
                 argv = spec["argv"] if sys.platform == "win32" else [sys.executable, "-m", "agentforeman.job", "--child", str(job_dir)]
                 child = subprocess.Popen(argv, cwd=spec["cwd"], env=env,
                                          stdin=source, stdout=out, stderr=err,
@@ -64,6 +67,8 @@ def _supervise_locked(job_dir: Path) -> int:
             finally:
                 source.close()
             deadline = time.monotonic() + spec["timeout_seconds"]
+            if "deadline_at" in spec:
+                deadline = min(deadline, time.monotonic() + max(0, spec["deadline_at"] - time.time()))
             while child.poll() is None:
                 if meta["child"] is None and (job_dir / "child.json").exists():
                     meta["child"] = read_json(job_dir / "child.json")
@@ -72,7 +77,7 @@ def _supervise_locked(job_dir: Path) -> int:
                     cancelled = True
                     stop_process(child)
                     break
-                if time.monotonic() >= deadline:
+                if time.monotonic() >= deadline or time.time() >= spec.get("deadline_at", float("inf")):
                     timed_out = True
                     stop_process(child)
                     break

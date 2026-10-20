@@ -280,6 +280,8 @@ def drive(project: Path, run_id: str, retry: bool = False, until: str | None = N
                                 spec = command_spec(run, state, "verify" if "verify" in phase else "train",
                                                     phase.startswith("baseline"))
                             spec["timeout_seconds"] = min(spec["timeout_seconds"], remaining)
+                            if deadline_at is not None:
+                                spec["deadline_at"] = deadline_at
                         if "verify" in phase and not (job_dir / "process.json").exists():
                             folder = run / ("baseline" if phase.startswith("baseline") else "candidate") / "artifacts"
                             (folder / "verification.json").unlink(missing_ok=True)

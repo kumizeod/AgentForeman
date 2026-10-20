@@ -182,9 +182,14 @@ def wait_plan(pause: QuotaPause, state: dict) -> dict:
             reset = max(reset or 0, reported)
             source = "account_rate_limits"
     now = time.time()
-    if reset is None or reset <= now:
+    if reset is None:
         reset = now + min(86400, policy["fallback_seconds"] * 2 ** min(state.get("quota_retries", 0), 4))
         source = "fallback_backoff"
+    elif reset <= now:
+        # Receipt processing may cross the reset. Don't unnecessarily wait another
+        # five hours; use bounded short backoff, never a tight retry loop.
+        reset = now + min(86400, policy["minimum_seconds"] * 2 ** min(state.get("quota_retries", 0), 4))
+        source = "stale_reset_backoff"
     return {**pause.info, "scope": pause.scope, "run_id": pause.run_id,
             "job_name": pause.job.name, "started_at": now,
             "wake_at": max(now + policy["minimum_seconds"], reset + min(5, policy["minimum_seconds"])), "reset_source": source}

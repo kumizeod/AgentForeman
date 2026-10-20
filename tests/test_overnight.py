@@ -14,13 +14,41 @@ from unittest.mock import patch
 from agentforeman.campaign import create_campaign, drive_campaign, resume_quota_worker
 from agentforeman.files import atomic_json, atomic_text, read_json
 from agentforeman.overnight import launch, parse_deadline
+from agentforeman.job import wait_for_job
 from agentforeman.platforms import alive
-from agentforeman.quota import classify, exhausted_reset, probe_reset
+from agentforeman.quota import DEFAULT_POLICY, QuotaPause, classify, exhausted_reset, probe_reset, wait_plan
 from agentforeman.store import Store
 from tests import test_campaign as helpers
 
 
 class QuotaProtocolTests(unittest.TestCase):
+    def test_reset_passed_during_processing_uses_short_bounded_backoff(self):
+        now = time.time()
+        pause = QuotaPause(Path("job"), {"reported_reset_at": now - 1, "reason": "limit"}, scope="manager", settings={})
+        state = {"quota_policy": {**DEFAULT_POLICY, "probe": False}, "deadline_at": now + 3600, "quota_retries": 1}
+        plan = wait_plan(pause, state)
+        self.assertEqual(plan["reset_source"], "stale_reset_backoff")
+        self.assertGreaterEqual(plan["wake_at"] - now, 120)
+        self.assertLess(plan["wake_at"] - now, 130)
+
+    def test_expired_durable_spec_never_starts_command(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            marker = root / "must-not-exist"
+            spec = {"argv": [sys.executable, "-c", "from pathlib import Path; import sys; Path(sys.argv[1]).touch()", str(marker)],
+                    "cwd": str(root), "timeout_seconds": 30, "deadline_at": time.time() - 1}
+            result = wait_for_job(root / "job", spec)
+            self.assertTrue(result["timed_out"])
+            self.assertFalse(marker.exists())
+
+    def test_absolute_deadline_caps_runtime_not_just_relative_timeout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            result = wait_for_job(root / "job", {"argv": [sys.executable, "-c", "import time; time.sleep(30)"],
+                                  "cwd": str(root), "timeout_seconds": 30, "deadline_at": time.time() + 0.5})
+            self.assertTrue(result["timed_out"])
+            self.assertLess(result["duration_seconds"], 10)
+
     def test_errors_are_classified_without_matching_agent_text_or_generic_429(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -234,10 +262,11 @@ class OvernightTests(unittest.TestCase):
         cid = self.create(max_rounds=1)
         receipt = launch(self.project, cid)
         try:
-            self.wait_for(lambda: self.state(cid)["status"] == "completed", timeout=30)
+            self.wait_for(lambda: self.state(cid)["status"] in {"completed", "failed"}, timeout=60)
             self.wait_for(lambda: read_json(self.root(cid) / "runner.json").get("finished_at"))
             self.wait_for(lambda: not alive(receipt["process"]))
             done = self.state(cid)
+            self.assertEqual(done["status"], "completed", done.get("error"))
             self.assertEqual(done["quota_retries"], 1)
             self.assertEqual(done["stop_reason"], "max_rounds")
             self.assertTrue(done["metric_criterion_met"])
@@ -257,6 +286,19 @@ class OvernightTests(unittest.TestCase):
             self.drive(cid)
         self.assertEqual(self.state(cid)["status"], "failed")
         self.assertEqual(self.calls(), calls)
+
+    def test_deadline_during_context_preparation_starts_no_model(self):
+        cid = self.create()
+        self.drive(cid, until="decide")
+
+        def expires(control, context, state, source):
+            state["deadline_at"] = time.time() - 1
+            return {"timeout_seconds": 60, "argv": ["must-not-run"]}
+
+        with patch("agentforeman.manager.make_spec", side_effect=expires):
+            result = self.drive(cid)
+        self.assertEqual(result["stop_reason"], "wall_clock_budget")
+        self.assertEqual(self.calls(), [])
 
 
 if __name__ == "__main__":

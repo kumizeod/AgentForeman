@@ -72,6 +72,8 @@ baseline by `metric.min_delta`; arbitrary natural-language goals still need revi
    fallback backoff (capped at 24 hours). This is a conservative estimate, NOT a
    claim that every account resets five hours after failure. Override with
    `--quota-retry-seconds 18000`; disable the metadata lookup with `--no-quota-probe`.
+   If a supplied reset has just passed during receipt processing, use bounded short
+   backoff (at least one minute by default), not another full five-hour wait.
 4. Commit `waiting_quota`, phase, child ID, failed job ID, wake time and reason to
    SQLite. Return control to a plain Python timer. No model calls occur while
    waiting. A one-second local timer also notices stop requests.
@@ -95,7 +97,9 @@ no account-wide scheduler coordinating concurrent campaigns in this version.
 
 Waiting time counts toward the morning deadline. If reset is after the deadline,
 the controller waits only until the deadline and reports the existing best result
-plus unfinished work. New job timeouts are capped to remaining time. Active jobs
+plus unfinished work. New job timeouts are capped to remaining time; durable job
+specs also carry the absolute deadline, checked before launch and while running.
+Preparing context past the deadline cannot start a new model command. Active jobs
 are reconciled, and timeout cleanup/archive writes may finish shortly after the
 deadline. No new experiment is started after the deadline.
 

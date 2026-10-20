@@ -342,7 +342,12 @@ def drive_campaign(project: Path, campaign_id: str, *, until: str | None = None,
                             spec = read_json(job / "spec.json")
                         else:
                             spec = manager.make_spec(control, control / "context", state, root / state["best"]["source"])
-                            spec["timeout_seconds"] = min(spec["timeout_seconds"], max(0.001, state["deadline_at"] - time.time()))
+                            remaining = state["deadline_at"] - time.time()
+                            if remaining <= 0:
+                                finish(root, state, store, "wall_clock_budget")
+                                break
+                            spec["timeout_seconds"] = min(spec["timeout_seconds"], remaining)
+                            spec["deadline_at"] = state["deadline_at"]
                         result = wait_for_job(job, spec)
                         if result["exit_code"] != 0 or result["timed_out"] or result["cancelled"] or result["error"]:
                             if state.get("quota_policy"):
