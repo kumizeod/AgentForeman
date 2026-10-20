@@ -98,6 +98,22 @@ def main(argv: list[str] | None = None) -> int:
     doctor.add_argument("--project", type=Path, default=Path.cwd())
     check = sub.add_parser("verify-archive")
     check.add_argument("path", type=Path)
+    campaign = sub.add_parser("campaign", help="Manage bounded multi-round experiments")
+    actions = campaign.add_subparsers(dest="campaign_command", required=True)
+    for name in ("start", "resume", "status", "list", "events", "report"):
+        p = actions.add_parser(name)
+        p.add_argument("--project", type=Path, default=Path.cwd())
+        if name not in {"start", "list"}:
+            p.add_argument("campaign_id")
+        if name in {"start", "resume"}:
+            p.add_argument("--until", choices=["baseline", "decide", "execute", "record"])
+        if name == "start":
+            p.add_argument("--goal", required=True)
+            p.add_argument("--max-rounds", type=int, default=3)
+            p.add_argument("--budget-seconds", type=float, default=1800)
+            p.add_argument("--target", type=float)
+        if name == "resume":
+            p.add_argument("--retry-failed", action="store_true")
     args = parser.parse_args(argv)
     try:
         if args.command == "init":
@@ -107,6 +123,33 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(verify_archive(args.path), indent=2))
             return 0
         project = args.project.expanduser().resolve()
+        if args.command == "campaign":
+            from .campaign import create_campaign, drive_campaign
+            if args.campaign_command in {"start", "resume"}:
+                cid = (create_campaign(project, args.goal, args.max_rounds, args.budget_seconds, args.target)
+                       if args.campaign_command == "start" else args.campaign_id)
+                print(f"Campaign ID: {cid}", flush=True)
+                result = drive_campaign(project, cid, until=args.until,
+                                        retry_failed=getattr(args, "retry_failed", False))
+                print(json.dumps({k: result.get(k) for k in ("id", "status", "phase", "stop_reason", "best")}, indent=2))
+                print(f"Report: {project / '.foreman' / 'campaigns' / cid / 'report.md'}")
+            else:
+                store = Store(project)
+                try:
+                    if args.campaign_command == "list":
+                        result = [{k: s.get(k) for k in ("id", "goal", "phase", "status")} for s in store.campaigns()]
+                    elif args.campaign_command == "events":
+                        result = store.events("campaign:" + args.campaign_id)
+                    elif args.campaign_command == "report":
+                        path = store.root / "campaigns" / args.campaign_id / "report.md"
+                        print(path.read_text(encoding="utf-8"))
+                        return 0
+                    else:
+                        result = store.get_campaign(args.campaign_id)
+                    print(json.dumps(result, ensure_ascii=False, indent=2))
+                finally:
+                    store.close()
+            return 0
         if args.command == "doctor":
             cfg = load_config(project)
             try:
@@ -153,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
             store.close()
         return 0
     except KeyboardInterrupt:
-        print("Manager paused. Active jobs keep running; use foreman resume with the printed run ID.", file=sys.stderr)
+        print("Manager paused. Active jobs keep running; use foreman resume or foreman campaign resume with the printed ID.", file=sys.stderr)
         return 130
     except (ValueError, RuntimeError, OSError, KeyError, json.JSONDecodeError) as exc:
         print(f"foreman: {exc}", file=sys.stderr)

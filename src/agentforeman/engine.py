@@ -4,6 +4,7 @@ from __future__ import annotations
 import difflib
 import json
 import math
+import re
 from pathlib import Path
 import shutil
 import sys
@@ -19,6 +20,10 @@ from .platforms import SUPPORTED
 
 
 PHASES = ["baseline_train", "baseline_verify", "codex", "check_edits", "train", "verify", "archive", "done"]
+
+
+class BudgetExhausted(RuntimeError):
+    pass
 
 
 def load_config(project: Path) -> dict:
@@ -56,6 +61,19 @@ def load_config(project: Path) -> dict:
         if isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value) or value <= 0:
             raise ValueError(f"{key}.timeout_seconds must be a positive finite number")
     cfg["codex"].setdefault("executable", "codex")
+    if "manager" in cfg:
+        if not isinstance(cfg["manager"], dict):
+            raise ValueError("manager must be a configuration table")
+        settings = {**cfg["codex"], **cfg["manager"]}
+        timeout = settings["timeout_seconds"]
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError("manager.timeout_seconds must be positive and finite")
+        if not isinstance(settings["executable"], str) or not settings["executable"]:
+            raise ValueError("manager.executable must be a nonempty string")
+        command = settings.get("command")
+        if command is not None and (not isinstance(command, list) or not command or
+                                    not all(isinstance(x, str) and x for x in command)):
+            raise ValueError("manager.command must be a nonempty argv array")
     if not isinstance(cfg["codex"]["executable"], str) or not cfg["codex"]["executable"]:
         raise ValueError("codex.executable must be a nonempty string")
     prefix = cfg["codex"].get("command")
@@ -74,7 +92,9 @@ def load_config(project: Path) -> dict:
     return cfg
 
 
-def create_run(project: Path, goal: str) -> str:
+def create_run(project: Path, goal: str, *, run_id: str | None = None,
+               source: Path | None = None, mode: str = "experiment",
+               baseline_source: Path | None = None) -> str:
     project = project.expanduser().resolve()
     if sys.platform not in SUPPORTED:
         raise ValueError("Supported platforms: Windows, macOS and Linux")
@@ -82,21 +102,32 @@ def create_run(project: Path, goal: str) -> str:
         raise ValueError("Goal cannot be empty")
     cfg = load_config(project)
     store = Store(project)
-    run_id = uuid.uuid4().hex[:12]
+    run_id = run_id or uuid.uuid4().hex[:12]
+    if not re.fullmatch(r"[a-f0-9]{12}", run_id) or mode not in {"experiment", "evaluate"}:
+        store.close()
+        raise ValueError("Invalid run identifier or mode")
     run = store.root / "runs" / run_id
-    run.mkdir(parents=True)
+    run.mkdir(parents=True, exist_ok=True)
     try:
-        snapshot(project / cfg["source"], run / "seed")
-        snapshot(run / "seed", run / "workspace")
-        snapshot(project / cfg["trusted"], run / "trusted")
-        snapshot(run / "seed", run / "baseline" / "code")
-        (run / "baseline" / "artifacts").mkdir()
-        atomic_json(run / "config.json", cfg)
-        state = {"id": run_id, "goal": goal, "phase": "baseline_train", "status": "ready",
-                 "created_at": time.time(), "retries": {}, "active_job": None,
-                 "seed_hashes": inventory(run / "seed"), "trusted_hashes": inventory(run / "trusted"),
-                 "config": cfg}
-        store.save(state, "run_created", goal=goal)
+        with run_lock(run):
+            existing = store.db.execute("SELECT document FROM runs WHERE id=?", (run_id,)).fetchone()
+            if existing:
+                previous = json.loads(existing[0])
+                if previous["goal"] != goal or previous.get("mode", "experiment") != mode:
+                    raise ValueError("Run identifier already belongs to a different request")
+                return run_id
+            replace_snapshot(source or project / cfg["source"], run / "seed")
+            replace_snapshot(run / "seed", run / "workspace")
+            replace_snapshot(project / cfg["trusted"], run / "trusted")
+            replace_snapshot(baseline_source or run / "seed", run / "baseline" / "code")
+            (run / "baseline" / "artifacts").mkdir(exist_ok=True)
+            atomic_json(run / "config.json", cfg)
+            state = {"id": run_id, "goal": goal, "mode": mode, "phase": "baseline_train", "status": "ready",
+                     "created_at": time.time(), "retries": {}, "active_job": None,
+                     "seed_hashes": inventory(run / "seed"), "trusted_hashes": inventory(run / "trusted"),
+                     "baseline_hashes": inventory(run / "baseline" / "code"),
+                     "config": cfg}
+            store.save(state, "run_created", goal=goal)
     finally:
         store.close()
     return run_id
@@ -138,7 +169,7 @@ def read_verdict(run: Path, state: dict, baseline: bool) -> dict:
         raise ValueError("Verifier metric must be a finite number")
     if not bounds["minimum"] <= value <= bounds["maximum"]:
         raise ValueError("Verifier metric out of configured bounds")
-    expected = state["seed_hashes"] if baseline else state["candidate_hashes"]
+    expected = state.get("baseline_hashes", state["seed_hashes"]) if baseline else state["candidate_hashes"]
     if inventory(root / "code") != expected:
         raise ValueError("Code/data changed during execution; result cannot be attributed to the snapshot")
     return verdict
@@ -206,7 +237,8 @@ def retry_failed(run: Path, state: dict, store: Store):
     store.save(state, "explicit_retry", phase=phase)
 
 
-def drive(project: Path, run_id: str, retry: bool = False, until: str | None = None) -> dict:
+def drive(project: Path, run_id: str, retry: bool = False, until: str | None = None,
+          *, deadline_at: float | None = None) -> dict:
     store = Store(project)
     run = store.root / "runs" / run_id
     state = store.get(run_id)
@@ -238,11 +270,16 @@ def drive(project: Path, run_id: str, retry: bool = False, until: str | None = N
                         # Reuse the original durable spec on resume; never re-render a live job.
                         if (job_dir / "spec.json").exists():
                             spec = read_json(job_dir / "spec.json")
-                        elif phase == "codex":
-                            spec = codex.make_spec(run, state, state["config"])
                         else:
-                            spec = command_spec(run, state, "verify" if "verify" in phase else "train",
-                                                phase.startswith("baseline"))
+                            remaining = deadline_at - time.time() if deadline_at is not None else float("inf")
+                            if remaining <= 0:
+                                raise BudgetExhausted("Campaign wall-clock budget exhausted before job launch")
+                            if phase == "codex":
+                                spec = codex.make_spec(run, state, state["config"])
+                            else:
+                                spec = command_spec(run, state, "verify" if "verify" in phase else "train",
+                                                    phase.startswith("baseline"))
+                            spec["timeout_seconds"] = min(spec["timeout_seconds"], remaining)
                         if "verify" in phase and not (job_dir / "process.json").exists():
                             folder = run / ("baseline" if phase.startswith("baseline") else "candidate") / "artifacts"
                             (folder / "verification.json").unlink(missing_ok=True)
@@ -258,13 +295,18 @@ def drive(project: Path, run_id: str, retry: bool = False, until: str | None = N
                     elif phase == "check_edits":
                         check_edits(run, state)
                     elif phase == "archive":
-                        from .report import archive_run
-                        cfg = state["config"]["metric"]
-                        delta = state["candidate_metric"] - state["baseline_metric"]
-                        state["improvement"] = delta if cfg["direction"] == "maximize" else -delta
-                        state["objective_met"] = state["improvement"] >= cfg["min_delta"]
-                        archive_run(run, state, store.events(run_id))
-                    state["phase"] = PHASES[PHASES.index(phase) + 1]
+                        from .report import archive_run, archive_evaluation
+                        if state.get("mode") == "evaluate":
+                            state["objective_met"] = None
+                            archive_evaluation(run, state, store.events(run_id))
+                        else:
+                            cfg = state["config"]["metric"]
+                            delta = state["candidate_metric"] - state["baseline_metric"]
+                            state["improvement"] = delta if cfg["direction"] == "maximize" else -delta
+                            state["objective_met"] = state["improvement"] >= cfg["min_delta"]
+                            archive_run(run, state, store.events(run_id))
+                    state["phase"] = ("archive" if phase == "baseline_verify" and state.get("mode") == "evaluate"
+                                      else PHASES[PHASES.index(phase) + 1])
                     store.save(state, "phase_completed", phase=phase)
                 state["status"] = "completed"
                 store.save(state, "run_completed", objective_met=state["objective_met"])

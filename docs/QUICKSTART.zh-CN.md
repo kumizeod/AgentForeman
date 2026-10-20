@@ -1,6 +1,7 @@
 # 中文上手指南
 
-这份代码实现的是一个可恢复的单次实验闭环：
+这份代码提供可恢复的单次实验，以及 v0.3 新增的多轮管理闭环。
+多轮命令见文末或 [Campaigns](CAMPAIGNS.md)。单轮执行流程是：
 
 **提交目标 → 训练基线 → Codex 修改 → 检查修改范围 → 训练候选 → 独立验证 → 归档。**
 
@@ -147,5 +148,20 @@ python reproduce.py
 ## 7. 下一步接你的项目
 
 先看 `EXTENDING.md`。你需要提供：可以修改的文件列表、训练命令、可信评测命令、
-数值指标和工件格式。当前 manager 是明确的状态机，负责一个候选的执行可靠性；
-多轮自主选题、模型化 manager、多个 worker 和 GPU 调度列在后续路线中。
+数值指标和工件格式。单轮执行器负责候选的执行可靠性；多轮管理器根据结果提出下一步。
+多个并发 worker、远程执行和 GPU 调度仍列在后续路线中。
+
+## v0.3：多轮 Agent Manager
+
+安装并初始化项目后，可以使用多轮管理：
+
+```bash
+python -m agentforeman campaign start --project ./my-experiment --goal "提高验证集准确率，保持 checkpoint 契约" --max-rounds 3 --budget-seconds 1800
+python -m agentforeman campaign resume CAMPAIGN_ID --project ./my-experiment
+python -m agentforeman campaign report CAMPAIGN_ID --project ./my-experiment
+```
+
+Windows 请使用虚拟环境中的 `python.exe`，macOS/Linux 使用对应环境的 Python。
+管理模型与编码模型使用独立 Codex 会话。管理器可提出实验、修复、复测、停止，程序检查
+动作引用、轮数和时间预算；只有独立验证通过的结果能成为最佳候选。暂停时间计入总预算。
+完整规则与故障处理见 [Campaigns](CAMPAIGNS.md)。前面的单轮命令继续可用。

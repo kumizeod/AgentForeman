@@ -26,6 +26,9 @@ class Store:
             run_id TEXT NOT NULL, timestamp REAL NOT NULL,
             kind TEXT NOT NULL, payload TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS campaigns (
+            id TEXT PRIMARY KEY, document TEXT NOT NULL, updated REAL NOT NULL
+        );
         """)
 
     def close(self):
@@ -58,6 +61,26 @@ class Store:
 
     def runs(self) -> list[dict]:
         return [json.loads(r[0]) for r in self.db.execute("SELECT document FROM runs ORDER BY updated DESC")]
+
+    def save_campaign(self, state: dict, kind: str, **payload):
+        state["updated_at"] = time.time()
+        with self.db:
+            self.db.execute(
+                "INSERT INTO campaigns VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET "
+                "document=excluded.document, updated=excluded.updated",
+                (state["id"], json.dumps(state, ensure_ascii=False, allow_nan=False), state["updated_at"]),
+            )
+            self.db.execute("INSERT INTO events(run_id,timestamp,kind,payload) VALUES (?,?,?,?)",
+                            ("campaign:" + state["id"], time.time(), kind, json.dumps(payload, ensure_ascii=False)))
+
+    def get_campaign(self, campaign_id: str) -> dict:
+        row = self.db.execute("SELECT document FROM campaigns WHERE id=?", (campaign_id,)).fetchone()
+        if row is None:
+            raise ValueError(f"Unknown campaign: {campaign_id}")
+        return json.loads(row[0])
+
+    def campaigns(self) -> list[dict]:
+        return [json.loads(r[0]) for r in self.db.execute("SELECT document FROM campaigns ORDER BY updated DESC")]
 
 
 @contextmanager

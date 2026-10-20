@@ -62,6 +62,8 @@ create a new run for further work.
 
 This milestone enforces separate wall-clock timeouts for Codex, training and
 verification. Baseline and candidate each get the configured training timeout.
-There is no total GPU-hour, token-dollar or campaign budget accounting yet.
-Time spent with the manager paused is not itself charged by AgentForeman; an
+Campaigns additionally cap each new job to an absolute wall-clock deadline;
+paused time counts toward that deadline. See [campaign recovery](CAMPAIGNS.md).
+There is no total GPU-hour or token-dollar accounting yet.
+For standalone runs, time spent with the manager paused is not itself charged; an
 already running command remains subject to its supervisor's timeout.

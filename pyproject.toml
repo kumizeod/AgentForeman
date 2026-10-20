@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentforeman"
-version = "0.2.0"
-description = "Resumable, verifiable experiment jobs driven by Codex"
+version = "0.3.0"
+description = "Bounded, resumable multi-round experiment management driven by Codex"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}

@@ -57,11 +57,8 @@ def resolve_command(config: dict) -> list[str]:
 
 
 def make_spec(run: Path, state: dict, config: dict) -> dict:
-    prefix = resolve_command(config["codex"])
     work = run / "workspace"
     control = run / "worker"
-    control.mkdir(exist_ok=True)
-    atomic_json(control / "schema.json", SCHEMA)
     prompt = f"""You are the coding worker for one bounded ML experiment.
 Goal: {state['goal']}
 Baseline independently measured metric: {state.get('baseline_metric')}
@@ -75,15 +72,22 @@ Keep the trainer interface and checkpoint contract described in CONTRACT.md.
 You may run short syntax checks. Return the requested JSON summary when finished.
 This is a single candidate, not an open-ended research loop.
 """
+    return json_spec(control, work, prompt, SCHEMA, config["codex"], sandbox="workspace-write")
+
+
+def json_spec(control: Path, cwd: Path, prompt: str, schema: dict, settings: dict, *, sandbox: str) -> dict:
+    prefix = resolve_command(settings)
+    control.mkdir(parents=True, exist_ok=True)
+    atomic_json(control / "schema.json", schema)
     atomic_text(control / "prompt.txt", prompt)
-    argv = [*prefix, "--ask-for-approval", "never", "exec", "--sandbox", "workspace-write",
+    argv = [*prefix, "--ask-for-approval", "never", "exec", "--sandbox", sandbox,
             "--skip-git-repo-check", "--json", "--output-schema", str(control / "schema.json"),
             "--output-last-message", str(control / "answer.json")]
-    if config["codex"].get("model"):
-        argv.extend(["--model", config["codex"]["model"]])
+    if settings.get("model"):
+        argv.extend(["--model", settings["model"]])
     argv.append("-")
-    return {"argv": argv, "cwd": str(work), "stdin": str(control / "prompt.txt"),
-            "timeout_seconds": config["codex"]["timeout_seconds"],
+    return {"argv": argv, "cwd": str(cwd), "stdin": str(control / "prompt.txt"),
+            "timeout_seconds": settings["timeout_seconds"],
             "env": {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONUTF8": "1"}}
 
 

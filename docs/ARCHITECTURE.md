@@ -2,6 +2,12 @@
 
 ## Execution flow
 
+The optional campaign layer wraps this executor with a persisted
+`baseline → decide → execute → record` loop. `manager.py` handles a separate,
+read-only Codex session and validates structured decisions; `campaign.py` owns
+round allocation, source lineage, best promotion, deadlines and reconciliation.
+See [campaigns](CAMPAIGNS.md) for persistence and recovery contracts.
+
 1. `create_run`: validate TOML; snapshot source, trusted data/evaluator and config;
    commit run document and event in one SQLite transaction.
 2. `baseline_train`: run the original source through the detached supervisor.
@@ -64,6 +70,8 @@ isolation, credential brokerage, artifact signing and quotas are future work.
 | Module | Responsibility |
 | --- | --- |
 | `cli.py` | User commands, project initialization |
+| `campaign.py` | Multi-round state, budgets, lineage, best selection, recovery |
+| `manager.py` | Read-only model planner, evidence and decision schema |
 | `engine.py` | Configuration, state machine, snapshots, policies |
 | `codex.py` | Headless Codex CLI argv/prompt/schema/handoff |
 | `job.py` | Detached supervisor, process identities, timeout/cancel, receipts |

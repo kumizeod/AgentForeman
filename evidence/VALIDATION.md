@@ -2,6 +2,22 @@
 
 Recorded on 2026-10-19 in a Linux/Python 3.12 environment with NumPy available.
 
+## v0.3 campaign validation (2026-10-20)
+
+`campaign-test-results.txt` records 48 passing Linux tests, including 10 campaign
+tests and the previous 38 executor/platform tests. New checks cover best retention
+after a worse candidate, actual training failure → repair → retest, allocated-ID
+reuse, recording a completed round without rerunning jobs, invalid repair rejection,
+explicit planner retry with retained evidence, paused wall-clock budget expiry,
+frozen input integrity, target stop, uncertain child receipt blocking, supervisor
+reattachment after killing the campaign controller, and per-command deadline caps.
+
+`campaign-summary.json` records a deterministic fixture-led campaign with real
+training and external verification. The model manager and coding worker are BOTH
+test fixtures. This demonstrates orchestration, not autonomous model discovery.
+Live Codex planning and coding still require validation with an authenticated CLI.
+Historical v0.2 sample artifacts and their original test log below are unchanged.
+
 ## What the recorded run proves
 
 `sample_archive.zip`, `sample_report.json`, `sample_summary.json` and
@@ -34,6 +50,7 @@ Reproduce the local evidence without Codex (test workflow only):
 ```bash
 python -m unittest discover -s tests -v
 python -m tests.record_evidence --output ./evidence-new
+python -m tests.record_campaign_evidence --output ./evidence-new/campaign-summary.json
 ```
 
 ## Not verified here
@@ -45,7 +62,7 @@ python -m tests.record_evidence --output ./evidence-new
   contract tests run here, but no Windows/macOS runner is available in this
   environment. The 3-OS x 3-Python GitHub CI matrix is configured and not remotely executed here.
 - Remote/multi-host execution and multi-user isolation.
-- Multi-seed scientific improvements or a multi-round autonomous manager.
+- Multi-seed scientific improvements or live model-led multi-round experiments.
 
 The real adapter follows the cited official headless interface; validate CLI
 version, sandbox behavior and model access on your own Windows/macOS/Linux installation.

@@ -8,7 +8,7 @@ import platform
 import sys
 import zipfile
 
-from .files import atomic_json, atomic_text, digest
+from .files import atomic_json, atomic_text, digest, replace_snapshot
 from . import __version__
 
 
@@ -49,6 +49,9 @@ print((output / "verification.json").read_text(encoding="utf-8"))
 def archive_run(run: Path, state: dict, events: list):
     baseline, candidate = state["baseline_metric"], state["candidate_metric"]
     metric = state["config"]["metric"]
+    separate_edit_seed = state.get("baseline_hashes", state["seed_hashes"]) != state["seed_hashes"]
+    if separate_edit_seed:
+        replace_snapshot(run / "seed", run / "edit_seed")
     atomic_json(run / "report.json", {
         "run_id": state["id"], "goal": state["goal"],
         "worker_backend": "codex-cli-adapter",
@@ -57,6 +60,8 @@ def archive_run(run: Path, state: dict, events: list):
         "improvement": state["improvement"], "objective_met": state["objective_met"],
         "changed_files": state["changed_files"], "worker": state["worker_answer"],
         "code_hashes": state["candidate_hashes"], "trusted_hashes": state["trusted_hashes"],
+        "edit_seed_hashes": state["seed_hashes"],
+        "baseline_code_hashes": state.get("baseline_hashes", state["seed_hashes"]),
         "retries": state["retries"],
     })
     atomic_json(run / "events.json", events)
@@ -87,7 +92,7 @@ Changed files: {', '.join(state['changed_files'])}
 
 ## Evidence
 
-- `changes.patch`: exact candidate changes.
+- `changes.patch`: exact candidate changes, relative to `edit_seed/` when present, otherwise `baseline/code`.
 - `baseline/code`, `candidate/code`: source and input snapshots.
 - `*/artifacts`: actual checkpoints, training logs and external verification reports.
 - `jobs/*`: argv specifications, process identities, stdout/stderr, exit receipts.
@@ -102,6 +107,21 @@ Only execute archives from sources you trust. Training code runs with your accou
 """
     atomic_text(run / "report.md", text)
     atomic_text(run / "reproduce.py", REPRODUCE)
+    pack_evidence(run)
+
+
+def archive_evaluation(run: Path, state: dict, events: list):
+    atomic_json(run / "report.json", {"run_id": state["id"], "goal": state["goal"],
+                                     "mode": "evaluate", "evaluation": state["baseline_verdict"]})
+    atomic_json(run / "events.json", events)
+    atomic_text(run / "report.md", f"# Evaluation {state['id']}\n\nGoal: {state['goal']}\n\n"
+                f"Independent {state['config']['metric']['name']}: {state['baseline_metric']}\n\n"
+                "No coding worker was invoked. Reproduce: `python reproduce.py --baseline`.\n")
+    atomic_text(run / "reproduce.py", REPRODUCE)
+    pack_evidence(run)
+
+
+def pack_evidence(run: Path):
     # Keep the archive portable: job receipts retain historical absolute paths;
     # reproduce.py resolves the code/data paths relative to the extracted archive.
     selected = []

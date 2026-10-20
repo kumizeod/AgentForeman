@@ -1,7 +1,10 @@
 # Roadmap
 
-Implemented milestone: one goal, real Codex CLI handoff, baseline/candidate jobs,
-independent artifact verification, archive/replay, manager crash recovery.
+Implemented through v0.3: real Codex CLI adapters, baseline/candidate jobs,
+independent artifact verification, archive/replay, controller crash recovery,
+bounded multi-round campaigns with model decisions (experiment/repair/retest/stop),
+persisted evidence, best retention and elapsed wall-clock budgets.
+Live authenticated model execution still needs verification.
 
 Next milestones, in suggested order:
 
@@ -12,8 +15,8 @@ Next milestones, in suggested order:
    checkpoint continuation. Verify it on an actual GPU.
 3. Extract worker/runner/verifier protocols from the concrete modules once a
    second implementation is needed.
-4. Add a multi-attempt campaign: manager decisions (`experiment`, `repair`,
-   `repeat`, `stop`), persisted evidence summaries and a total resource budget.
+4. Extend the existing campaign with token/cost accounting, held-out final tests,
+   multi-seed comparisons and baseline-reuse policies with explicit provenance.
 5. Add controlled automatic recovery policies plus fault-injection evaluations;
    compare against fixed retry and single-worker baselines.
 6. Add a small web UI, notifications, worker pools, GPU leases and task dependency

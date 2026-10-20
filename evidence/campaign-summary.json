@@ -1,0 +1,79 @@
+{
+  "disclosure": "TEST FIXTURE planner and editor, NO LLM calls; real CSV/NumPy training and independent NPZ verification. Not evidence of autonomous model discovery.",
+  "version": "0.3.0",
+  "stop_reason": "manager_stop",
+  "initial_metric": 0.66,
+  "best_metric": 0.975,
+  "rounds": [
+    {
+      "number": 1,
+      "action": "experiment",
+      "status": "failed",
+      "phase": "train",
+      "promoted": false,
+      "repairable": true,
+      "decision": {
+        "action": "experiment",
+        "instruction": "fixture:bad",
+        "rationale": "TEST ONLY scripted decision based on completed round count",
+        "based_on": []
+      },
+      "metric": null,
+      "error": "RuntimeError: Job train-00 failed: {'exit_code': 1, 'timed_out': False, 'cancelled': False, 'error': None, 'started_at': 1792501253.6100023, 'finished_at': 1792501253.8177044, 'duration_seconds': 0.20770263671875}; inspect jobs/train-00/stderr.log"
+    },
+    {
+      "number": 2,
+      "action": "repair",
+      "status": "completed",
+      "phase": "done",
+      "promoted": true,
+      "repairable": false,
+      "decision": {
+        "action": "repair",
+        "instruction": "fixture:repair",
+        "rationale": "TEST ONLY scripted decision based on completed round count",
+        "based_on": [
+          1
+        ]
+      },
+      "metric": 0.975,
+      "error": null
+    },
+    {
+      "number": 3,
+      "action": "retest",
+      "status": "completed",
+      "phase": "done",
+      "promoted": false,
+      "repairable": false,
+      "decision": {
+        "action": "retest",
+        "instruction": "fixture:retest",
+        "rationale": "TEST ONLY scripted decision based on completed round count",
+        "based_on": [
+          2
+        ]
+      },
+      "metric": 0.975,
+      "error": null
+    },
+    {
+      "number": 4,
+      "action": "experiment",
+      "status": "completed",
+      "phase": "done",
+      "promoted": false,
+      "repairable": false,
+      "decision": {
+        "action": "experiment",
+        "instruction": "fixture:worse",
+        "rationale": "TEST ONLY scripted decision based on completed round count",
+        "based_on": [
+          3
+        ]
+      },
+      "metric": 0.66,
+      "error": null
+    }
+  ]
+}

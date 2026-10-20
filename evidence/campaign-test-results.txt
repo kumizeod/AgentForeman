@@ -1,0 +1,70 @@
+test_elapsed_budget_includes_pause_and_blocks_new_work (test_campaign.CampaignTests.test_elapsed_budget_includes_pause_and_blocks_new_work) ... ok
+test_frozen_inputs_reject_tampering_and_user_edits_do_not_affect_resume (test_campaign.CampaignTests.test_frozen_inputs_reject_tampering_and_user_edits_do_not_affect_resume) ... ok
+test_improve_then_worse_keeps_best_and_archives (test_campaign.CampaignTests.test_improve_then_worse_keeps_best_and_archives) ... ok
+test_invalid_repair_is_blocked_and_explicit_retry_preserves_attempt (test_campaign.CampaignTests.test_invalid_repair_is_blocked_and_explicit_retry_preserves_attempt) ... ok
+test_killed_campaign_reattaches_same_planner_job (test_campaign.CampaignTests.test_killed_campaign_reattaches_same_planner_job) ... ok
+test_manager_timeout_and_round_jobs_are_capped_by_deadline (test_campaign.CampaignTests.test_manager_timeout_and_round_jobs_are_capped_by_deadline) ... ok
+test_resume_allocated_run_and_record_once (test_campaign.CampaignTests.test_resume_allocated_run_and_record_once) ... ok
+test_target_stops_before_first_model_call (test_campaign.CampaignTests.test_target_stops_before_first_model_call) ... ok
+test_training_failure_then_repair_then_retest (test_campaign.CampaignTests.test_training_failure_then_repair_then_retest) ... ok
+test_uncertain_child_receipt_blocks_replacement (test_campaign.CampaignTests.test_uncertain_child_receipt_blocks_replacement) ... ok
+test_cancel_terminates_process (test_pipeline.JobTests.test_cancel_terminates_process) ... ok
+test_completed_job_reuses_receipt (test_pipeline.JobTests.test_completed_job_reuses_receipt) ... ok
+test_lost_supervisor_does_not_replay_live_child (test_pipeline.JobTests.test_lost_supervisor_does_not_replay_live_child) ... ok
+test_supervisor_launch_race_runs_command_once (test_pipeline.JobTests.test_supervisor_launch_race_runs_command_once) ... ok
+test_timeout_kills_real_process (test_pipeline.JobTests.test_timeout_kills_real_process) ... ok
+test_archive_detects_tampering (test_pipeline.PipelineTests.test_archive_detects_tampering) ... ok
+test_changed_verifier_is_rejected (test_pipeline.PipelineTests.test_changed_verifier_is_rejected) ... ok
+test_codex_argv_uses_stdin_and_no_shell (test_pipeline.PipelineTests.test_codex_argv_uses_stdin_and_no_shell) ... ok
+test_completed_result_before_state_commit_does_not_repeat_training (test_pipeline.PipelineTests.test_completed_result_before_state_commit_does_not_repeat_training) ... ok
+test_completed_run_resume_is_noop (test_pipeline.PipelineTests.test_completed_run_resume_is_noop) ... ok
+test_existing_project_is_not_overwritten (test_pipeline.PipelineTests.test_existing_project_is_not_overwritten) ... ok
+test_invalid_timeout_configuration_is_rejected (test_pipeline.PipelineTests.test_invalid_timeout_configuration_is_rejected) ... ok
+test_manager_sigkill_during_training_does_not_duplicate_job (test_pipeline.PipelineTests.test_manager_sigkill_during_training_does_not_duplicate_job) ... ok
+test_missing_codex_can_be_installed_then_retried (test_pipeline.PipelineTests.test_missing_codex_can_be_installed_then_retried) ... ok
+test_missing_or_invalid_checkpoint_is_rejected_by_external_verifier (test_pipeline.PipelineTests.test_missing_or_invalid_checkpoint_is_rejected_by_external_verifier) ... ok
+test_noop_worker_is_rejected (test_pipeline.PipelineTests.test_noop_worker_is_rejected) ... ok
+test_only_one_manager_can_own_run (test_pipeline.PipelineTests.test_only_one_manager_can_own_run) ... ok
+test_pause_before_codex_and_resume (test_pipeline.PipelineTests.test_pause_before_codex_and_resume) ... ok
+test_project_root_symlink_is_canonicalized (test_pipeline.PipelineTests.test_project_root_symlink_is_canonicalized) ... ok
+test_protected_edit_is_rejected (test_pipeline.PipelineTests.test_protected_edit_is_rejected) ... ok
+test_real_training_verification_archive_and_replay (test_pipeline.PipelineTests.test_real_training_verification_archive_and_replay) ... ok
+test_symlink_edit_is_rejected (test_pipeline.PipelineTests.test_symlink_edit_is_rejected) ... ok
+test_training_failure_is_not_a_success (test_pipeline.PipelineTests.test_training_failure_is_not_a_success) ... ok
+test_untrusted_metrics_are_ignored (test_pipeline.PipelineTests.test_untrusted_metrics_are_ignored) ... ok
+test_verifier_protocol_rejects_nan_wrong_metric_and_false_validity (test_pipeline.PipelineTests.test_verifier_protocol_rejects_nan_wrong_metric_and_false_validity) ... ok
+test_worker_failure_requires_explicit_retry (test_pipeline.PipelineTests.test_worker_failure_requires_explicit_retry) ... ok
+test_access_denied_is_conservatively_alive (test_platforms.PlatformTests.test_access_denied_is_conservatively_alive) ... ok
+test_explicit_python_prefix_preserves_arguments (test_platforms.PlatformTests.test_explicit_python_prefix_preserves_arguments) ... ok
+test_posix_detaches_both_supervisor_and_child (test_platforms.PlatformTests.test_posix_detaches_both_supervisor_and_child) ... ok
+test_receipt_from_another_platform_is_not_a_local_process (test_platforms.PlatformTests.test_receipt_from_another_platform_is_not_a_local_process) ... ok
+test_unknown_windows_batch_shim_fails_with_configuration_hint (test_platforms.PlatformTests.test_unknown_windows_batch_shim_fails_with_configuration_hint) ... ok
+test_windows_and_mac_identity_use_creation_time_without_os_kill (test_platforms.PlatformTests.test_windows_and_mac_identity_use_creation_time_without_os_kill) ... ok
+test_windows_atomic_write_does_not_open_directory_for_fsync (test_platforms.PlatformTests.test_windows_atomic_write_does_not_open_directory_for_fsync) ... ok
+test_windows_byte_lock_acquires_and_releases_same_region (test_platforms.PlatformTests.test_windows_byte_lock_acquires_and_releases_same_region) ... ok
+test_windows_flags_do_not_use_posix_sessions (test_platforms.PlatformTests.test_windows_flags_do_not_use_posix_sessions) ... ok
+test_windows_lock_contention_is_nonblocking (test_platforms.PlatformTests.test_windows_lock_contention_is_nonblocking) ... ok
+test_windows_npm_shim_resolves_to_node_argv_without_shell (test_platforms.PlatformTests.test_windows_npm_shim_resolves_to_node_argv_without_shell) ... ok
+test_windows_stop_terminates_known_descendants_and_root (test_platforms.PlatformTests.test_windows_stop_terminates_known_descendants_and_root) ... ok
+
+----------------------------------------------------------------------
+Ran 48 tests in 47.518s
+
+OK
+
+Follow-up: campaign suite after exposing best source to read-only planner
+test_elapsed_budget_includes_pause_and_blocks_new_work (tests.test_campaign.CampaignTests.test_elapsed_budget_includes_pause_and_blocks_new_work) ... ok
+test_frozen_inputs_reject_tampering_and_user_edits_do_not_affect_resume (tests.test_campaign.CampaignTests.test_frozen_inputs_reject_tampering_and_user_edits_do_not_affect_resume) ... ok
+test_improve_then_worse_keeps_best_and_archives (tests.test_campaign.CampaignTests.test_improve_then_worse_keeps_best_and_archives) ... ok
+test_invalid_repair_is_blocked_and_explicit_retry_preserves_attempt (tests.test_campaign.CampaignTests.test_invalid_repair_is_blocked_and_explicit_retry_preserves_attempt) ... ok
+test_killed_campaign_reattaches_same_planner_job (tests.test_campaign.CampaignTests.test_killed_campaign_reattaches_same_planner_job) ... ok
+test_manager_timeout_and_round_jobs_are_capped_by_deadline (tests.test_campaign.CampaignTests.test_manager_timeout_and_round_jobs_are_capped_by_deadline) ... ok
+test_resume_allocated_run_and_record_once (tests.test_campaign.CampaignTests.test_resume_allocated_run_and_record_once) ... ok
+test_target_stops_before_first_model_call (tests.test_campaign.CampaignTests.test_target_stops_before_first_model_call) ... ok
+test_training_failure_then_repair_then_retest (tests.test_campaign.CampaignTests.test_training_failure_then_repair_then_retest) ... ok
+test_uncertain_child_receipt_blocks_replacement (tests.test_campaign.CampaignTests.test_uncertain_child_receipt_blocks_replacement) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 22.905s
+
+OK

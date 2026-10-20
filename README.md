@@ -1,15 +1,17 @@
 # AgentForeman
 
-**Give Codex one experiment goal. Get a trained, independently checked, reproducible result. Resume after the manager exits.**
+**Give Codex an experiment goal. Manage bounded rounds, independently verify results, keep the best candidate, and resume after exit.**
 
-AgentForeman is an early, local-first experiment manager. It snapshots a project,
-measures its baseline, asks the real Codex CLI to implement one candidate, runs
-training as a supervised process, verifies the checkpoint independently, and
-archives the evidence. The small Python control plane uses psutil for native
+AgentForeman is an early, local-first experiment manager. Its v0.3 campaign layer
+asks a read-only Codex manager to propose an experiment, repair, retest or stop.
+The controller validates decisions, enforces round/time limits, and invokes a
+separate coding worker. Each run snapshots code, trains supervised processes,
+verifies checkpoints independently, and archives evidence. Single-run commands
+remain available. The small Python control plane uses psutil for native
 Windows/macOS process identity and Windows process-tree cancellation.
 
 [中文上手指南](docs/QUICKSTART.zh-CN.md) · [Architecture](docs/ARCHITECTURE.md) ·
-[Recovery](docs/RECOVERY.md) · [Extending experiments](docs/EXTENDING.md) ·
+[Campaign manager](docs/CAMPAIGNS.md) · [Recovery](docs/RECOVERY.md) · [Extending experiments](docs/EXTENDING.md) ·
 [Roadmap](docs/ROADMAP.md) · [References](docs/REFERENCES.md)
 
 ## Status and scope
@@ -22,12 +24,15 @@ Windows/macOS process identity and Windows process-tree cancellation.
   receipts, process birth identities and restart reconciliation.
 - Source snapshots, exact patch, logs, metric comparison, SHA-256 manifest and a
   relocatable replay script in each completed experiment archive.
-- One candidate per run; a fixed workflow manages execution. There is no learned
-  manager, autonomous multi-round search, or multi-agent scheduler in this release.
+- Persistent multi-round campaigns: model-proposed decisions, validated action
+  references, repair lineage, independent retests, immutable best snapshots,
+  explicit round limits and elapsed wall-clock deadlines, including pauses.
+- This is a single-machine manager MVP. Distributed scheduling, GPU leases,
+  learned policies, token/money budgets and multi-user isolation remain future work.
 
 **Validation disclosure:** the development environment had no Codex CLI or model
 authentication available. Tests use an explicitly named **test-only CLI fixture**
-for source edits; training, validation, process supervision and archive replay run
+for planning and source edits; training, validation, process supervision and archive replay run
 for real. A live authenticated Codex run remains to be checked on the user's machine.
 No production command silently falls back to a fixture. See `evidence/VALIDATION.md`.
 
@@ -52,6 +57,18 @@ Python 3.11/3.12/3.13. The matrix is configured, not executed remotely here.
 See [platform details](docs/PLATFORMS.md) for exact behavior and limits.
 
 ## Quick start
+
+After installing and initializing a project using the platform instructions below,
+start a bounded campaign (use your environment's Python on every OS):
+
+```bash
+python -m agentforeman campaign start --project ./my-experiment --goal "Improve validation accuracy within the checkpoint contract" --max-rounds 3 --budget-seconds 1800
+python -m agentforeman campaign resume CAMPAIGN_ID --project ./my-experiment
+python -m agentforeman campaign report CAMPAIGN_ID --project ./my-experiment
+```
+
+The manager uses your configured Codex CLI/login in a separate read-only session.
+No extra model provider or fallback editor is installed. See [campaign behavior and recovery](docs/CAMPAIGNS.md).
 
 From the extracted source directory, macOS/Linux:
 
