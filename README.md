@@ -16,6 +16,11 @@ Install/update the package and configure Codex first using the instructions belo
 `08:00` means the next local 08:00. Keep the computer awake. See the overnight guide
 for exact quota detection, reset fallback and recovery limits.
 
+The final v0.4 implementation `646c63f` passed its 67-test suite on all nine
+Windows/macOS/Linux × Python 3.11/3.12/3.13 combinations:
+[native CI results](https://github.com/kumizeod/AgentForeman/actions/runs/39451247519).
+Quota tests use explicit fixtures; live account reset behavior still needs validation.
+
 AgentForeman is an early, local-first experiment manager. Its v0.3 campaign layer
 asks a read-only Codex manager to propose an experiment, repair, retest or stop.
 The controller validates decisions, enforces round/time limits, and invokes a

@@ -1,0 +1,64 @@
+{
+  "repository": "kumizeod/AgentForeman",
+  "tested_commit": "646c63fd1eb314a8399d3b105e0d5cefe6af9f13",
+  "suite_tests": 67,
+  "workflow_run": 39451247519,
+  "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39451247519",
+  "disclosure": "Native CI uses explicitly labeled planner/editor and quota fixtures, including accelerated reset windows. Live account quota exhaustion/reset is not verified.",
+  "jobs": [
+    {
+      "id": 118726321113,
+      "name": "test (ubuntu-latest, 3.12)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 118726321512,
+      "name": "test (macos-latest, 3.13)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 118726321548,
+      "name": "test (macos-latest, 3.12)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 118726321656,
+      "name": "test (ubuntu-latest, 3.11)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 118726321660,
+      "name": "test (windows-latest, 3.13)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 118726321814,
+      "name": "test (ubuntu-latest, 3.13)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 118726321932,
+      "name": "test (windows-latest, 3.12)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 118726321942,
+      "name": "test (macos-latest, 3.11)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 118726322237,
+      "name": "test (windows-latest, 3.11)",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ]
+}

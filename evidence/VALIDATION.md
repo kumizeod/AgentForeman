@@ -2,6 +2,12 @@
 
 ## v0.4 overnight validation
 
+**Final native result:** implementation commit `646c63f` passed the complete 67-test
+suite on Windows/macOS/Linux × Python 3.11/3.12/3.13, all nine jobs successful.
+See [run 39451247519](https://github.com/kumizeod/AgentForeman/actions/runs/39451247519)
+and `overnight-ci.json`. This validates orchestration/platform behavior with fixtures,
+not live Codex account quota exhaustion/reset.
+
 The current suite contains 67 tests. The initial 62-test implementation `f966437`
 passed all nine native OS/Python combinations in
 [run 39448938675](https://github.com/kumizeod/AgentForeman/actions/runs/39448938675).
@@ -15,8 +21,8 @@ while `process.json` was being replaced (job 118723034344 in
 [run 39450304520](https://github.com/kumizeod/AgentForeman/actions/runs/39450304520)).
 Receipt readers now retry Windows PermissionError for at most one second; permanent
 denials remain visible and Unix denials are not retried. A new contract test and
-the affected recovery test passed in a 14-test local follow-up. Final native results
-are recorded separately when available.
+the affected recovery test passed in a 14-test local follow-up; the final complete
+native suite above also passed on Windows 3.12.
 
 `overnight-test-results.txt` records 62 passing Linux tests (the previous 48 plus
 14 overnight/quota tests). After the full run exposed a benign detached-Popen
