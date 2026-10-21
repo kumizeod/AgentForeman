@@ -183,3 +183,28 @@ Windows 请使用虚拟环境中的 `python.exe`，macOS/Linux 使用对应环�
 管理模型与编码模型使用独立 Codex 会话。管理器可提出实验、修复、复测、停止，程序检查
 动作引用、轮数和时间预算；只有独立验证通过的结果能成为最佳候选。暂停时间计入总预算。
 完整规则与故障处理见 [Campaigns](CAMPAIGNS.md)。前面的单轮命令继续可用。
+
+## v0.5：额度、监控与诊断
+
+更新安装后，在当前虚拟环境中执行：
+
+```powershell
+python -m agentforeman usage --project .\my-experiment --refresh --json
+python -m agentforeman monitor --project .\my-experiment --watch
+python -m agentforeman stats --project .\my-experiment --json
+python -m agentforeman diagnostics --project .\my-experiment --json
+```
+
+`usage --refresh` 只读取官方额度元数据，不发起模型任务；不加此参数只读缓存。
+缓存会显示更新时间、过期状态和刷新失败，重置时间已过也不会擅自把余量改成 100%。
+`monitor` 只刷新本地数据，显示当前阶段、最佳指标、后台进程和预计唤醒时间；
+`Ctrl-C` 只关闭监控。`stats` 统计已有日志报告的 Token，没有报告时标记覆盖不完整。
+
+提交夜间任务时可加 `--quota-preflight`，在新的 manager/worker 模型任务启动前
+检查额度。已耗尽且知道未来重置时间时，直接保存等待；到时自动继续，基线不会重跑。
+等待期间不调用模型，也不轮询额度接口。该开关与 `--no-quota-probe` 不能同时使用。
+更换 Codex 账号后请手动刷新 worker/manager 额度缓存。
+
+这些功能参考了 MIT 开源项目 [codex-tools](https://github.com/170-carry/codex-tools)，
+采用独立实现，保留 Windows、macOS 和 Linux 支持。
+详见 [运行与额度说明](OBSERVABILITY.md)。

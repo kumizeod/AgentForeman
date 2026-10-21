@@ -112,3 +112,27 @@ python -m tests.record_campaign_evidence --output ./evidence-new/campaign-summar
 The real adapter follows the cited official headless interface; validate CLI
 version, sandbox behavior and model access on your own Windows/macOS/Linux installation.
 No test fixture is selected by a production CLI fallback.
+
+## v0.5 operations and proactive quota guard (2026-10-21)
+
+The complete local suite passed **80 tests** (`operations-test-results.txt`),
+including 13 new quota visibility, cache, diagnostics, monitoring, token ledger
+and preflight recovery tests. A metadata-protocol test was rerun after adding
+client title/version identification and passed.
+
+Coverage includes independent zero/weekly windows, invalid percentages, source
+and role cache isolation, failed refresh retaining stale data, no model process
+for cached/monitor/stats/diagnostics commands, safe diagnostic output, bounded
+log parsing, missing token coverage, no archive double-counting, real metadata
+RPC against an explicit fixture, and planner/worker preflight pause/resume.
+Worker preflight preserves baseline receipts and does not allocate a retry job.
+Training and independent checkpoint validation execute for real in recovery
+integration tests; all planner/editor/quota responses are test fixtures.
+
+Reference ideas were independently implemented after reviewing codex-tools at
+`b8f2dbb829288ce7b1c978925062bef58fd3291e` (MIT). No upstream source code was
+copied or executed. See `docs/OBSERVABILITY.md` for adoption decisions.
+
+Live authenticated Codex quota refresh/preflight, real subscription reset timing
+and real overnight model execution remain unverified in this environment.
+Native CI results for this version are recorded separately after publication.

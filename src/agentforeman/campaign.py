@@ -9,7 +9,7 @@ import uuid
 from . import engine, manager
 from .files import atomic_json, atomic_text, digest, inventory, read_json, snapshot
 from .job import alive, wait_for_job
-from .quota import DEFAULT_POLICY, QuotaPause, classify, wait_plan
+from .quota import DEFAULT_POLICY, QuotaPause, classify, preflight, wait_plan
 from .store import Store, run_lock
 
 PHASES = ["baseline", "decide", "execute", "record", "done"]
@@ -34,6 +34,11 @@ def create_campaign(project: Path, goal: str, max_rounds: int, budget_seconds: f
                 raise ValueError(f"quota {key} must be positive and finite")
         if type(quota_policy["max_retries"]) is not int or not 0 <= quota_policy["max_retries"] <= 100:
             raise ValueError("quota max_retries must be between 0 and 100")
+        for key in ("probe", "preflight"):
+            if type(quota_policy[key]) is not bool:
+                raise ValueError(f"quota {key} must be boolean")
+        if quota_policy["preflight"] and not quota_policy["probe"]:
+            raise ValueError("Quota preflight requires metadata probing")
     cfg = engine.load_config(project)
     if target is not None and (not math.isfinite(target) or not cfg["metric"]["minimum"] <= target <= cfg["metric"]["maximum"]):
         raise ValueError("Target must be finite and inside metric bounds")
@@ -86,7 +91,9 @@ def execute_child(frozen: Path, state: dict, run_id: str, goal: str, source: Pat
     current = child_state(frozen, run_id)
     if current["status"] not in {"completed", "failed"}:
         try:
-            return engine.drive(frozen, run_id, deadline_at=state["deadline_at"])
+            return engine.drive(frozen, run_id, deadline_at=state["deadline_at"],
+                                before_codex=lambda job, child: preflight(job, state, child["config"]["codex"],
+                                                                        scope="worker", run_id=run_id))
         except (ValueError, RuntimeError, OSError):
             current = child_state(frozen, run_id)
             if current["status"] != "failed":
@@ -255,7 +262,9 @@ def drive_campaign(project: Path, campaign_id: str, *, until: str | None = None,
                 if now < wait["wake_at"]:
                     write_report(root, state, store)
                     return state
-                if wait["scope"] == "worker":
+                if wait.get("detection") == "preflight":
+                    pass  # No model job was launched: no receipt retry or partial-edit recovery.
+                elif wait["scope"] == "worker":
                     try:
                         resume_quota_worker(frozen, wait)
                     except (ValueError, RuntimeError, OSError) as exc:
@@ -341,6 +350,8 @@ def drive_campaign(project: Path, campaign_id: str, *, until: str | None = None,
                         if (job / "spec.json").exists():
                             spec = read_json(job / "spec.json")
                         else:
+                            settings = {**state["config"]["codex"], **state["config"].get("manager", {})}
+                            preflight(job, state, settings, scope="manager")
                             spec = manager.make_spec(control, control / "context", state, root / state["best"]["source"])
                             remaining = state["deadline_at"] - time.time()
                             if remaining <= 0:

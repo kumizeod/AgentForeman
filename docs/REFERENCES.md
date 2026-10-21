@@ -23,3 +23,13 @@ was copied or vendored into this implementation.
 
 References were reviewed on 2026-10-19. CLI interfaces can change. A live Codex
 compatibility check is explicitly pending in this release's validation notes.
+
+- [170-carry/codex-tools](https://github.com/170-carry/codex-tools/tree/b8f2dbb829288ce7b1c978925062bef58fd3291e)
+  — reviewed on 2026-10-21; MIT (copyright 2026 170-carry). Quota window visibility,
+  cache freshness, token analytics and operational CLI ideas informed v0.5.
+  Implementation is independent; no source copied or new dependency.
+  [Adoption decisions and exact source files](OBSERVABILITY.md#reference-scope).
+- [Official Codex app-server](https://learn.chatgpt.com/docs/app-server)
+  — reviewed 2026-10-21: initialize/initialized and account/rateLimits/read,
+  multi-bucket selection, usedPercent/windowDurationMins/resetsAt. Metadata reads
+  are separate from model turns.

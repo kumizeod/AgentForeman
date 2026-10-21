@@ -1,5 +1,10 @@
 # Roadmap
 
+v0.5 adds quota windows/freshness, a local terminal monitor, observed token
+accounting, sanitized diagnostics and optional model-free preflight quota checks.
+See [operations](OBSERVABILITY.md). Cost/token enforcement and account pools remain
+future work; observed token counts are not subscription percentage estimates.
+
 v0.4 product target: a researcher submits a configured experiment at night and
 reviews verifiable results the next morning. Detached controllers, quota waiting,
 read-only reset metadata, deadline handoff and partial-code continuation are now

@@ -2,7 +2,11 @@
 
 **Assign Codex an experiment tonight. Wait through quota resets without model calls. Review verified results tomorrow.**
 
-v0.4 adds [overnight assignments](docs/OVERNIGHT.md): detached submission, a morning
+v0.5 adds [quota visibility and local operations](docs/OBSERVABILITY.md): cached quota
+windows, a terminal monitor, token accounting, sanitized diagnostics and optional
+preflight waiting before new model jobs.
+
+v0.4 added [overnight assignments](docs/OVERNIGHT.md): detached submission, a morning
 deadline, persistent quota waiting, model-free reset lookup, partial-code continuation
 and a report explaining completed and unfinished work.
 
@@ -223,3 +227,22 @@ No auto-merge, publishing, package installation, or deployment is performed.
 
 MIT. This implementation is original; references are acknowledged without
 vendoring their code.
+
+## Quota visibility and local operations (v0.5)
+
+Inspired by [codex-tools](https://github.com/170-carry/codex-tools), AgentForeman
+now includes explicit quota snapshots, a terminal status panel, local token
+accounting, sanitized diagnostics and an optional preflight quota guard:
+
+```powershell
+python -m agentforeman usage --project .\my-experiment --refresh --json
+python -m agentforeman monitor --project .\my-experiment --watch
+python -m agentforeman stats --project .\my-experiment --json
+python -m agentforeman diagnostics --project .\my-experiment --json
+python -m agentforeman overnight start --project .\my-experiment --goal "Improve validation accuracy" --deadline 08:00 --quota-preflight
+```
+
+Monitoring and cached views never launch Codex. Explicit refresh/preflight use
+read-only metadata RPCs, with no model turns. Failed refreshes retain a clearly
+stale snapshot. Missing token usage remains unknown. See
+[quota and operations](docs/OBSERVABILITY.md) for exact semantics and reference attribution.

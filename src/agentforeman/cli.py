@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import importlib.resources
 import json
+import math
+import time
 from pathlib import Path
 import shutil
 import sys
@@ -11,8 +13,6 @@ from .engine import PHASES, create_run, drive, load_config
 from .files import atomic_text
 from .report import verify_archive
 from .store import Store
-from .platforms import SUPPORTED
-from .codex import resolve_command
 
 
 CONFIG = '''version = 1
@@ -96,6 +96,25 @@ def main(argv: list[str] | None = None) -> int:
     runs.add_argument("--project", type=Path, default=Path.cwd())
     doctor = sub.add_parser("doctor")
     doctor.add_argument("--project", type=Path, default=Path.cwd())
+    doctor.add_argument("--json", action="store_true", help="Machine-readable diagnostics (also the default)")
+    usage = sub.add_parser("usage", help="Read quota windows without model calls; cached unless explicitly refreshed")
+    usage.add_argument("--project", type=Path, default=Path.cwd())
+    usage.add_argument("--role", choices=["worker", "manager"], default="worker")
+    freshness = usage.add_mutually_exclusive_group()
+    freshness.add_argument("--refresh", action="store_true", help="Read metadata once via official Codex app-server")
+    freshness.add_argument("--cached", action="store_true", help="Read the local snapshot only (default)")
+    usage.add_argument("--json", action="store_true")
+    monitor = sub.add_parser("monitor", help="Local experiment and cached quota panel; never calls Codex")
+    monitor.add_argument("--project", type=Path, default=Path.cwd())
+    monitor.add_argument("--campaign", dest="campaign_id")
+    monitor.add_argument("--watch", action="store_true")
+    monitor.add_argument("--interval", type=float, default=5)
+    monitor.add_argument("--samples", type=int, default=0, help="Stop watching after N snapshots; 0 means until Ctrl-C")
+    monitor.add_argument("--json", action="store_true", help="JSON snapshot; JSONL when watching")
+    for name in ("stats", "diagnostics"):
+        observe = sub.add_parser(name, help="Local token accounting" if name == "stats" else "Sanitized support report")
+        observe.add_argument("--project", type=Path, default=Path.cwd())
+        observe.add_argument("--json", action="store_true")
     check = sub.add_parser("verify-archive")
     check.add_argument("path", type=Path)
     for command in ("campaign", "overnight"):
@@ -121,6 +140,7 @@ def main(argv: list[str] | None = None) -> int:
                     p.add_argument("--deadline", default="08:00", help="Next local HH:MM or full ISO time with offset; default 08:00")
                     p.add_argument("--quota-retry-seconds", type=float, default=18000, help="Conservative fallback if reset time is unavailable")
                     p.add_argument("--max-quota-retries", type=int, default=8)
+                    p.add_argument("--quota-preflight", action="store_true", help="Check fresh quota metadata before each NEW planner/worker job")
                     p.add_argument("--no-quota-probe", action="store_true", help="Disable model-free app-server quota metadata lookup")
             if name == "resume":
                 p.add_argument("--retry-failed", action="store_true")
@@ -133,6 +153,37 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(verify_archive(args.path), indent=2))
             return 0
         project = args.project.expanduser().resolve()
+        if args.command in {"usage", "monitor", "stats", "diagnostics", "doctor"}:
+            from .observe import diagnostics, monitor_snapshot, render_monitor, statistics
+            if args.command == "usage":
+                from .usage import usage_snapshot
+                result = usage_snapshot(project, args.role, refresh=args.refresh)
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+                return 0 if result["available"] and not (args.refresh and result["error"]) else 2
+            if args.command == "monitor":
+                if not math.isfinite(args.interval) or args.interval < 1 or args.samples < 0:
+                    raise ValueError("Monitor interval must be finite and >=1 second; samples must be >=0")
+                count = 0
+                while True:
+                    result = monitor_snapshot(project, args.campaign_id)
+                    if args.json:
+                        print(json.dumps(result, ensure_ascii=False), flush=True)
+                    else:
+                        if args.watch and sys.stdout.isatty():
+                            print("\033[2J\033[H", end="")
+                        print(render_monitor(result), end="", flush=True)
+                    count += 1
+                    if not args.watch or (args.samples and count >= args.samples):
+                        return 0
+                    time.sleep(args.interval)
+            if args.command == "stats":
+                result = statistics(project)
+            else:
+                result = diagnostics(project)
+                if args.command == "diagnostics":
+                    result["statistics"] = statistics(project)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 2 if result.get("ok") is False else 0
         if args.command in {"campaign", "overnight"}:
             from .campaign import create_campaign, drive_campaign
             if args.campaign_command in {"start", "resume"}:
@@ -143,7 +194,7 @@ def main(argv: list[str] | None = None) -> int:
                                               deadline_at=parse_deadline(args.deadline),
                                               quota_policy={"fallback_seconds": args.quota_retry_seconds,
                                                             "max_retries": args.max_quota_retries,
-                                                            "probe": not args.no_quota_probe})
+                                                            "probe": not args.no_quota_probe, "preflight": args.quota_preflight})
                     else:
                         cid = create_campaign(project, args.goal, args.max_rounds, args.budget_seconds, args.target)
                 else:
@@ -193,18 +244,6 @@ def main(argv: list[str] | None = None) -> int:
                 finally:
                     store.close()
             return 0
-        if args.command == "doctor":
-            cfg = load_config(project)
-            try:
-                found = resolve_command(cfg["codex"])
-                resolution_error = None
-            except ValueError as exc:
-                found, resolution_error = None, str(exc)
-            print(json.dumps({"platform": sys.platform, "platform_supported": sys.platform in SUPPORTED, "codex_command": found,
-                              "python": sys.executable, "config_valid": True,
-                              "resolution_error": resolution_error,
-                              "note": "CLI presence does not verify login, model access, or sandbox compatibility."}, indent=2))
-            return 0 if found and sys.platform in SUPPORTED else 2
         if args.command in {"start", "resume"}:
             run_id = create_run(project, args.goal) if args.command == "start" else args.run_id
             print(f"Run ID: {run_id}", flush=True)
@@ -239,6 +278,8 @@ def main(argv: list[str] | None = None) -> int:
             store.close()
         return 0
     except KeyboardInterrupt:
+        if args.command == "monitor":
+            return 130
         print("Manager paused. Active jobs keep running; use foreman resume or foreman campaign resume with the printed ID.", file=sys.stderr)
         return 130
     except (ValueError, RuntimeError, OSError, KeyError, json.JSONDecodeError) as exc:

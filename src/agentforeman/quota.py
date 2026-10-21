@@ -11,11 +11,12 @@ import subprocess
 import threading
 import time
 
+from . import __version__
 from .codex import resolve_command
 from .platforms import detached_options, stop_process
 
 DEFAULT_POLICY = {"fallback_seconds": 18000, "minimum_seconds": 60,
-                  "max_retries": 8, "probe": True}
+                  "max_retries": 8, "probe": True, "preflight": False}
 
 
 class QuotaPause(Exception):
@@ -92,7 +93,7 @@ def exhausted_reset(data: dict) -> float | None:
     """Only exhausted buckets for Codex; wait for the latest blocking window."""
     buckets = data.get("rateLimitsByLimitId")
     bucket = buckets.get("codex") if isinstance(buckets, dict) else data.get("rateLimits")
-    if not isinstance(bucket, dict):
+    if not isinstance(bucket, dict) or bucket.get("limitId", "codex") != "codex":
         return None
     resets = []
     for key in ("primary", "secondary"):
@@ -100,12 +101,12 @@ def exhausted_reset(data: dict) -> float | None:
         if not isinstance(window, dict):
             continue
         used, reset = window.get("usedPercent"), timestamp(window.get("resetsAt"))
-        if type(used) in {int, float} and used >= 100 and reset is not None:
+        if type(used) in {int, float} and math.isfinite(used) and used == 100 and reset is not None:
             resets.append(reset)
     return max(resets) if resets else None
 
 
-def probe_reset(settings: dict, timeout: float = 8) -> float | None:
+def probe_limits(settings: dict, timeout: float = 8) -> dict:
     """Read-only app-server RPC. Never starts a thread/turn or invokes a model."""
     child = None
     reader = None
@@ -140,19 +141,24 @@ def probe_reset(settings: dict, timeout: float = 8) -> float | None:
                 value = messages.get(timeout=max(0.001, end - time.monotonic()))
                 if isinstance(value, dict) and value.get("id") == identifier:
                     if "error" in value:
-                        raise ValueError("Quota metadata RPC rejected")
+                        raise ValueError("rpc_rejected")
                     return value["result"]
                 if time.monotonic() >= end:
                     raise queue.Empty
 
-        send({"id": 0, "method": "initialize", "params": {"clientInfo": {"name": "agentforeman", "version": "0.4.0"}}})
+        send({"id": 0, "method": "initialize", "params": {"clientInfo": {"name": "agentforeman", "title": "AgentForeman", "version": __version__}}})
         response(0)
         send({"method": "initialized", "params": {}})
         send({"id": 1, "method": "account/rateLimits/read", "params": {}})
         data = response(1)
-        return exhausted_reset(data) if isinstance(data, dict) else None
-    except (OSError, ValueError, RuntimeError, KeyError, queue.Empty):
-        return None
+        if not isinstance(data, dict):
+            return {"ok": False, "error": "invalid_response"}
+        return {"ok": True, "data": data}
+    except queue.Empty:
+        return {"ok": False, "error": "timeout"}
+    except (OSError, ValueError, RuntimeError, KeyError):
+        # Never surface RPC error text, which can contain account/provider data.
+        return {"ok": False, "error": "unavailable"}
     finally:
         if child is not None:
             try:
@@ -171,12 +177,31 @@ def probe_reset(settings: dict, timeout: float = 8) -> float | None:
                     child.stdout.close()
 
 
+def probe_reset(settings: dict, timeout: float = 8) -> float | None:
+    result = probe_limits(settings, timeout)
+    return exhausted_reset(result["data"]) if result["ok"] else None
+
+
+def preflight(job: Path, state: dict, settings: dict, *, scope: str, run_id: str | None = None):
+    """Optional fresh metadata check only before a NEW model job, never while waiting."""
+    policy = state.get("quota_policy") or {}
+    remaining = state["deadline_at"] - time.time()
+    if not policy.get("preflight") or remaining <= 1:
+        return
+    result = probe_limits(settings, timeout=min(8, remaining - 0.5))
+    reset = exhausted_reset(result["data"]) if result["ok"] else None
+    if reset is not None and reset > time.time():
+        raise QuotaPause(job, {"reason": "Fresh Codex metadata reports exhausted quota",
+                         "reported_reset_at": reset, "detection": "preflight"},
+                         scope=scope, settings=settings, run_id=run_id)
+
+
 def wait_plan(pause: QuotaPause, state: dict) -> dict:
     policy = state["quota_policy"]
     reset = pause.info["reported_reset_at"]
-    source = "cli_reset" if reset is not None else "fallback_backoff"
+    source = ("account_rate_limits" if pause.info.get("detection") == "preflight" else "cli_reset") if reset is not None else "fallback_backoff"
     remaining = state["deadline_at"] - time.time()
-    if policy["probe"] and remaining > 2:
+    if policy["probe"] and remaining > 2 and pause.info.get("detection") != "preflight":
         reported = probe_reset(pause.settings, timeout=min(8, remaining - 1))
         if reported is not None:
             reset = max(reset or 0, reported)

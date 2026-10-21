@@ -15,6 +15,7 @@ import uuid
 from . import codex
 from .files import atomic_json, atomic_text, inventory, read_json, render_argv, replace_snapshot, snapshot
 from .job import alive, wait_for_job
+from .quota import QuotaPause
 from .store import Store, run_lock
 from .platforms import SUPPORTED
 
@@ -238,7 +239,7 @@ def retry_failed(run: Path, state: dict, store: Store):
 
 
 def drive(project: Path, run_id: str, retry: bool = False, until: str | None = None,
-          *, deadline_at: float | None = None) -> dict:
+          *, deadline_at: float | None = None, before_codex=None) -> dict:
     store = Store(project)
     run = store.root / "runs" / run_id
     state = store.get(run_id)
@@ -275,6 +276,8 @@ def drive(project: Path, run_id: str, retry: bool = False, until: str | None = N
                             if remaining <= 0:
                                 raise BudgetExhausted("Campaign wall-clock budget exhausted before job launch")
                             if phase == "codex":
+                                if before_codex is not None:
+                                    before_codex(job_dir, state)
                                 spec = codex.make_spec(run, state, state["config"])
                             else:
                                 spec = command_spec(run, state, "verify" if "verify" in phase else "train",
@@ -313,6 +316,10 @@ def drive(project: Path, run_id: str, retry: bool = False, until: str | None = N
                 state["status"] = "completed"
                 store.save(state, "run_completed", objective_met=state["objective_met"])
                 return state
+            except QuotaPause:
+                state["status"] = "paused"
+                store.save(state, "quota_preflight_paused", active_job=state.get("active_job"))
+                raise
             except KeyboardInterrupt:
                 state["status"] = "paused"
                 store.save(state, "manager_interrupted", active_job=state.get("active_job"))
