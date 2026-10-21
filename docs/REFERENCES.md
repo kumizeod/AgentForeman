@@ -1,7 +1,8 @@
 # References and attribution
 
-The following primary sources informed the design. No third-party source code
-was copied or vendored into this implementation.
+The following primary sources informed the design. The Python experiment engine
+is independently implemented. The v0.6 web panel vendors MIT-licensed codex-tools
+styles and ports selected UI components; see [notices](../NOTICE.md) and [panel guide](WEB_UI.md).
 
 - [OpenAI: Codex as a platform](https://developers.openai.com/blog/codex-as-a-platform)
   — programmatic integration surfaces and the boundary between harness and product.
@@ -33,3 +34,8 @@ compatibility check is explicitly pending in this release's validation notes.
   — reviewed 2026-10-21: initialize/initialized and account/rateLimits/read,
   multi-bucket selection, usedPercent/windowDurationMins/resetsAt. Metadata reads
   are separate from model turns.
+
+The v0.6 UI directly vendors seven stylesheets and LICENSE from the same
+codex-tools revision and ports ClassicTopBar, ClassicUsageMeter and WorkspaceIcon.
+This supersedes the v0.5 statement that no code was copied for the operations CLI.
+The full source-path/hash mapping and MIT notice ship with the web assets.

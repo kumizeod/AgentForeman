@@ -2,6 +2,27 @@
 
 **Assign Codex an experiment tonight. Wait through quota resets without model calls. Review verified results tomorrow.**
 
+## Local control panel (v0.6)
+
+The graphical panel is implemented, reusing actual MIT-licensed
+[codex-tools](https://github.com/170-carry/codex-tools) styles and ported navigation
+and quota components. Submit, monitor, stop/resume and inspect real experiments
+from the browser; download their independently verified best replay archives.
+
+```powershell
+python -m pip install -e ".[demo]"
+python -m agentforeman ui --project .\my-experiment
+```
+
+Works on native Windows, macOS and Linux. No Node/Tauri build is required.
+[Panel guide](docs/WEB_UI.md) · [Source/license notices](NOTICE.md).
+
+![AgentForeman local control panel](docs/assets/panel-light.png)
+
+*Browser-test screenshot: explicit test-only Codex replies, real training/verification
+and durable quota waiting. No live account results are implied.*
+
+
 v0.5 adds [quota visibility and local operations](docs/OBSERVABILITY.md): cached quota
 windows, a terminal monitor, token accounting, sanitized diagnostics and optional
 preflight waiting before new model jobs. The v0.5 implementation `b97b33a` passed

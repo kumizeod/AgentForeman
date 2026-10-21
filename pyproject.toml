@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentforeman"
-version = "0.5.0"
+version = "0.6.0"
 description = "Overnight Codex experiment management with durable quota waiting and verification"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -21,4 +21,4 @@ foreman = "agentforeman.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-agentforeman = ["templates/moons/*"]
+agentforeman = ["templates/moons/*", "web/*", "web/upstream/*"]

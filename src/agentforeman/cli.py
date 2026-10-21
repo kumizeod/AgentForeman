@@ -77,6 +77,10 @@ def init_demo(project: Path):
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="foreman")
     sub = parser.add_subparsers(dest="command", required=True)
+    ui = sub.add_parser("ui", help="Open the local experiment control panel")
+    ui.add_argument("--project", type=Path, default=Path.cwd())
+    ui.add_argument("--port", type=int, default=8765, help="Local port; 0 selects a free port")
+    ui.add_argument("--no-open", action="store_true", help="Print URL without opening a browser")
     init = sub.add_parser("init", help="Create the offline CSV/MLP experiment example")
     init.add_argument("path", type=Path)
     start = sub.add_parser("start", help="Submit a goal and run one candidate")
@@ -153,6 +157,10 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(verify_archive(args.path), indent=2))
             return 0
         project = args.project.expanduser().resolve()
+        if args.command == "ui":
+            from .webserver import run_ui
+            run_ui(project, args.port, open_browser=not args.no_open)
+            return 0
         if args.command in {"usage", "monitor", "stats", "diagnostics", "doctor"}:
             from .observe import diagnostics, monitor_snapshot, render_monitor, statistics
             if args.command == "usage":

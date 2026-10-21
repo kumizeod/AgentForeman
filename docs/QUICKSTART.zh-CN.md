@@ -208,3 +208,19 @@ python -m agentforeman diagnostics --project .\my-experiment --json
 这些功能参考了 MIT 开源项目 [codex-tools](https://github.com/170-carry/codex-tools)，
 采用独立实现，保留 Windows、macOS 和 Linux 支持。
 详见 [运行与额度说明](OBSERVABILITY.md)。
+
+## v0.6：图形调度页面
+
+```powershell
+git pull
+python -m pip install -e ".[demo]"
+python -m agentforeman ui --project .\my-experiment
+```
+
+浏览器会自动打开。页面可以提交夜间目标、筛选任务、查看当前阶段和最佳指标，
+停止后续轮次、恢复任务、读取日志和报告，以及下载实际的最佳结果 ZIP。
+额度页面支持显式刷新；普通状态轮询不调用模型，也不读取线上额度接口。
+失败任务需要先检查日志，再勾选允许重试。关闭浏览器不影响已启动的后台任务。
+
+界面直接复用 codex-tools 的 MIT 样式并移植导航、图标和额度条，保留版权声明。
+完整说明见 [本地控制台](WEB_UI.md)。

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark"><title>AgentForeman · 实验调度</title>
+  <link rel="stylesheet" href="/static/upstream/light.css"><link rel="stylesheet" href="/static/upstream/dark.css">
+  <link rel="stylesheet" href="/static/upstream/base.css"><link rel="stylesheet" href="/static/upstream/accounts.css">
+  <link rel="stylesheet" href="/static/upstream/layout.css"><link rel="stylesheet" href="/static/upstream/summary.css">
+  <link rel="stylesheet" href="/static/upstream/account-details.css"><link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<div class="shell classicApp"><main class="panel"><div class="workspaceMain">
+  <!-- Ported from codex-tools ClassicTopBar; Tauri calls replaced with local web actions. -->
+  <header class="topbar">
+    <button class="brandLine homeLink" type="button" id="home"><span class="appLogo mark">AF</span><span><h1>AgentForeman</h1><small>OVERNIGHT EXPERIMENTS</small></span></button>
+    <nav class="topSegmentedNav" aria-label="主导航">
+      <button class="topSegmentedButton isActive" data-view="tasks" aria-pressed="true">实验调度</button>
+      <button class="topSegmentedButton" data-view="usage" aria-pressed="false">额度管理</button>
+      <button class="topSegmentedButton" data-view="analytics" aria-pressed="false">用量统计</button>
+      <button class="topSegmentedButton" data-view="settings" aria-pressed="false">环境设置</button>
+    </nav>
+    <div class="topActions"><span class="localBadge"><i></i> 本地控制台</span><button class="iconButton" id="theme" title="切换明暗主题" aria-label="切换明暗主题"></button><button class="iconButton" id="refresh" title="刷新本地状态" aria-label="刷新本地状态"></button></div>
+  </header>
+  <div id="error" class="errorBanner" role="alert" hidden></div>
+  <div id="notice" class="noticeBanner" role="status" hidden></div>
+  <section class="viewStage">
+    <div id="view-tasks" class="page">
+      <div class="pageHeading"><div><div class="eyebrow">EXPERIMENT WORKSPACE</div><h2>今晚布置，明早验收。</h2><p>Codex 修改 · 真实训练 · 独立验证 · 结果归档</p></div><button class="primary" id="new-task"><span data-icon="plus"></span> 新建夜间任务</button></div>
+      <div class="metaStrip" id="summary"></div>
+      <div class="accountsWorkspace taskWorkspace">
+        <div class="accountListPanel">
+          <div class="accountToolbar"><label class="accountSearch"><span data-icon="search"></span><input id="search" aria-label="搜索任务" placeholder="搜索任务目标或 ID…"></label><select id="filter" aria-label="筛选任务状态"><option value="all">全部状态</option><option value="active">进行中</option><option value="waiting_quota">等待额度</option><option value="completed">已完成</option><option value="failed">需处理</option></select><span id="task-count" class="muted"></span></div>
+          <div class="taskTableWrap"><table class="taskTable"><thead><tr><th>实验任务</th><th>状态 / 阶段</th><th>进度</th><th>最佳指标</th><th>截止时间</th></tr></thead><tbody id="task-rows"></tbody></table><div id="empty" class="emptyState" hidden><span class="emptyIcon" data-icon="moon"></span><h3>安排你的第一个夜间实验</h3><p>提交目标后，后台会管理实验与额度等待。<br>已有任务也会自动出现在这里。</p><button id="empty-new" class="primary">新建夜间任务</button></div></div>
+          <div class="listFooter"><span><i class="statusDot"></i> <span id="sync">正在连接…</span></span><span>仅刷新本地数据 · 5 秒 / 次</span></div>
+        </div>
+        <aside class="accountDetailPanel" id="detail" aria-label="任务详情"><div class="emptyState"><span class="emptyIcon" data-icon="info"></span><h3>选择一个实验</h3><p>查看阶段、日志、决策和验证结果。</p></div></aside>
+      </div>
+      <div class="bottomNote">关闭浏览器不影响已启动的后台实验。请保持电脑唤醒；额度等待不调用模型。</div>
+    </div>
+    <div id="view-usage" class="page" hidden><div class="pageHeading"><div><div class="eyebrow">CODEX QUOTA</div><h2>额度管理</h2><p>分别查看 manager 和 worker 的额度窗口与重置时间。</p></div><button id="refresh-quota" class="primary"><span data-icon="refresh"></span> 读取最新额度</button></div><div id="quota-cards" class="quotaGrid"></div><div class="infoBox">日常刷新只读取缓存。点击“读取最新额度”才会请求官方只读元数据，不启动模型任务。过期缓存和未知余量会明确标注。</div></div>
+    <div id="view-analytics" class="page" hidden><div class="pageHeading"><div><div class="eyebrow">OBSERVED USAGE</div><h2>用量统计</h2><p>基于本项目真实 CLI 日志；没有上报的数据保持未知。</p></div><button id="export-stats">下载统计 JSON</button></div><div id="stats-cards" class="statsGrid"></div><section class="surface"><h3>按职责统计</h3><div id="role-stats"></div></section><div class="infoBox">缓存输入属于输入 Token 的一部分，不重复相加。Token 数不能换算成订阅额度百分比或 API 账单。</div></div>
+    <div id="view-settings" class="page" hidden><div class="pageHeading"><div><div class="eyebrow">LOCAL ENVIRONMENT</div><h2>环境与诊断</h2><p>检查本机运行环境与项目配置。</p></div><button id="export-diagnostics">下载诊断 JSON</button></div><section class="surface"><h3>环境检查</h3><div id="checks"></div><p id="environment" class="muted"></p></section><section class="surface"><h3>运行说明</h3><p>任务使用当前 Python 环境和 foreman.toml 中配置的 Codex。命令是否存在不等于登录、模型权限和沙箱已可用。</p><p>需要修改模型、训练或验证命令时，编辑项目中的 foreman.toml；已提交任务使用各自冻结的配置。</p><p>停止会完成或协调当前轮，不再启动下一轮。失败重试需要在任务详情中明确勾选。</p></section><section class="surface attribution"><h3>开源致谢</h3><p>界面复用并改编自 <a href="https://github.com/170-carry/codex-tools/tree/b8f2dbb829288ce7b1c978925062bef58fd3291e" target="_blank" rel="noreferrer">170-carry/codex-tools</a> 的主题、经典布局、导航和额度组件。</p><p>Copyright © 2026 170-carry · <a href="/static/upstream/LICENSE" target="_blank" rel="noreferrer">MIT License</a>。AgentForeman 提供实验调度后端。</p></section></div>
+  </section>
+</div></main></div>
+<dialog id="create-dialog" aria-labelledby="create-title"><form id="create-form"><div class="dialogHead"><div><div class="eyebrow">NEW ASSIGNMENT</div><h2 id="create-title">布置一个夜间实验</h2></div><button class="iconButton" type="button" id="close-dialog" aria-label="关闭"><span data-icon="close"></span></button></div><p class="muted">目标会交给 Codex manager，系统负责执行、验证和归档。</p><label class="field">实验目标<textarea name="goal" required maxlength="8000" rows="4" placeholder="例如：在现有模型和验证协议下，提高验证集准确率，并保留可复现的最佳结果。"></textarea></label><div class="formGrid"><label class="field">明早截止时间（本机时间）<input name="deadline" type="time" value="08:00" required></label><label class="field">最多实验轮数<input name="max_rounds" type="number" min="1" max="100" value="5" required></label></div><label class="field">目标指标（可选）<input name="target" type="number" step="any" placeholder="例如 0.95；留空按改善幅度判断"></label><label class="checkLabel"><input name="preflight" type="checkbox"> 在新模型任务启动前检查额度</label><div class="infoBox">额度耗尽后保存状态，等待恢复，不消耗模型调用；无法获取重置时间时按保守回退策略等待。电脑休眠期间无法继续训练。</div><p id="form-error" class="errorText" role="alert" hidden></p><div class="dialogFooter"><button type="button" id="cancel-create">取消</button><button type="submit" class="primary" id="submit-task">提交并后台运行</button></div></form></dialog>
+</body></html>

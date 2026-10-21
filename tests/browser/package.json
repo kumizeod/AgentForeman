@@ -1,0 +1,6 @@
+{
+  "name": "agentforeman-browser-tests",
+  "private": true,
+  "scripts": {"test": "node ui.cjs"},
+  "devDependencies": {"playwright": "1.62.1"}
+}

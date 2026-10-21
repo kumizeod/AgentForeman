@@ -1,0 +1,54 @@
+{
+  "repository": "https://github.com/170-carry/codex-tools",
+  "commit": "b8f2dbb829288ce7b1c978925062bef58fd3291e",
+  "license": "MIT",
+  "copyright": "Copyright (c) 2026 170-carry",
+  "vendored": [
+    {
+      "file": "base.css",
+      "source": "src/styles/base.css",
+      "git_blob_sha": "5c1d64fcc0c22e0106fb88e67203cd7f643b91c1"
+    },
+    {
+      "file": "light.css",
+      "source": "src/styles/themes/light.css",
+      "git_blob_sha": "3b90291f8265e8fae620cec8af0cf9acc9b93e75"
+    },
+    {
+      "file": "dark.css",
+      "source": "src/styles/themes/dark.css",
+      "git_blob_sha": "7f1865366b4b415d13d5c23c6bfbe241c51fc0bc"
+    },
+    {
+      "file": "layout.css",
+      "source": "src/styles/classic/layout.css",
+      "git_blob_sha": "d0d35709ba570c63f8b6338357d27e1f1ce98685"
+    },
+    {
+      "file": "summary.css",
+      "source": "src/styles/classic/summary.css",
+      "git_blob_sha": "d6172a3c701e917d699f48d4ced2326b3097bae6"
+    },
+    {
+      "file": "accounts.css",
+      "source": "src/styles/accounts.css",
+      "git_blob_sha": "8ac4b2859c97cfe4f3e33b658e4ad95e75042e19"
+    },
+    {
+      "file": "account-details.css",
+      "source": "src/styles/classic/account-details.css",
+      "git_blob_sha": "8b8e249636a9e5beb44095abd6a143a1b41b7292"
+    },
+    {
+      "file": "LICENSE",
+      "source": "LICENSE",
+      "git_blob_sha": "13c15065b1080dbe908104451c3f1288fb8ffce9"
+    }
+  ],
+  "ported_components": [
+    "src/components/classic/ClassicTopBar.tsx",
+    "src/components/classic/ClassicUsageMeter.tsx",
+    "src/components/workspace/WorkspaceIcon.tsx"
+  ],
+  "adaptation": "Static browser frontend replaces Tauri/React bindings with AgentForeman's loopback JSON API; themes and listed CSS files are copied verbatim."
+}

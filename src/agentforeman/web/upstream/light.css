@@ -1,0 +1,142 @@
+:root {
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", sans-serif;
+  --font-mono:
+    "SFMono-Regular", "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --ink: #0f172a;
+  --subtle: #64748b;
+  --muted: #94a3b8;
+  --bg-0: #ffffff;
+  --bg-1: #f8fafc;
+  --bg-2: #eef2f7;
+  --line: rgba(15, 23, 42, 0.12);
+  --line-strong: rgba(15, 23, 42, 0.18);
+  --brand: #2563eb;
+  --brand-hot: #f59e0b;
+  --brand-cool: #2563eb;
+  --brand-soft: rgba(37, 99, 235, 0.1);
+  --brand-strong: #1d4ed8;
+  --ok: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
+  --card: #ffffff;
+  --panel-bg: #ffffff;
+  --panel-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.08),
+    0 1px 1px rgba(15, 23, 42, 0.04);
+  --ambient-line: rgba(15, 23, 42, 0.04);
+  --meta-bg: #ffffff;
+  --import-bg: #ffffff;
+  --button-primary-bg: linear-gradient(180deg, #3b82f6, #2563eb);
+  --button-primary-border: rgba(37, 99, 235, 0.58);
+  --button-ghost-bg: #ffffff;
+  --button-ghost-border: rgba(37, 99, 235, 0.2);
+  --button-danger-bg: rgba(239, 68, 68, 0.08);
+  --button-danger-border: rgba(239, 68, 68, 0.22);
+  --surface-tint: #ffffff;
+  --surface-highlight-strong: rgba(255, 255, 255, 0.92);
+  --surface-highlight: rgba(255, 255, 255, 0.76);
+  --surface-highlight-soft: rgba(255, 255, 255, 0.58);
+  --surface-highlight-faint: rgba(255, 255, 255, 0.32);
+  --surface-overlay: rgba(248, 250, 252, 0.82);
+  --surface-hover-bg: #f8fafc;
+  --surface-selected-bg: rgba(37, 99, 235, 0.08);
+  --surface-switch-track: #cbd5e1;
+  --surface-switch-track-active: #3b82f6;
+  --overlay-scrim: rgba(15, 23, 42, 0.36);
+  --overlay-scrim-strong: rgba(15, 23, 42, 0.48);
+  --shell-glow-a: transparent;
+  --shell-glow-b: transparent;
+  --shell-glow-c: transparent;
+  --tab-surface: #ffffff;
+  --tab-active-surface: #f8fafc;
+  --feature-card-surface: #ffffff;
+  --section-card-surface: #ffffff;
+  --section-card-primary-surface: #ffffff;
+  --button-bg: #ffffff;
+  --button-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    inset 0 1px rgba(255, 255, 255, 0.9);
+  --button-hover-shadow:
+    0 8px 18px rgba(15, 23, 42, 0.09),
+    inset 0 1px rgba(255, 255, 255, 0.92);
+  --button-disabled-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    inset 0 1px rgba(255, 255, 255, 0.64);
+  --task-toast-surface: #ffffff;
+  --dock-surface: #ffffff;
+  --dock-active-surface: #eff6ff;
+  --mode-card-active-surface: #eff6ff;
+  --button-flow: linear-gradient(
+    110deg,
+    rgba(37, 99, 235, 0) 10%,
+    rgba(37, 99, 235, 0.22) 42%,
+    rgba(34, 197, 94, 0.16) 58%,
+    rgba(37, 99, 235, 0) 86%
+  );
+  --update-border: rgba(37, 99, 235, 0.22);
+  --update-bg: #ffffff;
+  --update-strong: #0f172a;
+  --update-subtle: #64748b;
+  --update-body: #334155;
+  --update-progress: #2563eb;
+  --update-header-bg: #f8fafc;
+  --update-meta-bg: #f8fafc;
+  --update-log-bg: #ffffff;
+  --update-log-marker-bg: rgba(37, 99, 235, 0.1);
+  --update-log-marker-color: #1d4ed8;
+  --empty-border: rgba(100, 116, 139, 0.36);
+  --card-shine: rgba(148, 163, 184, 0.24);
+  --card-shadow: inset 0 1px rgba(255, 255, 255, 0.84);
+  --stamp-plan-color: #1d4ed8;
+  --stamp-plan-border: rgba(37, 99, 235, 0.26);
+  --stamp-plan-bg: rgba(37, 99, 235, 0.08);
+  --stamp-current-color: #16a34a;
+  --stamp-current-border: rgba(34, 197, 94, 0.34);
+  --stamp-current-bg: rgba(34, 197, 94, 0.1);
+  --name-current: #1d4ed8;
+  --name-current-glow: rgba(37, 99, 235, 0.14);
+  --usage-remain: #64748b;
+  --bar-track: #e2e8f0;
+  --credits: #2563eb;
+  --error-text: #dc2626;
+  --glow-hot: transparent;
+  --glow-cool: transparent;
+  --glow-neutral: transparent;
+  --body-bg: #f6f8fb;
+  --shell-top: #ffffff;
+  --shell-mid: #f8fafc;
+  --shell-bottom: #eef2f7;
+  --stage-glass: rgba(255, 255, 255, 0.78);
+  --stage-line: rgba(15, 23, 42, 0.08);
+  --section-surface: #ffffff;
+  --section-line: rgba(15, 23, 42, 0.1);
+  --section-shadow:
+    0 16px 32px rgba(15, 23, 42, 0.06),
+    inset 0 1px rgba(255, 255, 255, 0.92);
+  --account-card-bg-start: #ffffff;
+  --account-card-bg-end: #ffffff;
+  --account-card-shadow:
+    0 10px 22px rgba(15, 23, 42, 0.06),
+    inset 0 1px rgba(255, 255, 255, 0.92);
+  --account-card-hover-shadow:
+    0 14px 28px rgba(37, 99, 235, 0.12),
+    0 0 0 1px rgba(37, 99, 235, 0.24);
+  --account-overlay-bg: #ffffff;
+  --account-overlay-bg-touch: #ffffff;
+  --account-launch-color: #ffffff;
+  --account-launch-shadow: drop-shadow(0 8px 18px rgba(37, 99, 235, 0.26));
+  --proxy-usage-series-1: #2563eb;
+  --proxy-usage-series-2: #22c55e;
+  --proxy-usage-series-3: #f59e0b;
+  --proxy-usage-series-4: #ef4444;
+  --proxy-usage-series-5: #06b6d4;
+  --proxy-usage-series-6: #8b5cf6;
+  --proxy-usage-series-7: #14b8a6;
+  --proxy-usage-series-8: #f97316;
+  --proxy-usage-series-9: #0ea5e9;
+  --proxy-usage-series-10: #84cc16;
+  --proxy-usage-series-11: #64748b;
+  --proxy-usage-series-12: #db2777;
+}
