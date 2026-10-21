@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHONUTF8: '1'
-      FOREMAN_BROWSER_OUTPUT: ${{ runner.temp }}/foreman-ui-evidence
+      FOREMAN_BROWSER_OUTPUT: /tmp/foreman-ui-evidence
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -38,4 +38,4 @@ jobs:
         if: always()
         with:
           name: web-ui-browser-evidence
-          path: ${{ runner.temp }}/foreman-ui-evidence
+          path: /tmp/foreman-ui-evidence
