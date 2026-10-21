@@ -169,3 +169,18 @@ Codex model/planner/quota replies remain fixtures in these tests. The CSV
 training, independent checkpoint verification, process supervision/recovery,
 HTTP API and downloaded archive validation execute for real. Live inference and
 subscription reset timing still require a configured Codex account.
+
+
+Native validation at `329f58ad0276c6d9a6677f364ee65cb81b0fe41a` records
+86 passing tests in each of the nine Windows/macOS/Linux × Python 3.11/3.12/3.13
+test steps, plus a successful browser job using Playwright's normal Chromium.
+Every native Complete job step also reports success. At evidence capture,
+GitHub still reports the Ubuntu Python 3.13 job itself as in_progress despite all
+its steps finishing successfully; this is preserved in `web-ui-ci.json`, rather
+than described as a finalized green workflow. Browser screenshots and the summary
+are available under the workflow's `web-ui-browser-evidence` artifact.
+
+The final two native test assertions compare canonical paths, supporting macOS
+/private/var aliases and Windows short-vs-long temporary paths. No production
+behavior changed for this test correction. This validation update changes only
+documentation/evidence and skips CI.

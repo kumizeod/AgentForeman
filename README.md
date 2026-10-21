@@ -17,6 +17,10 @@ python -m agentforeman ui --project .\my-experiment
 Works on native Windows, macOS and Linux. No Node/Tauri build is required.
 [Panel guide](docs/WEB_UI.md) · [Source/license notices](NOTICE.md).
 
+Validation: **86 tests passed in each Windows/macOS/Linux × Python 3.11/3.12/3.13
+test step**, plus the Chromium browser workflow. [CI](https://github.com/kumizeod/AgentForeman/actions/runs/39627355613)
+· [Exact job/step status and fixture disclosure](evidence/web-ui-ci.json).
+
 ![AgentForeman local control panel](docs/assets/panel-light.png)
 
 *Browser-test screenshot: explicit test-only Codex replies, real training/verification
