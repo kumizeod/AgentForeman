@@ -88,7 +88,7 @@ class PanelTests(unittest.TestCase):
             self.assertEqual(self.request('/api/stats')[0], 200)
         with patch('agentforeman.webserver.usage_snapshot', return_value={'available':False,'error':'unavailable'}) as refresh:
             self.assertEqual(self.request('/api/usage', {'role':'worker'})[0], 200)
-            refresh.assert_called_once_with(self.project, 'worker', refresh=True)
+            refresh.assert_called_once_with(self.project.resolve(), 'worker', refresh=True)
         self.assertEqual(self.request('/api/usage', {'role':'invalid'})[0], 400)
 
     def test_submit_real_training_detail_logs_report_and_archive(self):
@@ -165,7 +165,7 @@ class PanelTests(unittest.TestCase):
         self.assertEqual(self.request(f'/api/campaigns/{cid}/resume', {})[0], 400)
         with patch('agentforeman.webserver.launch', return_value={'status':'running'}) as resume:
             self.assertEqual(self.request(f'/api/campaigns/{cid}/resume', {'retry_failed':True})[0], 200)
-            resume.assert_called_once_with(self.project, cid, retry_failed=True)
+            resume.assert_called_once_with(self.project.resolve(), cid, retry_failed=True)
 
 
 class StoreContext:
