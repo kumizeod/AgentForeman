@@ -4,7 +4,10 @@
 
 v0.5 adds [quota visibility and local operations](docs/OBSERVABILITY.md): cached quota
 windows, a terminal monitor, token accounting, sanitized diagnostics and optional
-preflight waiting before new model jobs.
+preflight waiting before new model jobs. The v0.5 implementation `b97b33a` passed
+**80 tests on all nine Windows/macOS/Linux × Python 3.11/3.12/3.13 combinations**:
+[native CI](https://github.com/kumizeod/AgentForeman/actions/runs/39609519359),
+[machine-readable evidence](evidence/operations-ci.json).
 
 v0.4 added [overnight assignments](docs/OVERNIGHT.md): detached submission, a morning
 deadline, persistent quota waiting, model-free reset lookup, partial-code continuation

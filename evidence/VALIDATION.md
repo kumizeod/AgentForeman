@@ -135,4 +135,8 @@ copied or executed. See `docs/OBSERVABILITY.md` for adoption decisions.
 
 Live authenticated Codex quota refresh/preflight, real subscription reset timing
 and real overnight model execution remain unverified in this environment.
-Native CI results for this version are recorded separately after publication.
+Implementation `b97b33af0725efdc96486b3a4bd886694c2abc75` passed all nine
+Windows/macOS/Linux × Python 3.11/3.12/3.13 jobs. Each native job log confirms
+80 tests passing. [CI run](https://github.com/kumizeod/AgentForeman/actions/runs/39609519359);
+`operations-ci.json` records every job URL, conclusion, test count and duration.
+This final validation update changes documentation/evidence only.

@@ -1,0 +1,83 @@
+{
+  "version": "0.5.0",
+  "reviewed_at": "2026-10-21",
+  "commit": "b97b33af0725efdc96486b3a4bd886694c2abc75",
+  "workflow_run": 39609519359,
+  "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39609519359",
+  "tests_per_job": 80,
+  "jobs": [
+    {
+      "name": "test (ubuntu-latest, 3.12)",
+      "job_id": 119254392700,
+      "conclusion": "success",
+      "tests": 80,
+      "seconds": 78.466,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39609519359/job/119254392700"
+    },
+    {
+      "name": "test (ubuntu-latest, 3.13)",
+      "job_id": 119254393054,
+      "conclusion": "success",
+      "tests": 80,
+      "seconds": 78.83,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39609519359/job/119254393054"
+    },
+    {
+      "name": "test (ubuntu-latest, 3.11)",
+      "job_id": 119254393175,
+      "conclusion": "success",
+      "tests": 80,
+      "seconds": 78.496,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39609519359/job/119254393175"
+    },
+    {
+      "name": "test (windows-latest, 3.12)",
+      "job_id": 119254393182,
+      "conclusion": "success",
+      "tests": 80,
+      "seconds": 133.318,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39609519359/job/119254393182"
+    },
+    {
+      "name": "test (macos-latest, 3.13)",
+      "job_id": 119254393205,
+      "conclusion": "success",
+      "tests": 80,
+      "seconds": 106.842,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39609519359/job/119254393205"
+    },
+    {
+      "name": "test (macos-latest, 3.11)",
+      "job_id": 119254393301,
+      "conclusion": "success",
+      "tests": 80,
+      "seconds": 85.402,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39609519359/job/119254393301"
+    },
+    {
+      "name": "test (macos-latest, 3.12)",
+      "job_id": 119254393324,
+      "conclusion": "success",
+      "tests": 80,
+      "seconds": 103.805,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39609519359/job/119254393324"
+    },
+    {
+      "name": "test (windows-latest, 3.11)",
+      "job_id": 119254393335,
+      "conclusion": "success",
+      "tests": 80,
+      "seconds": 131.128,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39609519359/job/119254393335"
+    },
+    {
+      "name": "test (windows-latest, 3.13)",
+      "job_id": 119254395149,
+      "conclusion": "success",
+      "tests": 80,
+      "seconds": 136.319,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39609519359/job/119254395149"
+    }
+  ],
+  "disclosure": "Model, planner and quota responses use explicit fixtures; training, independent checkpoint verification, process supervision and archive replay execute for real. Live authenticated Codex and actual subscription reset behavior remain unverified."
+}
