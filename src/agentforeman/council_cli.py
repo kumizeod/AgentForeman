@@ -21,6 +21,9 @@ def add_parser(sub):
             a.add_argument('--budget-seconds',type=float,default=28800)
             a.add_argument('--stage-seconds',type=float,default=1800)
             a.add_argument('--min-answers',type=int,default=2)
+            a.add_argument('--start-at',help='Optional future HH:MM or timezone-aware ISO start time')
+            a.add_argument('--experiment',action='store_true',help='After council, run a bounded experiment in this configured local project')
+            a.add_argument('--experiment-budget-seconds',type=float,default=3600)
 
 
 def run(args):
@@ -28,8 +31,11 @@ def run(args):
     action=args.council_command
     if action=='start':
         sources=json.loads(args.sources.read_text(encoding='utf-8')) if args.sources else []
+        from .overnight import parse_deadline
         cid=council.create(args.question,args.members,args.chair,sources=sources,budget_seconds=args.budget_seconds,
-                           stage_seconds=args.stage_seconds,min_answers=args.min_answers)
+                           stage_seconds=args.stage_seconds,min_answers=args.min_answers,
+                           start_at=parse_deadline(args.start_at) if args.start_at else None,
+                           experiment_policy={'enabled':args.experiment,'max_rounds':1,'budget_seconds':args.experiment_budget_seconds})
         print(json.dumps({'id':cid,'status':'running','report':str(council.path(cid)/'report.md'),
                           'note':'Run pool serve plus member and chair workers; sources are supplied evidence, not automatically verified literature.'},ensure_ascii=False,indent=2))
     elif action=='list':
@@ -41,5 +47,8 @@ def run(args):
         print(json.dumps(council.advance(args.council_id),ensure_ascii=False,indent=2))
     else:
         state=council.advance(args.council_id) if action=='advance' else council.get(args.council_id)
+        if action=='advance':
+            from .council_experiment import sync
+            state=sync(council,args.council_id)
         print(json.dumps(state,ensure_ascii=False,indent=2))
     return 0

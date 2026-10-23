@@ -82,7 +82,7 @@ class Council:
             result.append({k:state.get(k) for k in ('id','question','stage','status','created_at','deadline','stop_reason','chair','members')})
         return sorted(result,key=lambda s:s['created_at'],reverse=True)
 
-    def create(self, question, members, chair, *, sources=None, budget_seconds=28800, stage_seconds=1800, min_answers=2):
+    def create(self, question, members, chair, *, sources=None, budget_seconds=28800, stage_seconds=1800, min_answers=2, experiment_policy=None, start_at=None):
         if not isinstance(question,str) or not question.strip() or len(question)>16000:
             raise ValueError('Question must be nonempty and bounded')
         if not isinstance(members,list) or not 2<=len(members)<=12 or len(set(members))!=len(members):
@@ -114,11 +114,18 @@ class Council:
                               'verification':'user_supplied_not_independently_retrieved'})
         if len({s['id'] for s in validated})!=len(validated):
             raise ValueError('Duplicate source ID')
+        from .council_experiment import policy, fingerprint
+        experiment_policy = policy(experiment_policy)
+        if start_at is not None and (type(start_at) not in (int,float) or not math.isfinite(start_at) or start_at < time.time()-1):
+            raise ValueError('start_at must be a future finite timestamp')
         cid = secrets.token_hex(6);now=time.time()
+        start_at = max(now,start_at or now)
         state = {'id':cid,'question':question,'members':members,'chair':chair,'sources':validated,
-                 'seed':secrets.token_hex(16),'created_at':now,'deadline':now+budget_seconds,
+                 'seed':secrets.token_hex(16),'created_at':now,'start_at':start_at,'deadline':start_at+budget_seconds,
+                 'experiment_policy':experiment_policy,
+                 **({'experiment_input_hashes':fingerprint(self.project)} if experiment_policy['enabled'] else {}),
                  'stage_seconds':stage_seconds,'min_answers':min_answers,'status':'running',
-                 'stage':'explore','stage_deadline':min(now+stage_seconds,now+budget_seconds),
+                 'stage':'explore','stage_deadline':min(start_at+stage_seconds,start_at+budget_seconds),
                  'stages':{},'task_specs':[],'quality':{'factual_correctness_verified':False,'experiments_executed':False}}
         state['task_specs']=self.specs(state,'explore')
         self.save(state)
@@ -214,6 +221,8 @@ class Council:
                 now=time.time()
                 if now>=state['deadline']:
                     return self.finish(state,'incomplete','wall_clock_budget')
+                if now<state.get('start_at',0):
+                    return state
                 for spec in state['task_specs']:
                     if now<spec['deadline']:
                         self.pool.enqueue(cid,state['stage'],spec['eligible'],spec['request'],spec['deadline'],task_id=spec['id'])
@@ -258,8 +267,20 @@ class Council:
 
     def advance_all(self):
         for state in self.list():
-            if state['status']=='running':
-                self.advance(state['id'])
+            try:
+                if state['status']=='running':
+                    self.advance(state['id'])
+                from .council_experiment import sync
+                sync(self,state['id'])
+            except (ValueError,KeyError,TypeError):
+                # A malformed/oversized protocol must not stall other councils.
+                try:
+                    with file_lock(self.path(state['id'])/'controller.lock'):
+                        current=self.get(state['id'])
+                        if current['status']=='running':
+                            self.finish(current,'incomplete','controller_protocol_error')
+                except BlockingIOError:
+                    pass
 
     def report(self,state):
         folder=self.path(state['id'])
@@ -274,6 +295,9 @@ class Council:
         audit=(state['stages'].get('audit') or [{}])[0].get('result')
         if audit:
             lines+=['','## Independent audit','',dumps(audit)]
+        if state.get('experiment'):
+            lines+=['','## Local verified experiment handoff','',dumps(state['experiment']),
+                    'Project metrics and archive integrity do not establish broad research novelty or factual correctness.']
         if state.get('stop_reason'):lines+=['',f'Stop reason: {state["stop_reason"]}']
         atomic_text(folder/'report.md','\n'.join(lines)+'\n')
         # Full independent answers, anonymous mappings, reviews, final response and quality flags.

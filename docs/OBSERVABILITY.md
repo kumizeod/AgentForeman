@@ -118,7 +118,7 @@ No third-party code was copied. The upstream internal HTTP usage endpoints and
 credential management are not dependencies. AgentForeman uses the official
 [Codex app-server contract](https://learn.chatgpt.com/docs/app-server).
 
-Account pools/provider switching, API proxy/tunnels, account warm-up and native
-tray applications are deferred. AgentForeman's present priority is one
-researcher's verifiable overnight experiment loop. Cross-platform Python CLI
-operations preserve that focus; a desktop UI can later consume JSON output.
+v0.8 adds a separate [member-owned worker pool](WORKER_POOL.md) and
+[council](COUNCIL.md), with local Codex logins and API adapters. The counters above
+remain local campaign observations; they are not a group-wide API bill or token
+budget. No cookie proxy, account warm-up or native tray application is added.

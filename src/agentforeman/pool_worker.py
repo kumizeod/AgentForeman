@@ -108,7 +108,9 @@ class Worker:
         task = self.post('/claim',{'session':self.session})['task']
         if task is None:
             return False
-        name(task['id'])
+        name(task['id']);name(task['lease'])
+        if type(task['attempts']) is not int or not 1<=task['attempts']<=5 or type(task['deadline']) not in (int,float) or not math.isfinite(task['deadline']):
+            raise ValueError('Invalid bounded task lease')
         stop = threading.Event()
         def heartbeat():
             while not stop.wait(15):

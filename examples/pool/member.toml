@@ -5,6 +5,6 @@ state_dir = "member-state"
 token_env = "FOREMAN_WORKER_TOKEN"
 provider = "codex"
 active_hours = "22:00-08:00" # Worker's local time; omit for all-day availability
- timeout_seconds = 600
+timeout_seconds = 600
 # model = "model-available-to-this-member"
 # command = ["C:/path/to/codex.exe"]

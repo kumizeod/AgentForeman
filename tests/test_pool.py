@@ -95,6 +95,44 @@ class PoolTests(unittest.TestCase):
         self.assertEqual(worker.execute(task),result)
         self.assertEqual(receipt.read_bytes(),saved)
 
+    def test_late_delivery_after_another_claim_expires_task_does_not_block_worker(self):
+        tid=self.enqueue();a=self.pool.claim('a','a')
+        with self.pool.connect() as c:c.execute('UPDATE tasks SET deadline=? WHERE id=?',(time.time()-1,tid))
+        self.assertIsNone(self.pool.claim('b','b'))
+        self.assertTrue(self.pool.complete('a',tid,a['lease'],'success',{'answer':'too late'}))
+        self.assertEqual(self.pool.tasks()[0]['status'],'expired')
+        self.assertIsNone(self.pool.tasks()[0]['result'])
+
+    def test_quota_attempt_budget_is_finite(self):
+        tid=self.enqueue(members=['a'])
+        for _ in range(5):
+            task=self.pool.claim('a','a')
+            self.pool.complete('a',tid,task['lease'],'quota',retry_at=time.time()+60)
+            with self.pool.connect() as c:c.execute('UPDATE members SET not_before=0 WHERE id=?',('a',))
+        self.assertIsNone(self.pool.claim('a','a'))
+        self.assertEqual(self.pool.tasks()[0]['status'],'failed')
+
+    def test_lost_upload_ack_replays_outbox_without_reexecuting_model(self):
+        server=PoolServer(self.root,port=0);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        settings={'coordinator':f'http://127.0.0.1:{server.server_port}','state_dir':str(self.root/'outbox-worker'),
+                  'token_env':'TEST_POOL_TOKEN','provider':'codex','timeout_seconds':10}
+        try:
+            self.enqueue()
+            with patch.dict(os.environ,{'TEST_POOL_TOKEN':'a'*40}):worker=Worker(settings)
+            original=worker.post
+            def lost_ack(route,value):
+                response=original(route,value)
+                if route=='/complete':raise OSError('TEST lost acknowledgment')
+                return response
+            with patch.object(worker,'execute',return_value={'outcome':'success','result':{'answer':'done'},'retry_at':None}) as execute:
+                with patch.object(worker,'post',side_effect=lost_ack):
+                    with self.assertRaises(OSError):worker.run_once()
+                self.assertTrue((worker.root/'outbox.json').exists())
+                worker.run_once()
+                self.assertEqual(execute.call_count,1)
+                self.assertFalse((worker.root/'outbox.json').exists())
+        finally:server.shutdown();server.server_close();thread.join()
+
     def test_api_requests_use_local_secret_no_redirect_and_validate_output(self):
         class Response:
             def __enter__(self):return self

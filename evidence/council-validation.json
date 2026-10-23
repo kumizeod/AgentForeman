@@ -2,8 +2,8 @@
   "date": "2026-10-23",
   "local_tests": {
     "passed": true,
-    "tests": 116,
-    "seconds": 118.734
+    "tests": 123,
+    "seconds": 124.449
   },
   "browser": {
     "passed": true,
@@ -19,6 +19,20 @@
     "page_errors": [],
     "disclosure": "TEST-ONLY Codex planner/editor/metadata fixtures. Training, checkpoint verification, process restart and archive replay are real."
   },
-  "scope": "Member-owned pool, council and local panel",
-  "disclosure": "CLI models and API replies use explicit fixtures/mocks. SQLite, HTTP authentication, concurrent leases, native supervised workers, recovery, real demo training/verifier and archive download run for real. No live shared logins, paid Claude call, actual overnight reset or measured answer-quality gain is claimed."
+  "scope": "Member-owned pool, council, local panel, delayed start and opt-in real training/independent-verification handoff",
+  "disclosure": "CLI models and API replies use explicit fixtures/mocks. SQLite, HTTP authentication, concurrent leases, native supervised workers, recovery, real demo training/verifier and archive download run for real. No live shared logins, paid Claude call, actual overnight reset or measured answer-quality gain is claimed.",
+  "targeted_after_last_heartbeat_change": {
+    "passed": true,
+    "tests": 15,
+    "seconds": 5.202
+  },
+  "additional_checks": [
+    "late result acknowledgment unblocks outbox without accepting expired output",
+    "five quota attempts maximum per task",
+    "lost upload acknowledgment does not repeat model execution",
+    "delayed start queues no model work",
+    "changed project blocks handoff",
+    "crash after campaign commit recovers same campaign",
+    "completed real candidate training attaches verified archive and metrics without promoting scientific truth"
+  ]
 }

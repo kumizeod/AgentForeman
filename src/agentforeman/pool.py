@@ -172,6 +172,8 @@ class Pool:
         with self.connect() as c:
             changed = c.execute("UPDATE tasks SET status='leased',lease_until=? WHERE id=? AND member=? AND lease=? AND status IN ('leased','uncertain') AND deadline>?",
                                 (time.time()+90, task, member, lease, time.time())).rowcount
+            if changed:
+                c.execute('UPDATE members SET last_seen=? WHERE id=?', (time.time(),member))
         return bool(changed)
 
     def complete(self, member, task, lease, outcome, result=None, retry_at=None):
@@ -192,6 +194,9 @@ class Pool:
                 raise ValueError('Completion does not own the lease')
             if row['status'] == 'completed' and outcome == 'success' and row['result'] == dumps(result):
                 return True  # An interrupted HTTP acknowledgment is safe to resend.
+            if row['status']=='expired':
+                c.execute('INSERT INTO settlements VALUES(?,?,?,?)', (lease,member,task,payload))
+                return True  # Acknowledge late delivery without accepting its output.
             if row['status'] not in {'leased','uncertain'}:
                 raise ValueError('Task is already settled')
             if outcome == 'success':

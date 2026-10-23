@@ -52,6 +52,46 @@ independent answers, peer reviews, final answer, audit and JSON export. Stop blo
 future stages. Registration and credentials remain local CLI/environment operations.
 The panel does not replace `pool serve` or launch remote workers by itself.
 
+## Delayed start and optional verified experiment
+
+Use `--start-at 22:00` (next local occurrence) or a timezone-aware ISO timestamp to
+schedule the council after members become available. The panel provides an optional
+local date/time input. No jobs are enqueued before that time, and the overall budget
+starts then. Otherwise the council starts immediately: choose a stage wait long
+enough to overlap your members' `active_hours`.
+
+To continue into the existing local experiment pipeline, opt in when submitting:
+
+```powershell
+python -m agentforeman council start --project .\my-experiment --question "Test a model improvement under fixed controls" --members member-a member-b --chair claude-chair --experiment --experiment-budget-seconds 3600
+```
+
+The panel has the same checkbox. This authorizes an **additional** experiment budget
+(default one hour, one experiment round); it is separate from the council's budget.
+The coordinator machine must have the project's Codex, training and verifier setup.
+The remote pool still runs read-only answer/review jobs; this is not remote GPU
+training. With the option disabled, councils never create experiment campaigns.
+
+After a non-rejected, protocol-valid audit, the controller creates one bounded
+campaign from the first proposed experiment, preserving the original research goal
+and fixed project contract. Both `completed_candidate` and `needs_evidence` can
+proceed: experiments are often needed precisely because evidence is missing.
+Project configuration/source/trusted-file hashes are captured at submission;
+changes before handoff block automatic execution. A durable intent and exact-goal
+lookup recover a crash between campaign creation and linking without duplicates.
+
+The existing detached campaign controller owns quota waiting, review, code edits,
+training, independent checkpoint verification and archive creation. The council
+report and panel add the linked campaign ID, baseline/best metrics and checked
+archive hash. Control that campaign from the existing experiment page. An audit
+rejection, incomplete protocol or stop request cannot trigger the handoff.
+
+`experiments_executed` becomes true only after a completed candidate round and a
+valid archive hash. `factual_correctness_verified` stays false: a verified project
+metric does not establish a general scientific conclusion. The chair's text remains
+a pre-experiment proposal, with measured evidence attached separately; it is not
+silently rewritten as though the model had observed those results.
+
 ## Sources and quality gates
 
 Supply a JSON evidence catalog with `--sources sources.json`, for example:
@@ -75,8 +115,8 @@ confirmation of the claim. The audit can demand more evidence or reject the answ
 `completed_candidate` means structural gates and advisory audit passed; it is not
 "verified truth". Missing sources, outstanding findings, audit uncertainty,
 unsupported claims or missing required tests yield `needs_evidence`.
-`quality.factual_correctness_verified` and `quality.experiments_executed` remain
-false. Proposed baseline/ablation tasks are recorded, not fabricated as completed.
+`quality.factual_correctness_verified` remains false; `experiments_executed` also
+remains false unless the optional verified experiment handoff completes. Proposed baseline/ablation tasks are recorded, not fabricated as completed.
 
 Same-model accounts can share biases. Identity labels hide routing metadata, not
 all clues in model prose. Numeric novelty/impact/feasibility scores and rankings
@@ -101,9 +141,9 @@ the shared pool. No human research-direction gate is added.
 
 There are at most `2*N + 2` successful model tasks (N independent answers, up to N
 peer reviews, one chair and one audit), plus bounded quota attempts. Time and
-output-token limits are not a token-dollar budget. Remote members' code-edit and
-GPU training jobs are not distributed by this council; local verified experiments
-still use the existing campaign workflow.
+output-token limits are not a token-dollar budget. Remote members' code-edit and GPU training jobs are not distributed by this
+council; the optional local handoff uses the existing campaign workflow and its
+separately configured additional budget.
 
 ## Attribution and validation
 

@@ -91,11 +91,12 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
   await until(async()=>!(await request('/api/overview')).campaigns.find(r=>r.id===waitingCid).controller_alive,'controller death reconciled');
   await page.locator('#refresh').click();await until(async()=>!(await page.locator('[data-action=resume]').isDisabled()),'resume enabled');
   await page.locator('[data-action=resume]').click();await until(async()=>(await request('/api/overview')).campaigns.find(r=>r.id===waitingCid).controller_alive,'UI resume');
-  await page.locator('[data-action=stop]').click();await until(async()=>(await request('/api/campaigns/'+waitingCid)).status==='completed','UI stop');
+  await until(async()=>!(await page.locator('[data-action=stop]').isDisabled()) && (await page.locator('[data-action=resume]').innerText()).includes('已在运行'),'resume UI settled');
+  await Promise.all([page.waitForResponse(r=>r.url().endsWith('/'+waitingCid+'/stop') && r.request().method()==='POST'),page.locator('[data-action=stop]').click()]);await until(async()=>(await request('/api/campaigns/'+waitingCid)).status==='completed','UI stop');
   completed.push('Light/dark/mobile layout; killed-controller UI resume and durable quota-wait stop');
   assert.deepEqual(failures,[]);
   await page.locator('[data-view=council]').click();
-  assert((await page.locator('#pool-members').innerText()).includes('member-a'));
+  await until(async()=>(await page.locator('#pool-members').innerText()).includes('member-a'),'shared members loaded');
   await page.locator('#council-form [name=question]').fill('TEST ONLY council <img src=x onerror="window.councilInjected=true">');
   await page.locator('#council-members').selectOption(['member-a','member-b']);
   await page.locator('#council-chair').selectOption('claude-chair');

@@ -1,46 +1,36 @@
 # Roadmap
 
-v0.7 adds bounded automatic proposal/reviewer/revision loops, without human
-approval. Evidence, model-free quota waiting and durable process receipts cover
-the added stages. Next evaluate whether review actually reduces invalid or
-uninformative experiments against the existing single-proposer mode.
+v0.8 implements member-owned Codex/API pull workers, durable leases, per-member
+quota cooldown, alternate eligible members, local night windows and a shared
+council panel. Councils run independent answers, anonymous non-self peer review,
+a configurable Claude API chair and independent audit. Optional delayed start and
+local verified-experiment handoff connect research advice to actual measurements.
+See [worker pool](WORKER_POOL.md) and [council](COUNCIL.md).
 
-v0.5 adds quota windows/freshness, a local terminal monitor, observed token
-accounting, sanitized diagnostics and optional model-free preflight quota checks.
-See [operations](OBSERVABILITY.md). Cost/token enforcement and account pools remain
-future work; observed token counts are not subscription percentage estimates.
+v0.7 implements bounded proposal/review/revision, issue tracking and structural
+stagnation detection, without human approval. v0.6 provides the local experiment
+panel. Earlier releases provide code edits, real training, independent artifact
+verification, archive/replay, native process recovery and model-free quota waits.
 
-v0.4 product target: a researcher submits a configured experiment at night and
-reviews verifiable results the next morning. Detached controllers, quota waiting,
-read-only reset metadata, deadline handoff and partial-code continuation are now
-implemented. Prioritize live CLI quota/reset validation and clearer recovery logs
-before remote worker scheduling or a web UI.
+Next priorities:
 
-Implemented through v0.3: real Codex CLI adapters, baseline/candidate jobs,
-independent artifact verification, archive/replay, controller crash recovery,
-bounded multi-round campaigns with model decisions (experiment/repair/retest/stop),
-persisted evidence, best retention and elapsed wall-clock budgets.
-Live authenticated model execution still needs verification.
+1. Field-test at least two authorized group-member workers and the configured
+   Claude API chair overnight. Record platform/CLI/model versions, actual quota
+   reset timing, job receipts and observed costs without exposing credentials.
+2. Evaluate answer quality against single-model and plain-council baselines on
+   independently scored tasks. Measure invalid claims, missing controls and
+   verified experiment outcomes; do not infer gains from fixture tests or votes.
+3. Add actual literature retrieval with source-content verification, structured
+   claim-to-evidence links, and final synthesis conditioned on experiment results.
+4. Extend local experiments with held-out tests, multi-seed comparisons, ablations
+   and enforceable token/API-money budgets. A fixed job count is not a cost cap.
+5. Add remote code-workspace/GPU execution only with explicit workspace isolation,
+   resource limits and artifact verification. Read-only answer workers are already
+   remote; GPU jobs are still local.
+6. Add fault-injection benchmarks and management-policy comparisons after enough
+   decision/action/outcome traces exist. Learn scheduling only when there is a
+   measured advantage over fixed policies.
 
-Next milestones, in suggested order:
-
-1. Execute the configured native Windows/macOS/Linux CI matrix and run real
-   authenticated Codex on each platform. Record CLI
-   version, sandbox behavior, completed handoff and model usage evidence.
-2. Add a PyTorch/CUDA example with a well-defined external evaluator and model
-   checkpoint continuation. Verify it on an actual GPU.
-3. Extract worker/runner/verifier protocols from the concrete modules once a
-   second implementation is needed.
-4. Extend the existing campaign with token/cost accounting, held-out final tests,
-   multi-seed comparisons and baseline-reuse policies with explicit provenance.
-5. Add controlled automatic recovery policies plus fault-injection evaluations;
-   compare against fixed retry and single-worker baselines.
-6. Add a small web UI, notifications, worker pools, GPU leases and task dependency
-   scheduling. Introduce container isolation before accepting untrusted workloads.
-7. Investigate learned management policies only after collecting reliable
-   decision/action/outcome traces. Measure final verified results and human
-   intervention time, rather than token consumption as a success metric.
-
-Out of scope now: training a new LLM, generic neural architecture search,
-distributed execution, managed cloud hosting, auto-merge/deployment, account
-sharing, or claims of unattended operation across arbitrary failures.
+Out of scope now: training a new LLM, shared login-cookie repositories, managed
+cloud hosting, auto-merge/deployment, guaranteed research novelty or correctness,
+and unattended recovery from arbitrary ambiguous side effects.

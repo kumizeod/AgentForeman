@@ -251,7 +251,7 @@ class Handler(BaseHTTPRequestHandler):
                 path = urlsplit(self.path).path
                 if path == "/api/councils":
                     from .council import Council
-                    allowed = {"question", "members", "chair", "sources", "budget_seconds", "stage_seconds", "min_answers"}
+                    allowed = {"question", "members", "chair", "sources", "budget_seconds", "stage_seconds", "min_answers", "experiment_policy", "start_at"}
                     if set(body)-allowed:
                         raise ValueError("Unknown council setting")
                     council = Council(self.server.project)

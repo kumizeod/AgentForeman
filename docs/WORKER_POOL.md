@@ -85,7 +85,8 @@ An expired heartbeat lease becomes **uncertain**. It is not reassigned, because
 silently rerunning might charge twice. The original worker/session can reconnect,
 reattach to its supervised job and upload the same result. Conflicting completion
 receipts, invalid JSON/schema, another member's lease and expired task results are
-rejected or marked expired. A durable local outbox makes lost upload acknowledgments
+rejected or marked expired. Late uploads are acknowledged without accepting the
+output, so a completed outbox cannot permanently block a worker. A durable local outbox makes lost upload acknowledgments
 safe to resend, including quota responses. Deadline expiry prevents new work.
 
 The database is `.foreman/pool.sqlite3`; local worker state holds job specs,

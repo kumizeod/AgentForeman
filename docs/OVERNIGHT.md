@@ -91,7 +91,9 @@ fallback, credits purchase, account switching or quota reset redemption is perfo
 Default maximum automatic quota resumptions: 8 per campaign. Set
 `--max-quota-retries` to change it. Quota waits do not count as experiment rounds;
 ordinary failed experiments do. A new campaign is independently bounded; there is
-no account-wide scheduler coordinating concurrent campaigns in this version.
+no account-wide scheduler coordinating these local campaigns. v0.8 adds a
+separate [member-owned council worker pool](WORKER_POOL.md); it does not migrate
+local coding/training jobs between accounts.
 
 ## Deadlines and recovery
 

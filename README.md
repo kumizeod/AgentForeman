@@ -8,7 +8,8 @@ Pool your group's member-owned Codex workers and API workers: **independent answ
 → anonymous non-self peer review → Claude chair synthesis → independent audit**.
 Each member keeps their local login; the coordinator stores worker-token hashes,
 leases and task receipts. Quota cooldown, alternate eligible members, local night
-windows and crash recovery are supported. No human approval stage is added.
+windows and crash recovery are supported. No human approval stage is added. Delayed starts and an optional local verified
+experiment handoff are available; measured project results attach to the report.
 
 [Setup the worker pool](docs/WORKER_POOL.md) · [Run a council and inspect quality gates](docs/COUNCIL.md).
 Model agreement is not verification; reports preserve source gaps, unresolved
