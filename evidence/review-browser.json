@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "checks": [
+    "Empty state, capability handoff and authenticated local sync",
+    "Form submission drives real train/independent verify; untrusted goal is escaped",
+    "Automatic reviewer criticism, proposer revision and approval are visible in the panel",
+    "Actual controller/worker logs, report, events and verified archive download",
+    "Search/filter and quota/statistics/diagnostics pages use real APIs",
+    "Light/dark/mobile layout; killed-controller UI resume and durable quota-wait stop"
+  ],
+  "page_errors": [],
+  "disclosure": "TEST-ONLY Codex planner/editor/metadata fixtures. Training, checkpoint verification, process restart and archive replay are real."
+}

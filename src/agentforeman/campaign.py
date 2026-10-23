@@ -6,18 +6,18 @@ from pathlib import Path
 import time
 import uuid
 
-from . import engine, manager
+from . import discussion, engine, manager
 from .files import atomic_json, atomic_text, digest, inventory, read_json, snapshot
 from .job import alive, wait_for_job
 from .quota import DEFAULT_POLICY, QuotaPause, classify, preflight, wait_plan
 from .store import Store, run_lock
 
-PHASES = ["baseline", "decide", "execute", "record", "done"]
+PHASES = ["baseline", "decide", "review", "revise", "execute", "record", "done"]
 
 
 def create_campaign(project: Path, goal: str, max_rounds: int, budget_seconds: float,
                     target: float | None = None, *, deadline_at: float | None = None,
-                    quota_policy: dict | None = None) -> str:
+                    quota_policy: dict | None = None, review_policy: dict | None = None) -> str:
     created_at = time.time()
     if not goal.strip() or type(max_rounds) is not int or not 1 <= max_rounds <= 100:
         raise ValueError("Provide a goal and max_rounds between 1 and 100")
@@ -39,6 +39,11 @@ def create_campaign(project: Path, goal: str, max_rounds: int, budget_seconds: f
                 raise ValueError(f"quota {key} must be boolean")
         if quota_policy["preflight"] and not quota_policy["probe"]:
             raise ValueError("Quota preflight requires metadata probing")
+    if review_policy is not None and (not isinstance(review_policy, dict) or set(review_policy) - {"enabled", "max_reviews"}):
+        raise ValueError("Invalid review policy")
+    review_policy = {"enabled": False, "max_reviews": 2, **(review_policy or {})}
+    if type(review_policy["enabled"]) is not bool or type(review_policy["max_reviews"]) is not int or not 1 <= review_policy["max_reviews"] <= 5:
+        raise ValueError("Review enabled must be boolean and max_reviews between 1 and 5")
     cfg = engine.load_config(project)
     if target is not None and (not math.isfinite(target) or not cfg["metric"]["minimum"] <= target <= cfg["metric"]["maximum"]):
         raise ValueError("Target must be finite and inside metric bounds")
@@ -55,7 +60,8 @@ def create_campaign(project: Path, goal: str, max_rounds: int, budget_seconds: f
                  "max_rounds": max_rounds, "target": target, "config": cfg,
                  "frozen_hashes": inventory(frozen), "baseline_id": uuid.uuid4().hex[:12],
                  "rounds": [], "best": None, "decision_attempt": 0, "pending": None,
-                 "quota_policy": quota_policy, "quota_retries": 0, "quota_wait_seconds": 0}
+                 "quota_policy": quota_policy, "quota_retries": 0, "quota_wait_seconds": 0,
+                 "review_policy": review_policy, "discussion": None, "discussions": []}
         store.save_campaign(state, "campaign_created")
         write_report(root, state, store)
         return cid
@@ -236,7 +242,43 @@ def write_report(root: Path, state: dict, store: Store):
     if state.get("error"):
         lines.append(f"Failure requiring inspection: {state['error']}")
     lines.append("Controller completion does not by itself prove the research goal was achieved.")
+    if state.get("review_policy", {}).get("enabled"):
+        transcript = {"policy": state["review_policy"], "completed": state.get("discussions", []),
+                      "active": state.get("discussion")}
+        atomic_json(root / "discussion.json", transcript)
+        lines += ["", "## Automatic proposal review", "", "No human approval stage. Independent model sessions do not guarantee correctness."]
+        for d in [*state.get("discussions", []), *([state["discussion"]] if state.get("discussion") else [])]:
+            lines.append(f"Round {d['round']}: {d['status']} ({len(d['reviews'])} reviews)")
+            for i, entry in enumerate(d["reviews"], 1):
+                review = entry["review"]
+                lines += [f"Review {i}: {review['verdict']} — {review['summary']}",
+                          f"Proposal SHA-256: {entry['proposal_sha256']}"]
+                for c in review["concerns"]:
+                    lines.append(f"- {c['severity']}: {c['evidence']} Suggestion: {c['suggestion']}")
+        lines.append("Full proposals, review responses and concerns: discussion.json and discussions/ job receipts.")
     atomic_text(root / "report.md", "\n".join(lines) + "\n")
+
+
+def allocate(state: dict, decision: dict, store: Store):
+    if decision["action"] == "repair":
+        last = state["rounds"][-1]
+        source, hashes = last["repair_source"], last["repair_hashes"]
+    else:
+        source, hashes = state["best"]["source"], state["best"]["hashes"]
+    state["pending"] = {"run_id": uuid.uuid4().hex[:12], "decision": decision,
+                        "source": source, "source_hashes": hashes}
+    if state.get("review_policy", {}).get("enabled"):
+        state["pending"]["review_sha256"] = discussion.proposal_hash(decision)
+        discussion.assert_approved(state)
+    state["phase"] = "execute"
+    store.save_campaign(state, "round_allocated", pending=state["pending"])
+
+
+def close_discussion(state: dict, status: str):
+    active = state["discussion"]
+    active["status"] = status
+    state["discussions"].append(active)
+    state["discussion"] = None
 
 
 def drive_campaign(project: Path, campaign_id: str, *, until: str | None = None,
@@ -272,6 +314,8 @@ def drive_campaign(project: Path, campaign_id: str, *, until: str | None = None,
                         store.save_campaign(state, "quota_recovery_blocked", error=state["error"])
                         write_report(root, state, store)
                         raise
+                elif wait["scope"] in {"reviewer", "revision"}:
+                    state["discussion"]["attempt"] += 1
                 else:
                     state["decision_attempt"] += 1
                 state["quota_retries"] += 1
@@ -283,8 +327,9 @@ def drive_campaign(project: Path, campaign_id: str, *, until: str | None = None,
                 if not retry_failed:
                     raise ValueError("Campaign blocked; inspect its error and resume --retry-failed")
                 # Retry only a settled planner job; an uncertain child remains blocked.
-                if state["phase"] == "decide":
-                    job = root / "decisions" / f"{len(state['rounds']):03d}-{state['decision_attempt']:02d}" / "job"
+                if state["phase"] in {"decide", "review", "revise"}:
+                    job = (root / "decisions" / f"{len(state['rounds']):03d}-{state['decision_attempt']:02d}" / "job"
+                           if state["phase"] == "decide" else discussion.control(root, state) / "job")
                     if (job / "spec.json").exists():
                         result = job / "result.json"
                         if not result.exists():
@@ -293,7 +338,10 @@ def drive_campaign(project: Path, campaign_id: str, *, until: str | None = None,
                         child = meta.get("child") or (read_json(job / "child.json") if (job / "child.json").exists() else None)
                         if alive(meta.get("supervisor")) or alive(child):
                             raise ValueError("Planner is still alive")
-                    state["decision_attempt"] += 1
+                    if state["phase"] == "decide":
+                        state["decision_attempt"] += 1
+                    else:
+                        state["discussion"]["attempt"] += 1
                 state.pop("error", None)
                 store.save_campaign(state, "explicit_campaign_retry")
             try:
@@ -376,16 +424,53 @@ def drive_campaign(project: Path, campaign_id: str, *, until: str | None = None,
                         if reason or time.time() >= state["deadline_at"] or decision["action"] == "stop":
                             finish(root, state, store, reason or ("wall_clock_budget" if time.time() >= state["deadline_at"] else "manager_stop"))
                             break
-                        if decision["action"] == "repair":
-                            last = state["rounds"][-1]
-                            source, hashes = last["repair_source"], last["repair_hashes"]
+                        if state.get("review_policy", {}).get("enabled"):
+                            state["discussion"] = {"round": len(state["rounds"]) + 1, "proposal": decision,
+                                                   "reviews": [], "attempt": 0, "status": "reviewing"}
+                            state["phase"] = "review"
+                            store.save_campaign(state, "proposal_ready", proposal=decision)
+                            write_report(root, state, store)
                         else:
-                            source, hashes = state["best"]["source"], state["best"]["hashes"]
-                        state["pending"] = {"run_id": uuid.uuid4().hex[:12], "decision": decision,
-                                            "source": source, "source_hashes": hashes}
-                        state["phase"] = "execute"
-                        store.save_campaign(state, "round_allocated", pending=state["pending"])
+                            allocate(state, decision, store)
+                    elif phase in {"review", "revise"}:
+                        try:
+                            answer = discussion.run_model(root, state)
+                        except engine.BudgetExhausted:
+                            finish(root, state, store, "wall_clock_budget")
+                            break
+                        if time.time() >= state["deadline_at"]:
+                            finish(root, state, store, "wall_clock_budget")
+                            break
+                        active = state["discussion"]
+                        if phase == "review":
+                            entry = {"proposal": active["proposal"], "proposal_sha256": discussion.proposal_hash(active["proposal"]),
+                                     "review": answer, "created_at": time.time()}
+                            active["reviews"].append(entry)
+                            active["attempt"] = 0
+                            if answer["verdict"] == "approve":
+                                decision = active["proposal"]
+                                close_discussion(state, "approved")
+                                allocate(state, decision, store)
+                            elif answer["verdict"] == "reject" or len(active["reviews"]) >= state["review_policy"]["max_reviews"]:
+                                reason = "review_rejected" if answer["verdict"] == "reject" else "review_budget_exhausted"
+                                close_discussion(state, reason)
+                                finish(root, state, store, reason)
+                                break
+                            else:
+                                state["phase"] = "revise"
+                                store.save_campaign(state, "revision_requested")
+                        else:
+                            if answer["action"] == "stop":
+                                active["final_response"] = answer
+                                close_discussion(state, "proposer_stop")
+                                finish(root, state, store, "proposer_stop")
+                                break
+                            active.update(proposal=answer, attempt=0)
+                            state["phase"] = "review"
+                            store.save_campaign(state, "proposal_revised", proposal=answer)
+                        write_report(root, state, store)
                     elif phase == "execute":
+                        discussion.assert_approved(state)
                         pending = state["pending"]
                         source = root / pending["source"]
                         if inventory(source) != pending["source_hashes"]:

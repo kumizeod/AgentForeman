@@ -103,7 +103,7 @@ def main(argv: list[str] | None = None) -> int:
     doctor.add_argument("--json", action="store_true", help="Machine-readable diagnostics (also the default)")
     usage = sub.add_parser("usage", help="Read quota windows without model calls; cached unless explicitly refreshed")
     usage.add_argument("--project", type=Path, default=Path.cwd())
-    usage.add_argument("--role", choices=["worker", "manager"], default="worker")
+    usage.add_argument("--role", choices=["worker", "manager", "reviewer"], default="worker")
     freshness = usage.add_mutually_exclusive_group()
     freshness.add_argument("--refresh", action="store_true", help="Read metadata once via official Codex app-server")
     freshness.add_argument("--cached", action="store_true", help="Read the local snapshot only (default)")
@@ -131,11 +131,13 @@ def main(argv: list[str] | None = None) -> int:
                 p.add_argument("campaign_id")
             if name in {"start", "resume"}:
                 if command == "campaign":
-                    p.add_argument("--until", choices=["baseline", "decide", "execute", "record"])
+                    p.add_argument("--until", choices=["baseline", "decide", "review", "revise", "execute", "record"])
                 else:
                     p.add_argument("--foreground", action="store_true", help="Keep controller in this terminal; default is detached")
             if name == "start":
                 p.add_argument("--goal", required=True)
+                p.add_argument("--review", action="store_true", help="Require bounded independent proposal review before execution")
+                p.add_argument("--max-reviews", type=int, default=2, help="Maximum reviews per proposal (1–5); no human approval stage")
                 p.add_argument("--max-rounds", type=int, default=5 if command == "overnight" else 3)
                 p.add_argument("--target", type=float)
                 if command == "campaign":
@@ -200,11 +202,13 @@ def main(argv: list[str] | None = None) -> int:
                         from .overnight import parse_deadline
                         cid = create_campaign(project, args.goal, args.max_rounds, 86400, args.target,
                                               deadline_at=parse_deadline(args.deadline),
+                                              review_policy={"enabled": args.review, "max_reviews": args.max_reviews},
                                               quota_policy={"fallback_seconds": args.quota_retry_seconds,
                                                             "max_retries": args.max_quota_retries,
                                                             "probe": not args.no_quota_probe, "preflight": args.quota_preflight})
                     else:
-                        cid = create_campaign(project, args.goal, args.max_rounds, args.budget_seconds, args.target)
+                        cid = create_campaign(project, args.goal, args.max_rounds, args.budget_seconds, args.target,
+                                              review_policy={"enabled": args.review, "max_reviews": args.max_reviews})
                 else:
                     cid = args.campaign_id
                 print(f"Campaign ID: {cid}", flush=True)

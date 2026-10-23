@@ -2,6 +2,21 @@
 
 **Assign Codex an experiment tonight. Wait through quota resets without model calls. Review verified results tomorrow.**
 
+## Automatic proposal review (v0.7)
+
+New tasks can run **proposal → independent review → revision → approved execution**,
+with a bounded review budget and no human approval stage. Rejected or unresolved
+plans stop automatically while retaining the best verified result. Discussion
+jobs preserve quota waiting, deadlines and crash recovery. The panel exposes
+criticism, proposer responses and transcript export.
+
+```powershell
+python -m agentforeman overnight start --project .\my-experiment --goal "Improve validation accuracy" --deadline 08:00 --review --max-reviews 2
+```
+
+The initial implementation uses separate Codex CLI sessions, with optional
+`[manager]` / `[reviewer]` model overrides. [Automatic review guide](docs/AUTOMATIC_REVIEW.md).
+
 ## Local control panel (v0.6)
 
 The graphical panel is implemented, reusing actual MIT-licensed

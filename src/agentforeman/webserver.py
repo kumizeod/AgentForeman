@@ -66,7 +66,7 @@ class ControlPanel(ThreadingHTTPServer):
     def detail(self, cid):
         state, root = self.campaign(cid)
         keys = ("id", "goal", "status", "phase", "created_at", "deadline_at", "max_rounds", "target",
-                "initial_metric", "stop_reason", "metric_criterion_met", "quota_retries", "quota_wait_seconds", "error")
+                "initial_metric", "stop_reason", "metric_criterion_met", "quota_retries", "quota_wait_seconds", "error", "review_policy", "discussion", "discussions")
         result = {k: state.get(k) for k in keys}
         result["best_metric"] = (state.get("best") or {}).get("metric")
         result["has_archive"] = bool((state.get("best") or {}).get("archive"))
@@ -90,6 +90,10 @@ class ControlPanel(ThreadingHTTPServer):
             paths = [root / "controller.log"]
         elif kind == "manager":
             folders = sorted((root / "decisions").glob("*/job"))
+            paths = [folders[-1] / name for name in ("stdout.log", "stderr.log")] if folders else []
+        elif kind in {"reviewer", "revision"}:
+            prefix = "review" if kind == "reviewer" else "revise"
+            folders = sorted((root / "discussions").glob(f"*/{prefix}-*/job"))
             paths = [folders[-1] / name for name in ("stdout.log", "stderr.log")] if folders else []
         elif kind == "worker":
             rid = (state.get("pending") or {}).get("run_id") or (state["rounds"][-1]["run_id"] if state["rounds"] else None)
@@ -121,7 +125,8 @@ class ControlPanel(ThreadingHTTPServer):
         if type(preflight) is not bool:
             raise ValueError("Preflight must be boolean")
         cid = create_campaign(self.project, goal.strip(), rounds, 86400, target,
-                              deadline_at=parse_deadline(deadline), quota_policy={"preflight": preflight})
+                              deadline_at=parse_deadline(deadline), quota_policy={"preflight": preflight},
+                              review_policy={"enabled": body.get("review", False), "max_reviews": body.get("max_reviews", 2)})
         # Return the durable id even if startup is uncertain; do not silently resubmit.
         try:
             launch(self.project, cid)
@@ -235,7 +240,7 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(201, self.server.submit(body))
                 if path == "/api/usage":
                     role = body.get("role", "worker")
-                    if not isinstance(role, str) or role not in {"worker", "manager"}:
+                    if not isinstance(role, str) or role not in {"worker", "manager", "reviewer"}:
                         raise ValueError("Invalid role")
                     return self.send(200, usage_snapshot(self.server.project, role, refresh=True))
                 match = re.fullmatch(r"/api/campaigns/([0-9a-f]{12})/(stop|resume)", path)

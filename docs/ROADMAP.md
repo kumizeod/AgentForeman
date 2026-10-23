@@ -1,5 +1,10 @@
 # Roadmap
 
+v0.7 adds bounded automatic proposal/reviewer/revision loops, without human
+approval. Evidence, model-free quota waiting and durable process receipts cover
+the added stages. Next evaluate whether review actually reduces invalid or
+uninformative experiments against the existing single-proposer mode.
+
 v0.5 adds quota windows/freshness, a local terminal monitor, observed token
 accounting, sanitized diagnostics and optional model-free preflight quota checks.
 See [operations](OBSERVABILITY.md). Cost/token enforcement and account pools remain

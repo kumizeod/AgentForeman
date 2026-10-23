@@ -26,7 +26,7 @@ root = Path.cwd()
 prompt = sys.stdin.read()
 output = Path(sys.argv[sys.argv.index("--output-last-message") + 1])
 schema = json.loads(Path(sys.argv[sys.argv.index("--output-schema") + 1]).read_text())
-role = "manager" if "action" in schema["properties"] else "worker"
+role = "reviewer" if "verdict" in schema["properties"] else ("revision" if "review_feedback" in json.loads((root / "evidence.json").read_text()) else "manager") if "action" in schema["properties"] else "worker"
 marker = os.environ.get("FOREMAN_TEST_QUOTA_MARKER")
 if marker:
     folder = Path(marker)
@@ -47,7 +47,17 @@ if marker:
             raise SystemExit(75)
     if role == "worker" and os.environ.get("FOREMAN_TEST_EXPECT_PARTIAL") == "1":
         assert json.loads((root / "config.json").read_text())["epochs"] == 77, "Lost partial code on quota resume"
-if "action" in schema["properties"]:
+if "verdict" in schema["properties"]:
+    time.sleep(float(os.environ.get("FOREMAN_TEST_REVIEW_DELAY", "0")))
+    evidence = json.loads((root / "evidence.json").read_text())
+    replies = json.loads(os.environ.get("FOREMAN_TEST_REVIEWS", '["approve"]'))
+    verdict = replies[min(len(evidence["previous_reviews"]), len(replies) - 1)]
+    answer = {"verdict": verdict, "summary": "TEST ONLY independent plan review",
+              "concerns": [] if verdict == "approve" else [{"severity": "major", "evidence": "The initial fixture changes width and optimization budget together", "suggestion": "State an explicit matched-budget comparison"}]}
+    if os.environ.get("FOREMAN_TEST_REVIEW_CONTRADICTION") == "1":
+        answer["verdict"] = "approve"
+        answer["concerns"] = [{"severity": "major", "evidence": "TEST unresolved issue", "suggestion": "TEST fix"}]
+elif "action" in schema["properties"]:
     time.sleep(float(os.environ.get("FOREMAN_TEST_PLANNER_DELAY", "0")))
     evidence = json.loads((root / "evidence.json").read_text())
     script = json.loads(os.environ.get("FOREMAN_CAMPAIGN_SCRIPT", '["good", "worse", "stop"]'))
@@ -57,6 +67,12 @@ if "action" in schema["properties"]:
     answer = {"action": action, "instruction": "fixture:" + step,
               "rationale": "TEST ONLY scripted decision based on completed round count",
               "based_on": [number] if number else []}
+    if "plan" in schema["properties"]:
+        answer["plan"] = {"hypothesis": "TEST ONLY larger MLP learns moons",
+                          "expected_observation": "Independently verified accuracy improves",
+                          "comparison": "Matched baseline versus candidate; isolate training budget" if role == "revision" else "Baseline comparison",
+                          "failure_criterion": "No verified improvement or invalid checkpoint"}
+        answer["review_response"] = "Addressed the budget confounder with an explicit comparison" if role == "revision" else ""
 else:
     config = json.loads((root / "config.json").read_text())
     config.update(hidden=32, epochs=500, learning_rate=0.3)

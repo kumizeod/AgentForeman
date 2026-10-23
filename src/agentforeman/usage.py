@@ -15,10 +15,10 @@ from .quota import probe_limits, timestamp
 
 
 def settings_for(project: Path, role: str) -> dict:
-    if role not in {"worker", "manager"}:
-        raise ValueError("Role must be worker or manager")
+    if role not in {"worker", "manager", "reviewer"}:
+        raise ValueError("Role must be worker, manager or reviewer")
     cfg = load_config(project)
-    return {**cfg["codex"], **(cfg.get("manager", {}) if role == "manager" else {})}
+    return {**cfg["codex"], **(cfg.get(role, {}) if role != "worker" else {})}
 
 
 def normalize(data: dict) -> dict:

@@ -69,7 +69,7 @@ def monitor_snapshot(project: Path, campaign_id: str | None = None) -> dict:
     return {"generated_at": now, "campaigns": rows,
             "runs": [{k: s.get(k) for k in ("id", "status", "phase", "baseline_metric", "candidate_metric")}
                      for s in documents(project, "runs")],
-            "quota": [usage_snapshot(project, role) for role in ("worker", "manager")],
+            "quota": [usage_snapshot(project, role) for role in ("worker", "manager", "reviewer")],
             "note": "Local snapshot only. No Codex process, metadata refresh or model call."}
 
 
@@ -101,7 +101,7 @@ def render_monitor(snapshot: dict) -> str:
 def model_jobs(project: Path):
     root = project / ".foreman"
     # Known live-log locations only: archives and quota snapshots are excluded.
-    for pattern in ("runs/*/jobs/codex-*", "campaigns/*/decisions/*/job", "campaigns/*/project/.foreman/runs/*/jobs/codex-*"):
+    for pattern in ("runs/*/jobs/codex-*", "campaigns/*/decisions/*/job", "campaigns/*/discussions/*/review-*/job", "campaigns/*/discussions/*/revise-*/job", "campaigns/*/project/.foreman/runs/*/jobs/codex-*"):
         yield from root.glob(pattern)
 
 
@@ -150,12 +150,12 @@ def job_usage(path: Path, limit: int = 32 * 1024 * 1024) -> dict:
 def statistics(project: Path) -> dict:
     totals = Counter()
     jobs = 0
-    by_role = {role: Counter() for role in ("manager", "worker")}
+    by_role = {role: Counter() for role in ("manager", "worker", "reviewer")}
     for job in model_jobs(project):
         if job.is_symlink():
             continue
         jobs += 1
-        role = "worker" if job.name.startswith("codex-") else "manager"
+        role = "worker" if job.name.startswith("codex-") else "reviewer" if job.parent.name.startswith("review-") else "manager"
         usage = job_usage(job / "stdout.log")
         values = {k: usage[k] for k in ("input_tokens", "cached_input_tokens", "output_tokens", "total_tokens", "reported_turns")}
         values.update(jobs=1, jobs_with_usage=int(usage["reported_turns"] > 0), jobs_with_incomplete_usage=int(not usage["complete"]))
@@ -182,8 +182,8 @@ def diagnostics(project: Path) -> dict:
         checks.append({"check": "config", "ok": False, "hint": "Check foreman.toml, source/trusted paths and command arrays."})
     checks.append({"check": "platform", "ok": sys.platform in SUPPORTED})
     if cfg:
-        for role in ("worker", "manager"):
-            settings = {**cfg["codex"], **(cfg.get("manager", {}) if role == "manager" else {})}
+        for role in ("worker", "manager", "reviewer"):
+            settings = {**cfg["codex"], **(cfg.get(role, {}) if role != "worker" else {})}
             try:
                 resolve_command(settings)
                 ok = True

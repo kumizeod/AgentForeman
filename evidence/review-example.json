@@ -1,0 +1,79 @@
+{
+  "policy": {
+    "enabled": true,
+    "max_reviews": 2
+  },
+  "completed": [
+    {
+      "round": 1,
+      "proposal": {
+        "action": "experiment",
+        "instruction": "fixture:good",
+        "rationale": "TEST ONLY scripted decision based on completed round count",
+        "based_on": [],
+        "plan": {
+          "hypothesis": "TEST ONLY larger MLP learns moons",
+          "expected_observation": "Independently verified accuracy improves",
+          "comparison": "Matched baseline versus candidate; isolate training budget",
+          "failure_criterion": "No verified improvement or invalid checkpoint"
+        },
+        "review_response": "Addressed the budget confounder with an explicit comparison"
+      },
+      "reviews": [
+        {
+          "proposal": {
+            "action": "experiment",
+            "instruction": "fixture:good",
+            "rationale": "TEST ONLY scripted decision based on completed round count",
+            "based_on": [],
+            "plan": {
+              "hypothesis": "TEST ONLY larger MLP learns moons",
+              "expected_observation": "Independently verified accuracy improves",
+              "comparison": "Baseline comparison",
+              "failure_criterion": "No verified improvement or invalid checkpoint"
+            },
+            "review_response": ""
+          },
+          "proposal_sha256": "696b0106052afca68e2cfce57767664754fa0a92302e54ff27706e5d061d4723",
+          "review": {
+            "verdict": "revise",
+            "summary": "TEST ONLY independent plan review",
+            "concerns": [
+              {
+                "severity": "major",
+                "evidence": "The initial fixture changes width and optimization budget together",
+                "suggestion": "State an explicit matched-budget comparison"
+              }
+            ]
+          },
+          "created_at": 1792764052.3104415
+        },
+        {
+          "proposal": {
+            "action": "experiment",
+            "instruction": "fixture:good",
+            "rationale": "TEST ONLY scripted decision based on completed round count",
+            "based_on": [],
+            "plan": {
+              "hypothesis": "TEST ONLY larger MLP learns moons",
+              "expected_observation": "Independently verified accuracy improves",
+              "comparison": "Matched baseline versus candidate; isolate training budget",
+              "failure_criterion": "No verified improvement or invalid checkpoint"
+            },
+            "review_response": "Addressed the budget confounder with an explicit comparison"
+          },
+          "proposal_sha256": "ef829503efd68b8cef3ab0807eb2e1852a459bd5732313cd57ab0f1b0a058992",
+          "review": {
+            "verdict": "approve",
+            "summary": "TEST ONLY independent plan review",
+            "concerns": []
+          },
+          "created_at": 1792764052.7651775
+        }
+      ],
+      "attempt": 0,
+      "status": "approved"
+    }
+  ],
+  "active": null
+}

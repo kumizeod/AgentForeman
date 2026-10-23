@@ -17,7 +17,7 @@ const paths = {
 const icon = name => `<svg class="workspaceIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name] || paths.info}"/></svg>`;
 document.querySelectorAll('[data-icon]').forEach(n => { n.innerHTML = icon(n.dataset.icon); });
 const labels = {ready:'已提交', running:'运行中', paused:'已暂停', waiting_quota:'等待额度', completed:'已完成', failed:'需处理'};
-const phases = {baseline:'基线评估',decide:'规划下一轮',execute:'实验执行',record:'归档结果',done:'结束',baseline_train:'基线训练',baseline_verify:'基线验证',codex:'Codex 修改',check_edits:'检查改动',train:'训练',verify:'独立验证',archive:'结果归档'};
+const phases = {baseline:'基线评估',decide:'规划下一轮',review:'独立审查',revise:'修改提案',execute:'实验执行',record:'归档结果',done:'结束',baseline_train:'基线训练',baseline_verify:'基线验证',codex:'Codex 修改',check_edits:'检查改动',train:'训练',verify:'独立验证',archive:'结果归档'};
 const actions = {experiment:'新实验',repair:'修复',retest:'复测',stop:'停止'};
 const num = v => typeof v === 'number' && Number.isFinite(v) ? v.toLocaleString('zh-CN') : '—';
 const metric = v => typeof v === 'number' && Number.isFinite(v) ? Number(v.toFixed(5)).toString() : '—';
@@ -75,12 +75,22 @@ function renderDetail() {
   const row=state.overview?.campaigns.find(r=>r.id===d.id);
   const complete=d.status==='completed', live=row?.controller_alive;
   const resumeEnabled=!complete && !live && (d.status!=='failed' || state.retry);
-  $('#detail').innerHTML = `<div class="detailHead"><strong>任务详情</strong>${tag(d.status)}</div><span class="taskId">${esc(d.id)}</span><div class="detailGoal">${esc(d.goal)}</div><div class="detailMeta"><div><span>最佳独立验证指标</span><strong class="metric">${metric(d.best_metric)}</strong></div><div><span>已记录轮数</span><strong>${d.rounds.length} / ${d.max_rounds}</strong></div><div><span>当前阶段</span><strong>${esc(phases[row?.child_phase] || phases[d.phase] || d.phase)}</strong></div><div><span>后台控制器</span><strong>${live?'运行中':complete?'已结束':'未运行'}</strong></div><div><span>截止时间</span><strong>${date(d.deadline_at)}</strong></div><div><span>基线指标</span><strong>${metric(d.initial_metric)}</strong></div></div>${d.quota_wait?`<div class="infoBox waitBox">额度等待 · ${esc(d.quota_wait.scope)}<br>预计恢复：${date(d.quota_wait.wake_at)}<br>等待期间不调用模型</div>`:''}${d.error?`<p class="errorText">${esc(d.error)}</p>`:''}${d.status==='failed'?`<label class="checkLabel"><input id="retry-failed" type="checkbox" ${state.retry?'checked':''}> 已检查错误，允许重试失败阶段</label>`:''}<div class="detailActions"><button data-action="resume" ${resumeEnabled?'':'disabled'}>${live?'已在运行':'恢复任务'}</button><button data-action="stop" class="dangerButton" ${complete||row?.stop_requested?'disabled':''}>${row?.stop_requested?'已请求停止':'停止后续轮次'}</button>${d.has_archive?'<button data-action="archive">下载最佳归档</button>':''}</div><div class="detailTabs">${[['summary','结果'],['logs','日志'],['events','事件'],['report','报告']].map(([id,label])=>`<button data-detail-tab="${id}" class="${state.tab===id?'active':''}">${label}</button>`).join('')}</div><div class="detailContent" id="detail-content"></div>`;
+  $('#detail').innerHTML = `<div class="detailHead"><strong>任务详情</strong>${tag(d.status)}</div><span class="taskId">${esc(d.id)}</span><div class="detailGoal">${esc(d.goal)}</div><div class="detailMeta"><div><span>最佳独立验证指标</span><strong class="metric">${metric(d.best_metric)}</strong></div><div><span>已记录轮数</span><strong>${d.rounds.length} / ${d.max_rounds}</strong></div><div><span>当前阶段</span><strong>${esc(phases[row?.child_phase] || phases[d.phase] || d.phase)}</strong></div><div><span>后台控制器</span><strong>${live?'运行中':complete?'已结束':'未运行'}</strong></div><div><span>截止时间</span><strong>${date(d.deadline_at)}</strong></div><div><span>基线指标</span><strong>${metric(d.initial_metric)}</strong></div></div>${d.quota_wait?`<div class="infoBox waitBox">额度等待 · ${esc(d.quota_wait.scope)}<br>预计恢复：${date(d.quota_wait.wake_at)}<br>等待期间不调用模型</div>`:''}${d.error?`<p class="errorText">${esc(d.error)}</p>`:''}${d.status==='failed'?`<label class="checkLabel"><input id="retry-failed" type="checkbox" ${state.retry?'checked':''}> 已检查错误，允许重试失败阶段</label>`:''}<div class="detailActions"><button data-action="resume" ${resumeEnabled?'':'disabled'}>${live?'已在运行':'恢复任务'}</button><button data-action="stop" class="dangerButton" ${complete||row?.stop_requested?'disabled':''}>${row?.stop_requested?'已请求停止':'停止后续轮次'}</button>${d.has_archive?'<button data-action="archive">下载最佳归档</button>':''}${d.review_policy?.enabled?'<button data-action="discussion-download">导出审查</button>':''}</div><div class="detailTabs">${[['summary','结果'],['discussion','方案审查'],['logs','日志'],['events','事件'],['report','报告']].map(([id,label])=>`<button data-detail-tab="${id}" class="${state.tab===id?'active':''}">${label}</button>`).join('')}</div><div class="detailContent" id="detail-content"></div>`;
   const content=$('#detail-content');
   if (state.tab==='report') { const pre=document.createElement('pre'); pre.textContent=d.report; content.append(pre); }
+  else if (state.tab==='discussion') content.innerHTML=renderDiscussion(d);
   else if (state.tab==='events') content.innerHTML=d.events.map(event=>`<div class="event"><strong>${esc(event.kind)}</strong><small>${date(event.timestamp)}</small></div>`).join('') || '<p>暂无事件</p>';
-  else if (state.tab==='logs') { content.innerHTML=`<select class="logSelect" id="log-kind" aria-label="日志来源">${[['controller','调度控制器'],['manager','Codex manager'],['worker','Codex worker']].map(([k,l])=>`<option value="${k}" ${k===state.logKind?'selected':''}>${l}</option>`).join('')}</select><pre id="log-output">正在读取日志…</pre>`; }
+  else if (state.tab==='logs') { content.innerHTML=`<select class="logSelect" id="log-kind" aria-label="日志来源">${[['controller','调度控制器'],['manager','Codex manager'],['reviewer','独立审查者'],['revision','提案修改'],['worker','Codex worker']].map(([k,l])=>`<option value="${k}" ${k===state.logKind?'selected':''}>${l}</option>`).join('')}</select><pre id="log-output">正在读取日志…</pre>`; }
   else content.innerHTML=`${d.stop_reason?`<div class="infoBox">结束原因：${esc(d.stop_reason)}<br>指标标准：${d.metric_criterion_met===true?'达到':d.metric_criterion_met===false?'未达到':'尚未判断'}</div>`:''}${d.rounds.map(r=>`<div class="round"><div class="roundHeader"><strong>第 ${r.number} 轮 · ${esc(actions[r.action] || r.action)}</strong><span class="metric">${metric(r.metric)}</span></div><p>${esc(r.decision?.rationale || '')}</p>${r.error?`<p class="errorText">${esc(r.error)}</p>`:''}<span class="pillText">${esc(labels[r.status]||r.status)}${r.promoted?' · 更新为最佳结果':''}</span></div>`).join('') || '<p class="muted">尚未记录实验轮次。基线训练、规划和额度等待不计入已完成轮数。</p>'}`;
+}
+function renderDiscussion(d) {
+  if(!d.review_policy?.enabled) return '<p class="muted">此任务未启用自动审查。新建任务时可以开启。</p>';
+  const records=[...(d.discussions||[]),...(d.discussion?[d.discussion]:[])];
+  if(!records.length) return '<p class="muted">正在准备基线或初始方案，尚无审查记录。</p>';
+  const verdicts={approve:'批准执行',revise:'要求修改',reject:'否决'};
+  const planNames={hypothesis:'假设',expected_observation:'预期现象',comparison:'对照设计',failure_criterion:'失败标准'};
+  const plan=p=>`<div class="discussionPlan">${Object.entries(p.plan||{}).map(([k,v])=>`<p><strong>${esc(planNames[k]||k)}</strong> ${esc(v)}</p>`).join('')}${p.review_response?`<p><strong>提案者回应</strong> ${esc(p.review_response)}</p>`:''}</div>`;
+  return `<p class="muted">每个方案最多 ${d.review_policy.max_reviews} 次审查 · 自动决策，无人工审批</p>`+records.map(r=>`<section class="reviewRecord"><h3>实验 ${r.round} · ${esc(r.status)}</h3>${r.reviews.map((entry,i)=>`<div class="round"><div class="roundHeader"><strong>审查 ${i+1}</strong><span class="tag ${entry.review.verdict==='approve'?'completed':'waiting_quota'}">${verdicts[entry.review.verdict]||esc(entry.review.verdict)}</span></div><p>${esc(entry.review.summary)}</p>${plan(entry.proposal)}${entry.review.concerns.map(c=>`<div class="infoBox"><strong>${esc(c.severity)}</strong><br>${esc(c.evidence)}<br>建议：${esc(c.suggestion)}</div>`).join('')}</div>`).join('')}${r.status==='reviewing'?'<h3>当前方案</h3>'+plan(r.proposal):''}</section>`).join('');
 }
 async function loadLogs() {
   const cid=state.selected, kind=state.logKind;
@@ -95,18 +105,18 @@ function usageMeter(window, name) {
   return `<div class="usageMeter tone-${tone}"><div class="usageMeterHead"><span>${label}</span><strong>${known?num(used)+'% 已用':'未知'}</strong></div><div class="usageBar" aria-hidden="true"><span style="width:${used??0}%"></span></div><div class="usageMeterFoot"><span>${remaining===null?'未返回额度数据':num(remaining)+'% 剩余'}</span><span>重置 ${date(window?.resets_at)}</span></div></div>`;
 }
 function quotaCards() {
-  $('#quota-cards').innerHTML=(state.overview?.quota || []).map(q=>`<section class="quotaCard"><div class="quotaHead"><div><h3>${q.role==='manager'?'Manager · 实验规划':'Worker · 代码修改'}</h3><small>${q.plan_type?esc(q.plan_type.toUpperCase()):'PLAN UNKNOWN'}</small></div><span class="tag ${q.stale?'waiting_quota':'completed'}">${!q.available?'暂无数据':q.stale?'缓存已过期':'缓存有效'}</span></div>${['primary','secondary'].map(name=>usageMeter((q.windows||[]).find(w=>w.name===name),name)).join('')}${q.error?`<p class="errorText">刷新未成功：${esc(q.error)}，旧数据保持不变。</p>`:''}<div class="quotaFoot"><span>上次成功读取 ${date(q.fetched_at)}</span><button data-refresh-role="${q.role}">读取最新额度</button></div></section>`).join('');
+  $('#quota-cards').innerHTML=(state.overview?.quota || []).map(q=>`<section class="quotaCard"><div class="quotaHead"><div><h3>${q.role==='manager'?'Manager · 实验规划':q.role==='reviewer'?'Reviewer · 独立审查':'Worker · 代码修改'}</h3><small>${q.plan_type?esc(q.plan_type.toUpperCase()):'PLAN UNKNOWN'}</small></div><span class="tag ${q.stale?'waiting_quota':'completed'}">${!q.available?'暂无数据':q.stale?'缓存已过期':'缓存有效'}</span></div>${['primary','secondary'].map(name=>usageMeter((q.windows||[]).find(w=>w.name===name),name)).join('')}${q.error?`<p class="errorText">刷新未成功：${esc(q.error)}，旧数据保持不变。</p>`:''}<div class="quotaFoot"><span>上次成功读取 ${date(q.fetched_at)}</span><button data-refresh-role="${q.role}">读取最新额度</button></div></section>`).join('');
 }
 async function analytics() {
   const result=await api('/api/stats'); state.stats=result;
   const u=result.reported_usage, has=(u.jobs_with_usage||0)>0;
   const cards=[['已报告 Token',has?u.total_tokens:null],['输入 Token',has?u.input_tokens:null],['输出 Token',has?u.output_tokens:null],['模型作业数',result.model_jobs]];
   $('#stats-cards').innerHTML=cards.map(([label,value])=>`<div class="statCard"><span>${label}</span><strong>${num(value)}</strong></div>`).join('');
-  $('#role-stats').innerHTML=Object.entries(result.by_role).map(([role,v])=>`<div class="roleRow"><div><strong>${role==='manager'?'Manager · 规划':'Worker · 修改'}</strong><small>${v.jobs_with_usage||0} / ${v.jobs||0} 个作业报告了 Token · ${v.jobs_with_incomplete_usage||0} 个作业数据不完整</small></div><span>${(v.jobs_with_usage||0)>0?num(v.total_tokens):'未知'} Token</span></div>`).join('')+`<p class="muted">累计已记录额度等待：${num(Math.round(result.quota_wait_seconds))} 秒；并行任务的等待时间可能重叠。</p>`;
+  $('#role-stats').innerHTML=Object.entries(result.by_role).map(([role,v])=>`<div class="roleRow"><div><strong>${role==='manager'?'Manager · 规划':role==='reviewer'?'Reviewer · 审查':'Worker · 修改'}</strong><small>${v.jobs_with_usage||0} / ${v.jobs||0} 个作业报告了 Token · ${v.jobs_with_incomplete_usage||0} 个作业数据不完整</small></div><span>${(v.jobs_with_usage||0)>0?num(v.total_tokens):'未知'} Token</span></div>`).join('')+`<p class="muted">累计已记录额度等待：${num(Math.round(result.quota_wait_seconds))} 秒；并行任务的等待时间可能重叠。</p>`;
 }
 async function settings() {
   const result=await api('/api/diagnostics'); state.diagnostics=result;
-  const names={config:'项目配置',platform:'操作系统',worker_command:'Worker Codex 命令',manager_command:'Manager Codex 命令'};
+  const names={config:'项目配置',platform:'操作系统',worker_command:'Worker Codex 命令',manager_command:'Manager Codex 命令',reviewer_command:'Reviewer Codex 命令'};
   $('#checks').innerHTML=result.checks.map(c=>`<div class="checkRow"><div><strong>${esc(names[c.check]||c.check)}</strong>${c.hint?`<p>${esc(c.hint)}</p>`:''}</div><span class="tag ${c.ok?'completed':'failed'}">${c.ok?'通过':'需检查'}</span></div>`).join('');
   $('#environment').textContent=`AgentForeman ${result.version} · Python ${result.python_version} · ${result.platform}`;
 }
@@ -138,14 +148,14 @@ $('#create-form').onsubmit=async event=>{
   const form=new FormData(event.currentTarget), rawTarget=form.get('target');
   const deadline=new Date(), [h,m]=String(form.get('deadline')).split(':').map(Number);
   deadline.setHours(h,m,0,0); if (deadline<=new Date()) deadline.setDate(deadline.getDate()+1);
-  const body={goal:form.get('goal'),deadline:deadline.toISOString(),max_rounds:Number(form.get('max_rounds')),target:rawTarget===''?null:Number(rawTarget),preflight:form.has('preflight')};
+  const body={goal:form.get('goal'),deadline:deadline.toISOString(),max_rounds:Number(form.get('max_rounds')),target:rawTarget===''?null:Number(rawTarget),preflight:form.has('preflight'),review:form.has('review'),max_reviews:Number(form.get('max_reviews'))};
   button.disabled=true; button.textContent='正在提交…'; $('#form-error').hidden=true;
   try { const result=await api('/api/campaigns',body); $('#create-dialog').close(); state.selected=result.id; state.tab='summary'; notice(result.launched?`已提交 ${result.id}。后台实验已启动。`:`任务 ${result.id} 已保存，但控制器未确认启动：${result.error}。请检查详情，不要重复提交。`); await navigate('tasks'); await refresh(); }
   catch(e) {$('#form-error').textContent=`${e.message}。若网络中断，请先刷新任务列表确认是否已创建。`; $('#form-error').hidden=false;}
   finally {button.disabled=false;button.textContent='提交并后台运行';}
 };
 async function refreshQuota(role) {
-  const roles=role?[role]:['manager','worker'];
+  const roles=role?[role]:['manager','reviewer','worker'];
   const buttons=document.querySelectorAll('[data-refresh-role],#refresh-quota'); buttons.forEach(b=>b.disabled=true);
   try { for (const r of roles) { const result=await api('/api/usage',{role:r}); if (result.error) notice(`${r} 额度读取失败：${result.error}，请检查 Codex 登录与版本。`); } await refresh(); }
   catch(e){showError(e.message);} finally{buttons.forEach(b=>b.disabled=false);}
@@ -171,6 +181,7 @@ document.addEventListener('click',async event=>{
     if (b.dataset.refreshRole) return await refreshQuota(b.dataset.refreshRole);
     if (b.dataset.detailTab) {state.tab=b.dataset.detailTab;renderDetail();if(state.tab==='logs')await loadLogs();return;}
     if (b.dataset.action) {const cid=state.selected, action=b.dataset.action; b.disabled=true;
+      if(action==='discussion-download') return await download(null,`${cid}-discussion.json`,{policy:state.detail.review_policy,completed:state.detail.discussions,active:state.detail.discussion});
       if(action==='archive') return await download(`/api/campaigns/${cid}/archive`,`${cid}-best.zip`);
       await api(`/api/campaigns/${cid}/${action}`,action==='resume'?{retry_failed:state.retry}:{});
       notice(action==='resume'?'后台控制器已启动或已在运行。':'已请求停止：完成或协调当前轮后，不再启动下一轮。'); await refresh();

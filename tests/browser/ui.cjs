@@ -15,7 +15,7 @@ from pathlib import Path
 import json,sys
 p=Path(sys.argv[1]); init_demo(p)
 c=p/'foreman.toml'; c.write_text(c.read_text().replace('executable = "codex"','executable = '+json.dumps(sys.argv[2])))`,project,path.join(root,'tests/fixture_campaign.py')], {cwd:root});
-const child=spawn(python,['-m','agentforeman','ui','--project',project,'--port','0','--no-open'],{cwd:root,stdio:['ignore','pipe','pipe']});
+const child=spawn(python,['-m','agentforeman','ui','--project',project,'--port','0','--no-open'],{cwd:root,stdio:['ignore','pipe','pipe'],env:{...process.env,FOREMAN_TEST_REVIEWS:'["revise","approve"]'}});
 let browser, page, capability, origin, cid, waitingCid;
 const failures=[];
 const completed=[];
@@ -41,6 +41,16 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
   assert.equal(await page.evaluate(()=>window.injected),undefined);assert.equal(await page.locator('#task-rows img').count(),0);
   await until(async()=>(await page.locator('#detail').innerText()).includes('0.975'),'verified metric in task detail');
   completed.push('Form submission drives real train/independent verify; untrusted goal is escaped');
+  await page.locator('[data-detail-tab=discussion]').click();
+  assert((await page.locator('#detail-content').innerText()).includes('要求修改'));
+  assert((await page.locator('#detail-content').innerText()).includes('批准执行'));
+  assert((await page.locator('#detail-content').innerText()).includes('提案者回应'));
+  const reviewed=await request('/api/campaigns/'+cid);
+  assert.equal(reviewed.discussions[0].reviews.length,2);
+  const [reviewDownload]=await Promise.all([page.waitForEvent('download'),page.locator('[data-action=discussion-download]').click()]);
+  const reviewPath=path.join(output,'discussion-export.json');await reviewDownload.saveAs(reviewPath);
+  assert.equal(JSON.parse(fs.readFileSync(reviewPath,'utf8')).completed[0].reviews.length,2);
+  completed.push('Automatic reviewer criticism, proposer revision and approval are visible in the panel');
   await page.locator('[data-detail-tab=logs]').click();await page.locator('#log-output').filter({hasText:'baseline_train'}).waitFor();
   await page.locator('#log-kind').selectOption('worker');await page.locator('#log-output').filter({hasText:'stdout.log'}).waitFor();
   await page.locator('[data-detail-tab=report]').click();assert((await page.locator('#detail-content').innerText()).includes('Best independently verified metric'));
@@ -50,11 +60,11 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
   execFileSync(python,['-m','agentforeman','verify-archive',zip],{cwd:root});
   completed.push('Actual controller/worker logs, report, events and verified archive download');
   await page.locator('#search').fill('no-such-goal');assert.equal(await page.locator('#empty').isVisible(),true);await page.locator('#search').fill('');
-  await page.locator('[data-view=usage]').click();assert.equal(await page.locator('.quotaCard').count(),2);
+  await page.locator('[data-view=usage]').click();assert.equal(await page.locator('.quotaCard').count(),3);
   await page.locator('[data-refresh-role=worker]').click();await until(async()=>!(await page.locator('[data-refresh-role=worker]').isDisabled()),'quota refresh');
   assert((await page.locator('#quota-cards').innerText()).includes('100% 已用'));
   await page.locator('[data-view=analytics]').click();await page.locator('#stats-cards .statCard').first().waitFor();assert((await page.locator('#role-stats').innerText()).includes('数据不完整'));
-  await page.locator('[data-view=settings]').click();await page.locator('#checks .checkRow').first().waitFor();assert.equal(await page.locator('#checks .checkRow').count(),4);
+  await page.locator('[data-view=settings]').click();await page.locator('#checks .checkRow').first().waitFor();assert.equal(await page.locator('#checks .checkRow').count(),5);
   completed.push('Search/filter and quota/statistics/diagnostics pages use real APIs');
   await page.locator('[data-view=tasks]').click();
   await page.locator('#new-task').click();await page.locator('[name=goal]').fill('夜间继续探索：额度恢复后开始下一轮 · TEST ONLY');await page.locator('[name=target]').fill('');await page.locator('[name=preflight]').check();await page.locator('#submit-task').click();await page.locator('#create-dialog').waitFor({state:'hidden'});

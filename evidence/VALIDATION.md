@@ -184,3 +184,28 @@ The final two native test assertions compare canonical paths, supporting macOS
 /private/var aliases and Windows short-vs-long temporary paths. No production
 behavior changed for this test correction. This validation update changes only
 documentation/evidence and skips CI.
+
+## v0.7 automatic proposal review (2026-10-23)
+
+The complete local suite passed **96 tests** (`review-test-results.txt`), including
+ten new discussion tests covering revise/approve with actual training, automatic
+reject/exhaustion without allocating a worker, contradictory approvals, explicit
+protocol-error retry, receipt reuse across interrupted state commits, reviewer
+and revision quota waiting without extra calls, deadlines/stops, approval hash
+binding, model override/read-only settings, and repair/retest seed provenance.
+
+The updated browser test passed six groups of checks (`review-browser.json`),
+including actual proposal revision/approval displayed in the panel and exporting
+the full discussion JSON. `review-example.json` is its explicitly test-only
+transcript. Existing form submission, real optimization, external verification,
+archive download, resume/stop, theme, narrow layouts and escaping checks also run.
+Local browser verification used Playwright 1.62.1 with an npm-packaged Chromium
+133 binary; CI uses its normal Playwright-installed browser.
+
+A 0.7.0 wheel was built and checked for the discussion module, updated browser
+assets and existing upstream MIT notice. No new production dependency was added.
+Codex proposers, reviewers, editors and quota responses use explicit fixtures;
+training, independent checkpoint verification, HTTP actions, durable processes
+and archive validation are real. Separate live Codex sessions and their review
+quality still need authenticated field validation. Claude CLI is not integrated.
+There is no human approval stage. Native CI results are recorded after publication.

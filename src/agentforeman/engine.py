@@ -62,19 +62,21 @@ def load_config(project: Path) -> dict:
         if isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value) or value <= 0:
             raise ValueError(f"{key}.timeout_seconds must be a positive finite number")
     cfg["codex"].setdefault("executable", "codex")
-    if "manager" in cfg:
-        if not isinstance(cfg["manager"], dict):
-            raise ValueError("manager must be a configuration table")
-        settings = {**cfg["codex"], **cfg["manager"]}
+    for role in ("manager", "reviewer"):
+        if role not in cfg:
+            continue
+        if not isinstance(cfg[role], dict):
+            raise ValueError(f"{role} must be a configuration table")
+        settings = {**cfg["codex"], **cfg[role]}
         timeout = settings["timeout_seconds"]
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
-            raise ValueError("manager.timeout_seconds must be positive and finite")
+            raise ValueError(f"{role}.timeout_seconds must be positive and finite")
         if not isinstance(settings["executable"], str) or not settings["executable"]:
-            raise ValueError("manager.executable must be a nonempty string")
+            raise ValueError(f"{role}.executable must be a nonempty string")
         command = settings.get("command")
         if command is not None and (not isinstance(command, list) or not command or
                                     not all(isinstance(x, str) and x for x in command)):
-            raise ValueError("manager.command must be a nonempty argv array")
+            raise ValueError(f"{role}.command must be a nonempty argv array")
     if not isinstance(cfg["codex"]["executable"], str) or not cfg["codex"]["executable"]:
         raise ValueError("codex.executable must be a nonempty string")
     prefix = cfg["codex"].get("command")
