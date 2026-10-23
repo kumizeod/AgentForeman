@@ -50,6 +50,9 @@ def make_spec(folder: Path, state: dict, source: Path):
     replace_snapshot(seed, context / "proposal_code")
     evidence = {k: state[k] for k in ("goal", "rounds", "target", "deadline_at", "max_rounds")}
     evidence.update(metric=state["config"]["metric"], allowed_edit=state["config"]["allowed_edit"],
+                    baseline_metric=state["initial_metric"],
+                    incumbent={"run_id": state["best"]["run_id"], "metric": state["best"]["metric"],
+                               "code_hashes": state["best"]["hashes"]},
                     proposal=d["proposal"], proposal_sha256=proposal_hash(d["proposal"]), previous_reviews=d["reviews"])
     atomic_json(context / "evidence.json", evidence)
     prompt = """You independently review an experiment proposal. Read evidence.json, best_code/ (healthy incumbent) and proposal_code/ (actual edit seed).
