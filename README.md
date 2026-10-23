@@ -11,10 +11,15 @@ leases and task receipts. Quota cooldown, alternate eligible members, local nigh
 windows and crash recovery are supported. No human approval stage is added. Delayed starts and an optional local verified
 experiment handoff are available; measured project results attach to the report.
 
-[Setup the worker pool](docs/WORKER_POOL.md) · [Run a council and inspect quality gates](docs/COUNCIL.md).
+[小组夜间使用指南（中文）](docs/COUNCIL.zh-CN.md) · [Setup the worker pool](docs/WORKER_POOL.md) · [Run a council and inspect quality gates](docs/COUNCIL.md).
 Model agreement is not verification; reports preserve source gaps, unresolved
 findings and unexecuted tests. This is a candidate-answer workflow, not a promise
 of correct novelty claims or distributed GPU training.
+
+Validation at `0bd6f27`: all nine native jobs passed **123 tests each**, and the
+browser job passed **seven workflow groups**, including three HTTP workers.
+[CI run](https://github.com/kumizeod/AgentForeman/actions/runs/39976862723) ·
+[Evidence and fixture disclosure](evidence/council-ci.json).
 
 ## Automatic proposal review (v0.7)
 

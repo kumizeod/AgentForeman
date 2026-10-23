@@ -1,0 +1,84 @@
+{
+  "run_id": 39976862723,
+  "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39976862723",
+  "head_sha": "0bd6f2747124e1d3c90f8f4ba0b50864633e783c",
+  "native": [
+    {
+      "id": 120493611322,
+      "name": "test (macos-latest, 3.13)",
+      "conclusion": "success",
+      "tests": 123,
+      "seconds": 173.296
+    },
+    {
+      "id": 120493611339,
+      "name": "test (macos-latest, 3.11)",
+      "conclusion": "success",
+      "tests": 123,
+      "seconds": 209.917
+    },
+    {
+      "id": 120493611375,
+      "name": "test (windows-latest, 3.12)",
+      "conclusion": "success",
+      "tests": 123,
+      "seconds": 208.529
+    },
+    {
+      "id": 120493611377,
+      "name": "test (ubuntu-latest, 3.12)",
+      "conclusion": "success",
+      "tests": 123,
+      "seconds": 112.852
+    },
+    {
+      "id": 120493611529,
+      "name": "test (macos-latest, 3.12)",
+      "conclusion": "success",
+      "tests": 123,
+      "seconds": 203.161
+    },
+    {
+      "id": 120493611604,
+      "name": "test (windows-latest, 3.13)",
+      "conclusion": "success",
+      "tests": 123,
+      "seconds": 204.308
+    },
+    {
+      "id": 120493611677,
+      "name": "test (ubuntu-latest, 3.13)",
+      "conclusion": "success",
+      "tests": 123,
+      "seconds": 124.299
+    },
+    {
+      "id": 120493611687,
+      "name": "test (ubuntu-latest, 3.11)",
+      "conclusion": "success",
+      "tests": 123,
+      "seconds": 112.412
+    },
+    {
+      "id": 120493612097,
+      "name": "test (windows-latest, 3.11)",
+      "conclusion": "success",
+      "tests": 123,
+      "seconds": 270.325
+    }
+  ],
+  "browser": {
+    "job_id": 120493611256,
+    "conclusion": "success",
+    "workflow_groups": 7
+  },
+  "artifacts": [
+    {
+      "id": 12511139182,
+      "name": "web-ui-browser-evidence",
+      "size_in_bytes": 434222,
+      "expired": false
+    }
+  ],
+  "disclosure": "CLI model replies and API responses use explicit fixtures/mocks. HTTP pull workers, SQLite leases, native supervision, real demo training, independent checkpoint validation, recovery and archive downloads execute for real. No live member accounts, paid Claude response, real overnight quota reset or measured answer-quality improvement is claimed. Subsequent documentation and cosmetic layout polish were locally browser-tested."
+}

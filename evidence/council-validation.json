@@ -34,5 +34,17 @@
     "changed project blocks handoff",
     "crash after campaign commit recovers same campaign",
     "completed real candidate training attaches verified archive and metrics without promoting scientific truth"
-  ]
+  ],
+  "local_layout_polish": {
+    "passed": true,
+    "checks": [
+      "five navigation tabs fit one row on desktop",
+      "council page at 390px has no document horizontal overflow",
+      "seven existing browser workflow groups remain passing"
+    ]
+  },
+  "wheel": {
+    "name": "agentforeman-0.8.0-py3-none-any.whl",
+    "required_modules_and_panel_present": true
+  }
 }

@@ -15,3 +15,7 @@ body{margin:0;font:14px/1.55 var(--font-ui);color:var(--ink);background:var(--bo
 #council-detail details{margin:16px 0}
 #pool-members .statCard strong{font-size:18px;overflow-wrap:anywhere}
 #pool-members .statCard span{white-space:normal}
+.classicApp .topSegmentedNav{grid-template-columns:repeat(5,minmax(0,1fr))}
+.classicApp .topSegmentedButton{font-size:12px;padding-inline:2px;white-space:nowrap;min-width:0}
+#view-council .taskWorkspace{grid-template-columns:minmax(230px,300px) minmax(0,1fr)}
+.councilSelect{align-items:flex-start}
