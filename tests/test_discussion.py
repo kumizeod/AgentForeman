@@ -38,6 +38,57 @@ class DiscussionTests(unittest.TestCase):
             state=store.get_campaign(cid);fn(state);store.save_campaign(state,'test_update')
         finally:store.close()
 
+    def test_unchanged_revision_stops_without_another_review_or_worker(self):
+        original = discussion.run_model
+        def model(root, state):
+            if state['phase'] == 'revise':
+                answer = copy.deepcopy(state['discussion']['proposal'])
+                answer.update(rationale='Only rhetoric changed', review_response='I insist this is fine')
+                return answer
+            return original(root, state)
+        with patch.dict(os.environ, {'FOREMAN_TEST_REVIEWS':'["revise"]'}), patch('agentforeman.discussion.run_model', side_effect=model):
+            cid = self.create()
+            state = self.drive(cid)
+        self.assertEqual(state['stop_reason'], 'debate_stalled')
+        self.assertIsNone(state['pending'])
+        self.assertEqual(state['rounds'], [])
+        record = state['discussions'][0]
+        self.assertEqual(len(record['reviews']), 1)
+        self.assertEqual(record['stall']['changed_fields'], [])
+        self.assertEqual(record['issues'][0]['status'], 'open')
+        self.assertEqual(record['final_response']['review_response'], 'I insist this is fine')
+        self.assertEqual(read_json(self.root(cid)/'discussion.json')['completed'][0], record)
+        self.assertEqual(self.drive(cid)['stop_reason'], 'debate_stalled')
+
+    def test_progress_detects_whitespace_rhetoric_and_cycles_but_allows_plan_change(self):
+        a = {'action':'experiment', 'instruction':'train   baseline', 'based_on':[],
+             'plan':{'comparison':'fixed budget'}, 'rationale':'first', 'review_response':''}
+        active = {'proposal':a, 'reviews':[{'proposal':a}]}
+        b = copy.deepcopy(a)
+        b.update(instruction='train baseline', rationale='new claim', review_response='answered')
+        self.assertTrue(discussion.revision_progress(active, b)['repeated_proposal'])
+        b['plan']['comparison'] = 'matched steps and seeds'
+        self.assertEqual(discussion.revision_progress(active, b)['changed_fields'], ['plan'])
+        self.assertFalse(discussion.revision_progress(active, b)['repeated_proposal'])
+        active.update(proposal=b, reviews=[{'proposal':a}, {'proposal':b}])
+        self.assertTrue(discussion.revision_progress(active, a)['repeated_proposal'])
+
+    def test_issue_ledger_preserves_unresolved_absence_and_deduplicates_repetition(self):
+        c = {'severity':'major', 'evidence':'Budget   confound', 'suggestion':'Run matched steps'}
+        def entry(verdict, concerns):
+            return {'review':{'verdict':verdict, 'concerns':concerns}}
+        first = entry('revise', [c, c])
+        other = {**c, 'evidence':'Budget confound', 'severity':'blocking'}
+        reviews = [first, entry('revise', [other])]
+        item = discussion.issue_ledger(reviews)[0]
+        self.assertEqual(item['occurrences'], [1, 2])
+        self.assertEqual(item['severity'], 'blocking')
+        self.assertEqual(item['id'], discussion.issue_ledger([first])[0]['id'])
+        reviews.append(entry('reject', []))
+        self.assertEqual(discussion.issue_ledger(reviews)[0]['status'], 'not_raised_latest')
+        reviews.append(entry('approve', []))
+        self.assertEqual(discussion.issue_ledger(reviews)[0]['status'], 'reviewer_cleared')
+
     def test_revise_then_approve_runs_real_training_with_bound_provenance(self):
         with patch.dict(os.environ, {'FOREMAN_TEST_REVIEWS':'["revise","approve"]'}):
             cid=self.create();state=self.drive(cid)
@@ -48,6 +99,8 @@ class DiscussionTests(unittest.TestCase):
         self.assertEqual([e['review']['verdict'] for e in history['reviews']],['revise','approve'])
         self.assertIn('explicit comparison',history['proposal']['review_response'])
         self.assertEqual(history['reviews'][-1]['proposal_sha256'],discussion.proposal_hash(state['rounds'][0]['decision']))
+        self.assertEqual(history['revisions'][0]['changed_fields'], ['plan'])
+        self.assertEqual(history['issues'][0]['status'], 'reviewer_cleared')
         self.assertEqual(len(state['rounds']),1)
         transcript=read_json(self.root(cid)/'discussion.json')
         self.assertEqual(transcript['completed'][0]['status'],'approved')

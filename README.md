@@ -10,6 +10,11 @@ plans stop automatically while retaining the best verified result. Discussion
 jobs preserve quota waiting, deadlines and crash recovery. The panel exposes
 criticism, proposer responses and transcript export.
 
+Incremental update: stable issue IDs track repeated criticism and suggested tests.
+Revisions that only change rhetoric or cycle back to an earlier instruction and
+plan stop with `debate_stalled`, preserving the best result and outstanding issues.
+The panel and JSON export distinguish reviewer clearance from experimental proof.
+
 ```powershell
 python -m agentforeman overnight start --project .\my-experiment --goal "Improve validation accuracy" --deadline 08:00 --review --max-reviews 2
 ```

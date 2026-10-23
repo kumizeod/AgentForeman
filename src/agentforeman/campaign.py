@@ -249,6 +249,10 @@ def write_report(root: Path, state: dict, store: Store):
         lines += ["", "## Automatic proposal review", "", "No human approval stage. Independent model sessions do not guarantee correctness."]
         for d in [*state.get("discussions", []), *([state["discussion"]] if state.get("discussion") else [])]:
             lines.append(f"Round {d['round']}: {d['status']} ({len(d['reviews'])} reviews)")
+            for issue in d.get("issues", []):
+                lines.append(f"Issue {issue['id']}: {issue['status']} — {issue['evidence']} Test/fix: {issue['suggestion']}")
+            if d.get("stall"):
+                lines.append("Discussion stopped: revision repeated an earlier instruction and plan; unresolved issues remain in discussion.json.")
             for i, entry in enumerate(d["reviews"], 1):
                 review = entry["review"]
                 lines += [f"Review {i}: {review['verdict']} — {review['summary']}",
@@ -446,6 +450,7 @@ def drive_campaign(project: Path, campaign_id: str, *, until: str | None = None,
                             entry = {"proposal": active["proposal"], "proposal_sha256": discussion.proposal_hash(active["proposal"]),
                                      "review": answer, "created_at": time.time()}
                             active["reviews"].append(entry)
+                            active["issues"] = discussion.issue_ledger(active["reviews"])
                             active["attempt"] = 0
                             if answer["verdict"] == "approve":
                                 decision = active["proposal"]
@@ -464,6 +469,13 @@ def drive_campaign(project: Path, campaign_id: str, *, until: str | None = None,
                                 active["final_response"] = answer
                                 close_discussion(state, "proposer_stop")
                                 finish(root, state, store, "proposer_stop")
+                                break
+                            progress = discussion.revision_progress(active, answer)
+                            active.setdefault("revisions", []).append(progress)
+                            if progress["repeated_proposal"]:
+                                active.update(stall=progress, final_response=answer)
+                                close_discussion(state, "debate_stalled")
+                                finish(root, state, store, "debate_stalled")
                                 break
                             active.update(proposal=answer, attempt=0)
                             state["phase"] = "review"

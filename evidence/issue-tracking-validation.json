@@ -1,0 +1,8 @@
+{
+  "date": "2026-10-23",
+  "scope": "Issue ledger, revision progress guard, stalled-debate stop and panel export",
+  "local_python": {"command": "python -m unittest discover -s tests -v", "passed": true, "tests": 99, "seconds": 119.289},
+  "local_browser": {"command": "node tests/browser/ui.cjs", "passed": true, "workflow_groups": 6, "new_assertions": ["issue ledger visible", "reviewer clearance distinguished from verification", "changed plan field recorded", "stable issue ID preserved in JSON download"]},
+  "coverage": ["unchanged revision stops without extra review or candidate worker", "completed stalled campaign resumes without restarting debate", "whitespace and rhetoric do not count as progress", "return to previously reviewed plan detected", "real plan change remains eligible for review", "repeated concerns retain identity and occurrence history", "omitted concern is not silently resolved", "existing quota, recovery, training, external verification and archive tests pass"],
+  "disclosure": "Model and quota replies use explicit fixtures; training, independent checkpoint validation, native process recovery and archive downloads execute for real. No new live model-quality or subscription-reset claim. This incremental change has local Linux validation; the previous v0.7 native CI evidence is separately pinned to c7d8982. Structural repetition detection does not detect all semantic paraphrases. Reviewer clearance is not experimental proof."
+}

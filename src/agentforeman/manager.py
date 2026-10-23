@@ -58,6 +58,9 @@ A failed or worse experiment is evidence, not permission to repeat it indefinite
         if feedback is not None:
             prompt += "Read review_feedback in evidence.json, revise the previous proposal, and explicitly respond to its criticism. "
             prompt += "You may choose stop when the plan is not defensible. Never claim unrun experiment results.\n"
+            prompt += "Address issue IDs from review_feedback. Change the executable instruction or experiment plan, "
+            prompt += "not only rationale/review_response. Unchanged or cycling proposals stop automatically. "
+            prompt += "For unresolved claims, propose a concrete falsification test; do not imply that it has run.\n"
     # A separate CLI session and read-only sandbox keep planning apart from coding.
     settings = {**state["config"]["codex"], **state["config"].get("manager", {})}
     return json_spec(control, context, prompt, schema, settings, sandbox="read-only")

@@ -45,11 +45,16 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
   assert((await page.locator('#detail-content').innerText()).includes('要求修改'));
   assert((await page.locator('#detail-content').innerText()).includes('批准执行'));
   assert((await page.locator('#detail-content').innerText()).includes('提案者回应'));
+  assert((await page.locator('#detail-content').innerText()).includes('待验证问题'));
+  assert((await page.locator('#detail-content').innerText()).includes('审查者认为已解决'));
   const reviewed=await request('/api/campaigns/'+cid);
   assert.equal(reviewed.discussions[0].reviews.length,2);
+  assert.equal(reviewed.discussions[0].issues[0].status,'reviewer_cleared');
+  assert.deepEqual(reviewed.discussions[0].revisions[0].changed_fields,['plan']);
   const [reviewDownload]=await Promise.all([page.waitForEvent('download'),page.locator('[data-action=discussion-download]').click()]);
   const reviewPath=path.join(output,'discussion-export.json');await reviewDownload.saveAs(reviewPath);
   assert.equal(JSON.parse(fs.readFileSync(reviewPath,'utf8')).completed[0].reviews.length,2);
+  assert.equal(JSON.parse(fs.readFileSync(reviewPath,'utf8')).completed[0].issues[0].id,reviewed.discussions[0].issues[0].id);
   completed.push('Automatic reviewer criticism, proposer revision and approval are visible in the panel');
   await page.locator('[data-detail-tab=logs]').click();await page.locator('#log-output').filter({hasText:'baseline_train'}).waitFor();
   await page.locator('#log-kind').selectOption('worker');await page.locator('#log-output').filter({hasText:'stdout.log'}).waitFor();

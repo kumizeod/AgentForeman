@@ -4,6 +4,33 @@ A proposer and a reviewer now use separate read-only Codex sessions before a
 coding worker can execute a candidate. There is **no human approval stage**.
 The controller owns the budget, transitions, execution and independent verifier.
 
+## Incremental update: issue tracking and stalled debate detection
+
+Every review now derives an issue ledger with stable SHA-256 identifiers from
+whitespace-normalized evidence and suggestions. Repeated issues retain their
+first/last review and occurrence numbers. Severity changes do not change the ID.
+The ledger is passed to both roles, saved in `discussion.json`, included in the
+report, and displayed/exported in the panel. Existing saved campaigns remain
+readable; the next review reconstructs the ledger from their receipts.
+
+Statuses distinguish **open**, **not_raised_latest**, and **reviewer_cleared**.
+Omission from a later revision request is not resolution. An approval can record
+that the reviewer cleared an earlier issue; this is a model judgment, never proof
+that a suggested experiment ran. Evidence and suggested tests remain available.
+
+Before another review, the controller compares the revised action, instruction,
+source round references and structured plan with all previously reviewed proposals.
+Whitespace changes, rationale and review_response alone do not count as progress.
+An unchanged or cycling proposal ends the campaign with `debate_stalled`, preserves
+the best verified result, final response and outstanding issues, and allocates no
+candidate worker or extra reviewer job. Changed fields and proposal hashes are
+recorded in `revisions`. The existing review and deadline limits still apply.
+
+This first guard detects structural repetition, not semantic paraphrases. A wording
+change may evade it, and a changed plan is not necessarily a better one. There is
+no new literature search, automatic dispute experiment, Claude adapter, council
+vote, or human decision gate in this incremental update.
+
 ## Use from the panel or CLI
 
 Start the existing local panel and submit a new overnight task:
