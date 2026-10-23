@@ -152,8 +152,13 @@ def main(argv: list[str] | None = None) -> int:
                 p.add_argument("--retry-failed", action="store_true")
     from .pool_cli import add_parser as add_pool_parser
     add_pool_parser(sub)
+    from .council_cli import add_parser as add_council_parser
+    add_council_parser(sub)
     args = parser.parse_args(argv)
     try:
+        if args.command == "council":
+            from .council_cli import run
+            return run(args)
         if args.command == "pool":
             from .pool_cli import run
             return run(args)

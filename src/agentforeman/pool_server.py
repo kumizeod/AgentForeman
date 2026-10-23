@@ -1,6 +1,7 @@
 """Worker-only HTTP surface. Administration stays local through the CLI."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import threading
 
 from .pool import Pool
 
@@ -12,6 +13,23 @@ class PoolServer(ThreadingHTTPServer):
     def __init__(self, project, host='127.0.0.1', port=8770):
         self.pool = Pool(project)
         super().__init__((host,port), Handler)
+        self.pump_stop = threading.Event()
+        self.pump = threading.Thread(target=self.advance_councils,daemon=True)
+        self.pump.start()
+
+    def advance_councils(self):
+        from .council import Council
+        council = Council(self.pool.root.parent)
+        while not self.pump_stop.wait(1):
+            try:
+                council.advance_all()
+            except Exception:
+                pass  # SQLite/immutable receipts allow safe resumption on next tick.
+
+    def server_close(self):
+        self.pump_stop.set()
+        self.pump.join(timeout=16)
+        super().server_close()
 
 
 class Handler(BaseHTTPRequestHandler):

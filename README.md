@@ -2,6 +2,19 @@
 
 **Assign Codex an experiment tonight. Wait through quota resets without model calls. Review verified results tomorrow.**
 
+## Shared overnight council (v0.8)
+
+Pool your group's member-owned Codex workers and API workers: **independent answers
+→ anonymous non-self peer review → Claude chair synthesis → independent audit**.
+Each member keeps their local login; the coordinator stores worker-token hashes,
+leases and task receipts. Quota cooldown, alternate eligible members, local night
+windows and crash recovery are supported. No human approval stage is added.
+
+[Setup the worker pool](docs/WORKER_POOL.md) · [Run a council and inspect quality gates](docs/COUNCIL.md).
+Model agreement is not verification; reports preserve source gaps, unresolved
+findings and unexecuted tests. This is a candidate-answer workflow, not a promise
+of correct novelty claims or distributed GPU training.
+
 ## Automatic proposal review (v0.7)
 
 New tasks can run **proposal → independent review → revision → approved execution**,
