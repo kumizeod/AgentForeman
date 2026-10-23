@@ -6,3 +6,12 @@ body{margin:0;font:14px/1.55 var(--font-ui);color:var(--ink);background:var(--bo
 .taskSelect{border:0;background:none;padding:0;text-align:left;display:block;justify-content:start}.taskSelect:hover{background:none;color:var(--brand)}.waitBox{margin-top:14px}
 
 .field select{border:1px solid var(--line);border-radius:8px;background:var(--bg-0);color:var(--ink);padding:8px}.reviewRecord{padding:12px 0;border-bottom:1px solid var(--line)}.reviewRecord h3{font-size:12px}.discussionPlan{font-size:11px;padding:8px;background:var(--bg-1);border-radius:8px;margin:8px 0}.discussionPlan p{font-size:11px}.reviewRecord .infoBox{margin:8px 0;font-size:11px}.detailTabs{flex-wrap:wrap}
+
+/* Member-owned council workspace. */
+#view-council .surface{margin-bottom:20px}
+#view-council .accountListPanel,#view-council .accountDetailPanel{padding:18px}
+.councilSelect{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;margin:8px 0;white-space:normal;overflow-wrap:anywhere}
+#council-detail pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:480px;overflow:auto}
+#council-detail details{margin:16px 0}
+#pool-members .statCard strong{font-size:18px;overflow-wrap:anywhere}
+#pool-members .statCard span{white-space:normal}

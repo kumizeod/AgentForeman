@@ -16,6 +16,7 @@
     <button class="brandLine homeLink" type="button" id="home"><span class="appLogo mark">AF</span><span><h1>AgentForeman</h1><small>OVERNIGHT EXPERIMENTS</small></span></button>
     <nav class="topSegmentedNav" aria-label="主导航">
       <button class="topSegmentedButton isActive" data-view="tasks" aria-pressed="true">实验调度</button>
+      <button class="topSegmentedButton" data-view="council" aria-pressed="false">共享委员会</button>
       <button class="topSegmentedButton" data-view="usage" aria-pressed="false">额度管理</button>
       <button class="topSegmentedButton" data-view="analytics" aria-pressed="false">用量统计</button>
       <button class="topSegmentedButton" data-view="settings" aria-pressed="false">环境设置</button>
@@ -37,6 +38,12 @@
         <aside class="accountDetailPanel" id="detail" aria-label="任务详情"><div class="emptyState"><span class="emptyIcon" data-icon="info"></span><h3>选择一个实验</h3><p>查看阶段、日志、决策和验证结果。</p></div></aside>
       </div>
       <div class="bottomNote">关闭浏览器不影响已启动的后台实验。请保持电脑唤醒；额度等待不调用模型。</div>
+    </div>
+    <div id="view-council" class="page" hidden>
+      <div class="pageHeading"><div><div class="eyebrow">SHARED OVERNIGHT COUNCIL</div><h2>把闲置时间，交给一个共同问题。</h2><p>独立探索 · 匿名互评 · Claude 主席综合 · 独立审查</p></div></div>
+      <section class="surface"><h3>共享节点</h3><p class="muted">成员在自己的电脑上登录并运行 worker；账号凭据不上传。节点注册通过本机 CLI 完成。</p><div id="pool-members" class="statsGrid"></div></section>
+      <section class="surface"><h3>布置委员会任务</h3><form id="council-form"><label class="field">研究问题<textarea name="question" rows="3" required maxlength="16000" placeholder="说明目标、约束和需要检验的问题"></textarea></label><div class="formGrid"><label class="field">探索成员（至少选择 2 位）<select id="council-members" name="members" multiple required size="4"></select></label><label class="field">主席节点（单独注册的 Claude/API worker）<select id="council-chair" name="chair" required></select></label></div><div class="formGrid"><label class="field">总预算（小时）<input name="budget_hours" type="number" value="8" min="1" max="168" required></label><label class="field">每阶段等待（分钟）<input name="stage_minutes" type="number" value="30" min="1" max="1440" required></label></div><label class="field">证据目录 JSON（可选）<textarea name="sources" rows="2" placeholder='[{"id":"S1","title":"论文标题","url":"https://…","excerpt":"核对过的相关内容"}]'></textarea></label><p class="muted">需另行运行 pool serve 及各节点 worker。来源内容由你提供；模型共识和投票不等于已验证。缺少证据会明确标为待补证据。</p><button type="submit" id="submit-council" class="primary">提交到共享节点</button></form></section>
+      <div class="accountsWorkspace taskWorkspace"><section class="accountListPanel"><h3>委员会任务</h3><div id="council-list"></div></section><section class="accountDetailPanel" id="council-detail"><p class="muted">选择任务，查看独立答案、评议、主席结论和证据缺口。</p></section></div>
     </div>
     <div id="view-usage" class="page" hidden><div class="pageHeading"><div><div class="eyebrow">CODEX QUOTA</div><h2>额度管理</h2><p>分别查看 manager 和 worker 的额度窗口与重置时间。</p></div><button id="refresh-quota" class="primary"><span data-icon="refresh"></span> 读取最新额度</button></div><div id="quota-cards" class="quotaGrid"></div><div class="infoBox">日常刷新只读取缓存。点击“读取最新额度”才会请求官方只读元数据，不启动模型任务。过期缓存和未知余量会明确标注。</div></div>
     <div id="view-analytics" class="page" hidden><div class="pageHeading"><div><div class="eyebrow">OBSERVED USAGE</div><h2>用量统计</h2><p>基于本项目真实 CLI 日志；没有上报的数据保持未知。</p></div><button id="export-stats">下载统计 JSON</button></div><div id="stats-cards" class="statsGrid"></div><section class="surface"><h3>按职责统计</h3><div id="role-stats"></div></section><div class="infoBox">缓存输入属于输入 Token 的一部分，不重复相加。Token 数不能换算成订阅额度百分比或 API 账单。</div></div>

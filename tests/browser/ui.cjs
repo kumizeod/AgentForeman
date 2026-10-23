@@ -14,6 +14,8 @@ execFileSync(python, ['-c', `from agentforeman.cli import init_demo
 from pathlib import Path
 import json,sys
 p=Path(sys.argv[1]); init_demo(p)
+from agentforeman.pool import Pool
+for member in ('member-a','member-b','claude-chair'): Pool(p).register(member,(member+'-')*8)
 c=p/'foreman.toml'; c.write_text(c.read_text().replace('executable = "codex"','executable = '+json.dumps(sys.argv[2])))`,project,path.join(root,'tests/fixture_campaign.py')], {cwd:root});
 const child=spawn(python,['-m','agentforeman','ui','--project',project,'--port','0','--no-open'],{cwd:root,stdio:['ignore','pipe','pipe'],env:{...process.env,FOREMAN_TEST_REVIEWS:'["revise","approve"]'}});
 let browser, page, capability, origin, cid, waitingCid;
@@ -92,6 +94,28 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
   await page.locator('[data-action=stop]').click();await until(async()=>(await request('/api/campaigns/'+waitingCid)).status==='completed','UI stop');
   completed.push('Light/dark/mobile layout; killed-controller UI resume and durable quota-wait stop');
   assert.deepEqual(failures,[]);
+  await page.locator('[data-view=council]').click();
+  assert((await page.locator('#pool-members').innerText()).includes('member-a'));
+  await page.locator('#council-form [name=question]').fill('TEST ONLY council <img src=x onerror="window.councilInjected=true">');
+  await page.locator('#council-members').selectOption(['member-a','member-b']);
+  await page.locator('#council-chair').selectOption('claude-chair');
+  await page.locator('#submit-council').click();
+  let councilId;
+  await until(async()=>{const r=await request('/api/councils');councilId=r.councils[0]?.id;return !!councilId;},'council form creates durable tasks');
+  execFileSync(python,[path.join(root,'tests/run_council_fixture.py'),project,councilId],{cwd:root,timeout:45000});
+  await page.locator('#refresh').click();
+  await until(async()=>(await page.locator('#council-detail').innerText()).includes('待补证据'),'council final needs-evidence status');
+  assert((await page.locator('#council-detail').innerText()).includes('TEST ONLY chair recommends'));
+  assert.equal(await page.evaluate(()=>window.councilInjected),undefined);
+  const [councilDownload]=await Promise.all([page.waitForEvent('download'),page.locator('[data-council-action=export]').click()]);
+  const councilPath=path.join(output,'council-export.json');await councilDownload.saveAs(councilPath);
+  const councilTranscript=JSON.parse(fs.readFileSync(councilPath,'utf8'));
+  assert.equal(councilTranscript.status,'needs_evidence');
+  assert.equal(councilTranscript.stages.explore.length,2);
+  assert.equal(councilTranscript.stages.peer_review.length,2);
+  assert.equal(councilTranscript.stages.audit.length,1);
+  assert.equal(councilTranscript.quality.factual_correctness_verified,false);
+  completed.push('Council form, three HTTP pull workers, native supervised fixtures, anonymous review, chair, audit and transcript export; missing sources remain needs_evidence');
   fs.writeFileSync(path.join(output,'browser-summary.json'),JSON.stringify({passed:true,checks:completed,page_errors:failures,disclosure:'TEST-ONLY Codex planner/editor/metadata fixtures. Training, checkpoint verification, process restart and archive replay are real.'},null,2));
   console.log(JSON.stringify({passed:true,checks:completed,output},null,2));
 })().catch(async error=>{console.error(error);if(page)await page.screenshot({path:path.join(output,'failure.png')}).catch(()=>{});process.exitCode=1;}).finally(async()=>{

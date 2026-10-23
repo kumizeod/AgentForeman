@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-23",
+  "local_tests": {
+    "passed": true,
+    "tests": 116,
+    "seconds": 118.734
+  },
+  "browser": {
+    "passed": true,
+    "checks": [
+      "Empty state, capability handoff and authenticated local sync",
+      "Form submission drives real train/independent verify; untrusted goal is escaped",
+      "Automatic reviewer criticism, proposer revision and approval are visible in the panel",
+      "Actual controller/worker logs, report, events and verified archive download",
+      "Search/filter and quota/statistics/diagnostics pages use real APIs",
+      "Light/dark/mobile layout; killed-controller UI resume and durable quota-wait stop",
+      "Council form, three HTTP pull workers, native supervised fixtures, anonymous review, chair, audit and transcript export; missing sources remain needs_evidence"
+    ],
+    "page_errors": [],
+    "disclosure": "TEST-ONLY Codex planner/editor/metadata fixtures. Training, checkpoint verification, process restart and archive replay are real."
+  },
+  "scope": "Member-owned pool, council and local panel",
+  "disclosure": "CLI models and API replies use explicit fixtures/mocks. SQLite, HTTP authentication, concurrent leases, native supervised workers, recovery, real demo training/verifier and archive download run for real. No live shared logins, paid Claude call, actual overnight reset or measured answer-quality gain is claimed."
+}

@@ -184,6 +184,19 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(403, {"error": "Open the complete console URL printed in your terminal."})
             if path == "/api/overview":
                 result = self.server.overview()
+            elif path == "/api/pool":
+                if not (self.server.project / ".foreman" / "pool.sqlite3").exists():
+                    result = {"members": [], "tasks": []}
+                else:
+                    from .pool import Pool
+                    pool = Pool(self.server.project)
+                    result = {"members": pool.members(), "tasks": [{k: t[k] for k in ("id", "group_id", "stage", "status", "member", "attempts", "deadline")} for t in pool.tasks()]}
+            elif path == "/api/councils":
+                from .council import Council
+                result = {"councils": Council(self.server.project).list()} if (self.server.project / ".foreman" / "councils").exists() else {"councils": []}
+            elif match := re.fullmatch(r"/api/councils/([0-9a-f]{12})", path):
+                from .council import Council
+                result = Council(self.server.project).get(match[1])
             elif path == "/api/stats":
                 result = statistics(self.server.project)
             elif path == "/api/diagnostics":
@@ -217,7 +230,7 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 return self.send(404, {"error": "Unknown API route"})
             self.send(200, result)
-        except (ValueError, OSError, RuntimeError, sqlite3.Error) as exc:
+        except (ValueError, TypeError, KeyError, OSError, RuntimeError, sqlite3.Error) as exc:
             self.send(400, {"error": str(exc)})
 
     def do_POST(self):
@@ -236,6 +249,20 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Expected a JSON object")
             with self.server.actions:
                 path = urlsplit(self.path).path
+                if path == "/api/councils":
+                    from .council import Council
+                    allowed = {"question", "members", "chair", "sources", "budget_seconds", "stage_seconds", "min_answers"}
+                    if set(body)-allowed:
+                        raise ValueError("Unknown council setting")
+                    council = Council(self.server.project)
+                    cid = council.create(**body)
+                    return self.send(201, {"id": cid})
+                if match := re.fullmatch(r"/api/councils/([0-9a-f]{12})/(stop|advance)", path):
+                    from .council import Council
+                    council = Council(self.server.project)
+                    if match[2] == "stop":
+                        atomic_text(council.path(match[1]) / "stop.request", "stop\n")
+                    return self.send(200, council.advance(match[1]))
                 if path == "/api/campaigns":
                     return self.send(201, self.server.submit(body))
                 if path == "/api/usage":
@@ -258,7 +285,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError("retry_failed must be boolean")
                 receipt = launch(self.server.project, cid, retry_failed=retry)
                 return self.send(200, {"id": cid, "controller": {k: receipt.get(k) for k in ("status", "started_at")}})
-        except (ValueError, OSError, RuntimeError, sqlite3.Error) as exc:
+        except (ValueError, TypeError, KeyError, OSError, RuntimeError, sqlite3.Error) as exc:
             self.send(400, {"error": str(exc)})
 
 

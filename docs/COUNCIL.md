@@ -43,6 +43,15 @@ quorum ends with `incomplete`, not an invented consensus. A stage can use a part
 quorum after its timeout. One unavailable member cannot stall forever. Global
 budget expiry also stops transitions.
 
+## Local panel
+
+Start `python -m agentforeman ui --project .\my-experiment` and open **共享委员会**.
+It shows registered members, last-seen state and quota cooldown, accepts questions,
+member selection, a separate chair and an optional source catalog, and displays
+independent answers, peer reviews, final answer, audit and JSON export. Stop blocks
+future stages. Registration and credentials remain local CLI/environment operations.
+The panel does not replace `pool serve` or launch remote workers by itself.
+
 ## Sources and quality gates
 
 Supply a JSON evidence catalog with `--sources sources.json`, for example:

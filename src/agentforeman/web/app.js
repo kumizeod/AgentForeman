@@ -124,8 +124,8 @@ async function settings() {
 async function navigate(view) {
   state.view=view;
   document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('isActive',b.dataset.view===view);b.setAttribute('aria-pressed',String(b.dataset.view===view));});
-  ['tasks','usage','analytics','settings'].forEach(v=>$('#view-'+v).hidden=v!==view);
-  try { if (view==='analytics') await analytics(); if (view==='settings') await settings(); } catch(e) {showError(e.message);}
+  ['tasks','council','usage','analytics','settings'].forEach(v=>$('#view-'+v).hidden=v!==view);
+  try { if (view==='council') await refreshCouncil(); if (view==='analytics') await analytics(); if (view==='settings') await settings(); } catch(e) {showError(e.message);}
 }
 async function refresh() {
   if (state.loading) return;
@@ -137,6 +137,7 @@ async function refresh() {
     if (!state.selected && state.overview.campaigns.length) state.selected=state.overview.campaigns[0].id;
     if (state.selected) {rows(); await refreshDetail();}
     if (state.view==='analytics') await analytics();
+    if (state.view==='council') await refreshCouncil();
     $('#error').hidden=true;
   } catch(e) {showError(e.message); $('#sync').textContent='连接中断 · 数据可能已过期';}
   finally {state.loading=false; $('#refresh').disabled=false;}
@@ -191,3 +192,32 @@ document.addEventListener('click',async event=>{
 });
 async function poll(){if(!document.hidden)await refresh();setTimeout(poll,5000);}
 poll();
+
+const councilStatus={running:'运行中',completed_candidate:'候选答案已完成',needs_evidence:'待补证据',rejected:'审查否决',incomplete:'未完成',stopped:'已停止'};
+const councilStage={explore:'独立探索',peer_review:'匿名互评',synthesize:'主席综合',audit:'独立审查'};
+let councilSelected=null, councilDetail=null, councilMemberKey='';
+async function refreshCouncil() {
+  const [pool,list]=await Promise.all([api('/api/pool'),api('/api/councils')]);
+  $('#pool-members').innerHTML=pool.members.map(m=>`<div class="statCard"><strong>${esc(m.id)}</strong><span>${!m.enabled?'已禁用':m.not_before>Date.now()/1000?'额度冷却至 '+date(m.not_before):m.last_seen>Date.now()/1000-60?'在线':'未连接或离线'}</span><small>${esc(m.description)}</small></div>`).join('')||'<p class="muted">尚无节点。先用 pool register 注册成员，再在成员机器上运行 pool worker。</p>';
+  const key=pool.members.map(m=>m.id+':'+m.enabled).join(',');
+  if(key!==councilMemberKey){councilMemberKey=key;const options=pool.members.filter(m=>m.enabled).map(m=>`<option value="${esc(m.id)}">${esc(m.id)}</option>`).join('');$('#council-members').innerHTML=options;$('#council-chair').innerHTML='<option value="">选择主席节点</option>'+options;}
+  $('#council-list').innerHTML=list.councils.map(c=>`<button class="councilSelect" data-council="${esc(c.id)}"><strong>${esc(c.question)}</strong><small>${esc(councilStatus[c.status]||c.status)} · ${esc(councilStage[c.stage]||c.stage)} · ${esc(c.id)}</small></button>`).join('')||'<p class="muted">尚无委员会任务。</p>';
+  if(!councilSelected&&list.councils.length)councilSelected=list.councils[0].id;
+  if(councilSelected)await selectCouncil(councilSelected);
+}
+async function selectCouncil(cid){
+  councilSelected=cid;
+  const c=await api('/api/councils/'+cid);if(councilSelected!==cid)return;councilDetail=c;
+  const final=c.stages.synthesize?.[0]?.result,audit=c.stages.audit?.[0]?.result;
+  $('#council-detail').innerHTML=`<h3>${esc(c.question)}</h3><p>${esc(councilStatus[c.status]||c.status)} · ${esc(councilStage[c.stage]||c.stage)}</p><p class="muted">截止 ${date(c.deadline)} · 主席 ${esc(c.chair)}</p><div class="detailActions"><button data-council-action="export">导出完整记录</button><button data-council-action="stop" ${c.status==='running'?'':'disabled'}>停止后续阶段</button></div><div class="infoBox">模型共识不等于事实核验。下列实验建议尚未执行。</div>${final?`<h3>主席答案</h3><pre>${esc(final.answer)}</pre><h3>待验证问题</h3><pre>${esc(JSON.stringify({unresolved:final.unresolved,experiments:final.experiments,finding_responses:final.finding_responses},null,2))}</pre>`:'<p>正在等待各节点按阶段提交结果。</p>'}${audit?`<h3>独立审查</h3><pre>${esc(JSON.stringify(audit,null,2))}</pre>`:''}<h3>质量检查</h3><pre>${esc(JSON.stringify(c.quality,null,2))}</pre>${['explore','peer_review'].map(stage=>`<details><summary>${councilStage[stage]} · ${(c.stages[stage]||[]).length} 份</summary><pre>${esc(JSON.stringify(c.stages[stage]||[],null,2))}</pre></details>`).join('')}${c.stop_reason?`<p>结束原因：${esc(c.stop_reason)}</p>`:''}`;
+}
+$('#council-form').onsubmit=async event=>{
+  event.preventDefault();const b=$('#submit-council');if(b.disabled)return;b.disabled=true;
+  try{const f=new FormData(event.currentTarget);const result=await api('/api/councils',{question:f.get('question'),members:f.getAll('members'),chair:f.get('chair'),sources:JSON.parse(f.get('sources')||'[]'),budget_seconds:Number(f.get('budget_hours'))*3600,stage_seconds:Number(f.get('stage_minutes'))*60});councilSelected=result.id;notice('委员会任务已保存：'+result.id+'。已连接的 worker 会自动领取。');await refreshCouncil();}
+  catch(e){showError(e.message);}finally{b.disabled=false;}
+};
+document.addEventListener('click',async event=>{
+  const b=event.target.closest('button');if(!b||b.disabled)return;
+  try{if(b.dataset.council)await selectCouncil(b.dataset.council);if(b.dataset.councilAction==='export')await download(null,'council-'+councilSelected+'.json',councilDetail);if(b.dataset.councilAction==='stop'){await api('/api/councils/'+councilSelected+'/stop',{});await refreshCouncil();}}
+  catch(e){showError(e.message);}
+});
