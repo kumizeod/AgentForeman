@@ -150,8 +150,13 @@ def main(argv: list[str] | None = None) -> int:
                     p.add_argument("--no-quota-probe", action="store_true", help="Disable model-free app-server quota metadata lookup")
             if name == "resume":
                 p.add_argument("--retry-failed", action="store_true")
+    from .pool_cli import add_parser as add_pool_parser
+    add_pool_parser(sub)
     args = parser.parse_args(argv)
     try:
+        if args.command == "pool":
+            from .pool_cli import run
+            return run(args)
         if args.command == "init":
             init_demo(args.path.expanduser().resolve())
             return 0

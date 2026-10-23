@@ -1,0 +1,10 @@
+[worker]
+coordinator = "http://127.0.0.1:8770"
+state_dir = "chair-state"
+token_env = "FOREMAN_CHAIR_TOKEN"
+provider = "anthropic"
+key_env = "ANTHROPIC_API_KEY"
+# Replace with the most capable Claude model available to your API account.
+model = "REPLACE_WITH_YOUR_CLAUDE_MODEL_ID"
+timeout_seconds = 600
+max_output_tokens = 8192
