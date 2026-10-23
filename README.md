@@ -17,6 +17,10 @@ python -m agentforeman overnight start --project .\my-experiment --goal "Improve
 The initial implementation uses separate Codex CLI sessions, with optional
 `[manager]` / `[reviewer]` model overrides. [Automatic review guide](docs/AUTOMATIC_REVIEW.md).
 
+Validation at `c7d8982`: **all nine native jobs passed 96 tests each**, and the
+browser job passed its six workflow checks. [CI results](https://github.com/kumizeod/AgentForeman/actions/runs/39967197118)
+· [Machine-readable evidence and fixture disclosure](evidence/review-ci.json).
+
 ## Local control panel (v0.6)
 
 The graphical panel is implemented, reusing actual MIT-licensed

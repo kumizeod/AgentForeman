@@ -1,0 +1,98 @@
+{
+  "version": "0.7.0",
+  "reviewed_at": "2026-10-23",
+  "commit": "c7d89825ee40f7506622423f1ea377f088469f02",
+  "workflow_run": 39967197118,
+  "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39967197118",
+  "native_tests_per_job": 96,
+  "browser_checks": 6,
+  "jobs": [
+    {
+      "name": "browser",
+      "job_id": 120460045825,
+      "conclusion": "success",
+      "browser_checks": 6,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39967197118/job/120460045825"
+    },
+    {
+      "name": "test (ubuntu-latest, 3.13)",
+      "job_id": 120460046257,
+      "conclusion": "success",
+      "tests": 96,
+      "seconds": 117.241,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39967197118/job/120460046257"
+    },
+    {
+      "name": "test (macos-latest, 3.13)",
+      "job_id": 120460046281,
+      "conclusion": "success",
+      "tests": 96,
+      "seconds": 172.317,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39967197118/job/120460046281"
+    },
+    {
+      "name": "test (windows-latest, 3.13)",
+      "job_id": 120460046298,
+      "conclusion": "success",
+      "tests": 96,
+      "seconds": 129.69,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39967197118/job/120460046298"
+    },
+    {
+      "name": "test (ubuntu-latest, 3.12)",
+      "job_id": 120460046306,
+      "conclusion": "success",
+      "tests": 96,
+      "seconds": 115.105,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39967197118/job/120460046306"
+    },
+    {
+      "name": "test (macos-latest, 3.12)",
+      "job_id": 120460046519,
+      "conclusion": "success",
+      "tests": 96,
+      "seconds": 197.663,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39967197118/job/120460046519"
+    },
+    {
+      "name": "test (windows-latest, 3.12)",
+      "job_id": 120460046561,
+      "conclusion": "success",
+      "tests": 96,
+      "seconds": 134.614,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39967197118/job/120460046561"
+    },
+    {
+      "name": "test (ubuntu-latest, 3.11)",
+      "job_id": 120460046593,
+      "conclusion": "success",
+      "tests": 96,
+      "seconds": 132.801,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39967197118/job/120460046593"
+    },
+    {
+      "name": "test (macos-latest, 3.11)",
+      "job_id": 120460046649,
+      "conclusion": "success",
+      "tests": 96,
+      "seconds": 165.606,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39967197118/job/120460046649"
+    },
+    {
+      "name": "test (windows-latest, 3.11)",
+      "job_id": 120460046359,
+      "conclusion": "success",
+      "tests": 96,
+      "seconds": 209.183,
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/39967197118/job/120460046359"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 12507895983,
+      "name": "web-ui-browser-evidence",
+      "size_in_bytes": 431153
+    }
+  ],
+  "disclosure": "Proposer/reviewer/editor/quota replies use explicit test-only fixtures. Actual CSV training, external checkpoint validation, HTTP panel actions, durable process recovery, transcript export and replay archive download/validation execute for real. No human approval stage; no Claude CLI integration or live model-quality guarantee."
+}
