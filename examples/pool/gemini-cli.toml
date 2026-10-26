@@ -1,0 +1,9 @@
+[worker]
+coordinator = "http://127.0.0.1:8770"
+state_dir = "gemini-cli-state"
+token_env = "FOREMAN_GEMINI_WORKER_TOKEN"
+provider = "gemini-cli"
+timeout_seconds = 600
+active_hours = "22:00-08:00"
+# model = "model-available-to-this-local-Gemini-login"
+# Windows npm: command = ["node", "C:/path/to/@google/gemini-cli/dist/index.js"]

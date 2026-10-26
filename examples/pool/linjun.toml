@@ -1,0 +1,11 @@
+# Point to your already-running, locally authorized LinJun/CLIProxyAPI instance.
+[worker]
+coordinator = "http://127.0.0.1:8770"
+state_dir = "linjun-api-state"
+token_env = "FOREMAN_PROXY_WORKER_TOKEN"
+provider = "openai-compatible"
+base_url = "http://127.0.0.1:8310/v1"
+key_env = "LINJUN_API_KEY"
+model = "REPLACE_WITH_MODEL_ALIAS_FROM_YOUR_PROXY"
+timeout_seconds = 600
+max_output_tokens = 8192

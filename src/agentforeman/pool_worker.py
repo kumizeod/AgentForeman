@@ -37,7 +37,7 @@ def load_worker(path):
     data['coordinator'] = data['coordinator'].rstrip('/')
     data.setdefault('provider','codex');data.setdefault('timeout_seconds',600)
     data.setdefault('token_env','FOREMAN_WORKER_TOKEN')
-    if data['provider'] not in {'codex','anthropic','openai-compatible'}:
+    if data['provider'] not in {'codex','claude-code','gemini-cli','anthropic','openai-compatible'}:
         raise ValueError('Unknown worker provider')
     if type(data['timeout_seconds']) not in {int,float} or not math.isfinite(data['timeout_seconds']) or not 1<=data['timeout_seconds']<=7200:
         raise ValueError('Worker timeout must be between 1 and 7200 seconds')
@@ -46,7 +46,7 @@ def load_worker(path):
             raise ValueError('Invalid credential environment variable name')
     if 'command' in data and (not isinstance(data['command'],list) or not data['command'] or any(not isinstance(x,str) or not x for x in data['command'])):
         raise ValueError('Worker command must be an argument list')
-    if data['provider']!='codex' and not data.get('model'):
+    if data['provider'] in {'anthropic','openai-compatible'} and not data.get('model'):
         raise ValueError('Choose an explicit API model available to your account')
     if type(data.get('max_output_tokens',4096)) is not int or not 128<=data.get('max_output_tokens',4096)<=32000:
         raise ValueError('max_output_tokens must be 128..32000')
@@ -149,6 +149,9 @@ class Worker:
                 if self.settings['provider']=='codex':
                     context = folder/'context';context.mkdir(exist_ok=True)
                     spec = json_spec(folder,context,task['request']['prompt'],task['request']['schema'],self.settings,sandbox='read-only')
+                elif self.settings['provider'] in {'claude-code','gemini-cli'}:
+                    from .agents import make_spec
+                    spec=make_spec(folder,folder/'context',task['request'],self.settings)
                 else:
                     # Only environment variable names, never their secret values.
                     settings_path = folder/'provider.json'
@@ -158,7 +161,11 @@ class Worker:
                 spec.update(timeout_seconds=timeout,deadline_at=task['deadline'])
             receipt = wait_for_job(job,spec)
             if receipt['exit_code']==0 and not any(receipt[k] for k in ('error','cancelled','timed_out')):
-                answer = validate(read_json(folder/'answer.json'),task['request']['schema'])
+                if self.settings['provider'] in {'claude-code','gemini-cli'}:
+                    from .agents import read_answer
+                    answer=read_answer(job,folder,task['request'],self.settings['provider'])
+                else:
+                    answer = validate(read_json(folder/'answer.json'),task['request']['schema'])
                 return {'outcome':'success','result':answer,'retry_at':None}
             quota = classify(job,receipt) if self.settings['provider']=='codex' else None
             if quota:

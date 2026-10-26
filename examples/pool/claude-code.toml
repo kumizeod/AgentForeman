@@ -1,0 +1,9 @@
+[worker]
+coordinator = "http://127.0.0.1:8770"
+state_dir = "claude-code-state"
+token_env = "FOREMAN_CLAUDE_WORKER_TOKEN"
+provider = "claude-code"
+timeout_seconds = 600
+active_hours = "22:00-08:00"
+# model = "model-available-to-this-local-Claude-login"
+# command = ["C:/path/to/claude.exe"]

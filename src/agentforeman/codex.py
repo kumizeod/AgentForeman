@@ -21,7 +21,7 @@ SCHEMA = {
 }
 
 
-def resolve_command(config: dict) -> list[str]:
+def resolve_command(config: dict, *, npm_package="@openai/codex", bin_name="codex") -> list[str]:
     """Resolve native binaries or npm's Windows shim without cmd.exe parsing."""
     prefix = config.get("command") or [config.get("executable", "codex")]
     first = Path(prefix[0]).expanduser()
@@ -32,12 +32,12 @@ def resolve_command(config: dict) -> list[str]:
         raise ValueError("Codex CLI not found. Install @openai/codex, run codex login, then resume this run.")
     path = Path(found)
     if sys.platform == "win32" and path.suffix.lower() in {".cmd", ".bat"}:
-        package = path.parent / "node_modules" / "@openai" / "codex"
+        package = path.parent / "node_modules" / npm_package
         manifest = package / "package.json"
         if manifest.is_file():
             metadata = json.loads(manifest.read_text(encoding="utf-8"))
             entry = metadata.get("bin", {})
-            entry = entry.get("codex") if isinstance(entry, dict) else entry
+            entry = entry.get(bin_name) if isinstance(entry, dict) else entry
             script = (package / entry).resolve() if isinstance(entry, str) else None
             if script and script.is_file() and script.is_relative_to(package.resolve()):
                 node = shutil.which("node")

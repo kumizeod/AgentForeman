@@ -11,7 +11,7 @@ from .pool import Pool
 def add_parser(sub):
     parser = sub.add_parser('pool',help='Member-owned Codex/API worker pool')
     actions = parser.add_subparsers(dest='pool_command',required=True)
-    for action in ('register','serve','worker','status','submit'):
+    for action in ('register','serve','worker','status','submit','agents'):
         p = actions.add_parser(action)
         p.add_argument('--project',type=Path,default=Path.cwd())
         if action=='register':
@@ -35,6 +35,10 @@ def run(args):
     if args.pool_command=='worker':
         from .pool_worker import Worker,load_worker
         Worker(load_worker(args.config)).run(once=args.once)
+        return 0
+    if args.pool_command=='agents':
+        from .agents import detect
+        print(json.dumps({'agents':detect(),'note':'Executable detection only; no login reads or model calls'},indent=2))
         return 0
     pool = Pool(args.project)
     if args.pool_command=='register':

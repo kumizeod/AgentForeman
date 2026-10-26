@@ -11,6 +11,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from urllib.parse import urlsplit
 
 from .files import atomic_json, read_json
 from .pool import validate
@@ -51,8 +52,11 @@ def request_json(settings, request):
                 'messages':[{'role':'user','content':prompt}]}
     elif provider == 'openai-compatible':
         url = settings.get('base_url', 'https://api.openai.com/v1').rstrip('/')+'/chat/completions'
-        if not url.startswith('https://'):
-            raise ValueError('API endpoint requires HTTPS')
+        parsed=urlsplit(url)
+        if parsed.username or parsed.password or parsed.query or parsed.fragment or not parsed.hostname:
+            raise ValueError('Invalid API endpoint')
+        if parsed.scheme!='https' and not (parsed.scheme=='http' and parsed.hostname in {'127.0.0.1','localhost','::1'}):
+            raise ValueError('Remote API endpoint requires HTTPS; HTTP is only allowed on loopback')
         headers['Authorization'] = 'Bearer '+key
         body = {'model':model,'max_tokens':settings.get('max_output_tokens',4096),
                 'messages':[{'role':'user','content':prompt}], 'response_format':{'type':'json_object'}}
