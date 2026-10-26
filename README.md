@@ -11,6 +11,12 @@ allowlist, and are separately trained/verified before selecting the best archive
 The shared council panel can start an implementation round from its research plan.
 [Multi-agent setup, boundaries and attribution](docs/MULTI_AGENT.md).
 
+Validation at `b4290fc`: nine native Windows/macOS/Linux jobs passed **136 tests
+each**, and the browser passed **eight workflow groups**, including independent
+Codex/Claude code proposals, real training/verification and best-archive download.
+[CI run](https://github.com/kumizeod/AgentForeman/actions/runs/40349365740) ·
+[Evidence and fixture disclosure](evidence/multi-agent-ci.json).
+
 ## Shared overnight council (v0.8)
 
 Pool your group's member-owned Codex workers and API workers: **independent answers

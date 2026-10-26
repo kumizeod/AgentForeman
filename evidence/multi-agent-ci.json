@@ -1,0 +1,89 @@
+{
+  "run_id": 40349365740,
+  "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40349365740",
+  "head_sha": "b4290fc47713f536a25586436e29a7bd335fcb8b",
+  "native": [
+    {
+      "id": 121664880507,
+      "name": "test (ubuntu-latest, 3.11)",
+      "conclusion": "success",
+      "tests": 136,
+      "seconds": 130.502
+    },
+    {
+      "id": 121664880584,
+      "name": "test (ubuntu-latest, 3.12)",
+      "conclusion": "success",
+      "tests": 136,
+      "seconds": 132.205
+    },
+    {
+      "id": 121664881026,
+      "name": "test (windows-latest, 3.13)",
+      "conclusion": "success",
+      "tests": 136,
+      "seconds": 166.434
+    },
+    {
+      "id": 121664880484,
+      "name": "test (macos-latest, 3.11)",
+      "conclusion": "success",
+      "tests": 136,
+      "seconds": 193.427
+    },
+    {
+      "id": 121664880573,
+      "name": "test (macos-latest, 3.12)",
+      "conclusion": "success",
+      "tests": 136,
+      "seconds": 224.34
+    },
+    {
+      "id": 121664880600,
+      "name": "test (macos-latest, 3.13)",
+      "conclusion": "success",
+      "tests": 136,
+      "seconds": 209.314
+    },
+    {
+      "id": 121664880677,
+      "name": "test (windows-latest, 3.12)",
+      "conclusion": "success",
+      "tests": 136,
+      "seconds": 226.35
+    },
+    {
+      "id": 121664880702,
+      "name": "test (ubuntu-latest, 3.13)",
+      "conclusion": "success",
+      "tests": 136,
+      "seconds": 186.115
+    },
+    {
+      "id": 121664880807,
+      "name": "test (windows-latest, 3.11)",
+      "conclusion": "success",
+      "tests": 136,
+      "seconds": 194.257
+    }
+  ],
+  "browser": {
+    "job_id": 121664880283,
+    "conclusion": "success",
+    "workflow_groups": 8
+  },
+  "artifacts": [
+    {
+      "id": 12662658026,
+      "name": "web-ui-browser-evidence",
+      "size_in_bytes": 472704,
+      "expired": false
+    }
+  ],
+  "reference": {
+    "repository": "wangdabaoqq/LinJun",
+    "commit": "ab682f8c2746a70231a6ab506c22f4e806c48f82",
+    "copied_code": false
+  },
+  "disclosure": "Model/API calls use explicitly named fixtures and mocks. Native supervision, HTTP dispatch, independent baseline/candidate training, checkpoint verification, best retention, crash recovery and archive download/verification execute for real. No live Claude/Gemini authentication, actual LinJun proxy deployment, real quota reset timing or empirical model-quality improvement is claimed."
+}

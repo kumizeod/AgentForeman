@@ -1,5 +1,9 @@
 # Member-owned overnight worker pool
 
+v0.9 adds Claude Code/Gemini CLI workers, local LinJun-compatible API access and
+[verified multi-agent code candidates](MULTI_AGENT.md). Existing Codex and API
+worker configurations remain supported.
+
 The coordinator stores worker-token hashes and task receipts. Each member runs a
 pull worker using their own local Codex login. There is no credential upload,
 shared auth.json, login-cookie proxy or automatic account creation. API workers
