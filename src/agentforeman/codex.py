@@ -29,7 +29,7 @@ def resolve_command(config: dict, *, npm_package="@openai/codex", bin_name="code
     # would silently discard that environment's installed dependencies.
     found = os.path.abspath(first) if first.is_file() and (first.is_absolute() or first.parent != Path(".")) else shutil.which(prefix[0])
     if not found:
-        raise ValueError("Codex CLI not found. Install @openai/codex, run codex login, then resume this run.")
+        raise ValueError("Codex CLI not found. Install @openai/codex, run codex login, then resume this run." if bin_name == "codex" else f"{bin_name} CLI not found. Install and authenticate the configured CLI before resuming.")
     path = Path(found)
     if sys.platform == "win32" and path.suffix.lower() in {".cmd", ".bat"}:
         package = path.parent / "node_modules" / npm_package

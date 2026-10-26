@@ -7,7 +7,12 @@ schema=json.loads(Path(sys.argv[sys.argv.index('--output-schema')+1]).read_text(
 output=Path(sys.argv[sys.argv.index('--output-last-message')+1])
 prompt=sys.stdin.read()
 keys=schema['properties']
-if set(keys)=={'answer'}:
+if 'base_sha256' in keys:
+    context=next(json.loads(line) for line in prompt.splitlines() if line.startswith('{') and 'allowed_edit' in json.loads(line))
+    config=json.loads(context['files']['config.json']);config.update(hidden=32,epochs=500,learning_rate=.3)
+    answer={'summary':'TEST ONLY code candidate','hypothesis':'TEST ONLY width/budget change',
+            'base_sha256':context['base_sha256'],'files':[{'path':'config.json','content':json.dumps(config)}]}
+elif set(keys)=={'answer'}:
     answer={'answer':'TEST ONLY supervised pool fixture'}
 else:
     context=json.loads(prompt.splitlines()[-1])

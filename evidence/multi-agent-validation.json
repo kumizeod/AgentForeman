@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-26",
+  "scope": "Claude Code/Gemini CLI adapters, local LinJun proxy, independent multi-agent code candidates and panel",
+  "full_local_suite": {
+    "passed": true,
+    "tests": 134,
+    "seconds": 213.146,
+    "note": "Before the final missing-proposal outcome test was added"
+  },
+  "final_coding_tests": {
+    "passed": true,
+    "tests": 7,
+    "seconds": 13.537
+  },
+  "final_adapter_tests": {
+    "passed": true,
+    "tests": 5,
+    "seconds": 1.011
+  },
+  "browser": {
+    "passed": true,
+    "checks": [
+      "Empty state, capability handoff and authenticated local sync",
+      "Form submission drives real train/independent verify; untrusted goal is escaped",
+      "Automatic reviewer criticism, proposer revision and approval are visible in the panel",
+      "Actual controller/worker logs, report, events and verified archive download",
+      "Search/filter and quota/statistics/diagnostics pages use real APIs",
+      "Light/dark/mobile layout; killed-controller UI resume and durable quota-wait stop",
+      "Council form, three HTTP pull workers, native supervised fixtures, anonymous review, chair, audit and transcript export; missing sources remain needs_evidence",
+      "Codex and Claude CLI fixtures submit independent code candidates through HTTP; real training/verifier selects best; intact archive downloads"
+    ],
+    "page_errors": [],
+    "disclosure": "TEST-ONLY Codex planner/editor/metadata fixtures. Training, checkpoint verification, process restart and archive replay are real."
+  },
+  "disclosure": "Model calls use explicitly named CLI fixtures and API mocks. HTTP worker dispatch, native job supervision, independent baseline/candidate training, checkpoint validation, best-result retention, crash receipt reuse and downloaded ZIP verification run for real. No live Claude/Gemini login, actual LinJun deployment, subscription reset timing or measured answer-quality gain is claimed. Proposals replace only existing allowlisted text files in isolated snapshots; no shared-shell collaboration, conflict merge or GPU cluster execution is added."
+}

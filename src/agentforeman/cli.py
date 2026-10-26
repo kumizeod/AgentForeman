@@ -154,8 +154,13 @@ def main(argv: list[str] | None = None) -> int:
     add_pool_parser(sub)
     from .council_cli import add_parser as add_council_parser
     add_council_parser(sub)
+    from .coding_cli import add_parser as add_coding_parser
+    add_coding_parser(sub)
     args = parser.parse_args(argv)
     try:
+        if args.command == "coding":
+            from .coding_cli import run
+            return run(args)
         if args.command == "council":
             from .council_cli import run
             return run(args)

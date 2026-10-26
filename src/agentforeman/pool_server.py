@@ -14,8 +14,12 @@ class PoolServer(ThreadingHTTPServer):
         self.pool = Pool(project)
         super().__init__((host,port), Handler)
         self.pump_stop = threading.Event()
+        self.coding_active = set()
+        self.coding_lock = threading.Lock()
         self.pump = threading.Thread(target=self.advance_councils,daemon=True)
         self.pump.start()
+        self.coding_pump = threading.Thread(target=self.advance_coding,daemon=True)
+        self.coding_pump.start()
 
     def advance_councils(self):
         from .council import Council
@@ -26,9 +30,32 @@ class PoolServer(ThreadingHTTPServer):
             except Exception:
                 pass  # SQLite/immutable receipts allow safe resumption on next tick.
 
+    def advance_coding(self):
+        from .coding import CodingRound
+        coding = CodingRound(self.pool.root.parent)
+        def run(cid):
+            try:
+                coding.advance(cid)
+            except Exception:
+                coding.fail(cid)
+            finally:
+                with self.coding_lock:
+                    self.coding_active.discard(cid)
+        while not self.pump_stop.wait(1):
+            try:
+                states=coding.list()
+                with self.coding_lock:
+                    for state in states:
+                        if state['status']=='running' and state['id'] not in self.coding_active and len(self.coding_active)<2:
+                            self.coding_active.add(state['id'])
+                            threading.Thread(target=run,args=(state['id'],),daemon=True).start()
+            except Exception:
+                pass
+
     def server_close(self):
         self.pump_stop.set()
         self.pump.join(timeout=16)
+        self.coding_pump.join(timeout=16)
         super().server_close()
 
 

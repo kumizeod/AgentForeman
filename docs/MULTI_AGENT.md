@@ -63,3 +63,65 @@ Protocol references:
 Automated tests use explicitly named CLI envelope fixtures, with real native
 process supervision, receipt reuse and schema checks. They do not establish live
 Claude/Gemini login compatibility, paid model quality, or real quota reset timing.
+
+## Independent implementations and real verification
+
+After a council reaches a non-rejected, protocol-valid result, its panel now has
+**让多个 agent 实现当前委员会的方案**. The selected council's members receive
+separate code-proposal tasks, over identical frozen project inputs. Existing
+`pool serve` advances the implementation round automatically; keep each member's
+worker running. API workers may propose code through the same JSON contract.
+
+Or submit directly, without a prior council:
+
+```powershell
+python -m agentforeman coding start --project .\my-experiment --goal "Improve validation accuracy under a fixed evaluation contract" --members member-codex member-claude --budget-seconds 3600 --proposal-seconds 600
+python -m agentforeman coding list --project .\my-experiment
+python -m agentforeman coding status CODING_ID --project .\my-experiment
+python -m agentforeman coding report CODING_ID --project .\my-experiment
+```
+
+To use the council's question and first experiment, replace `--goal ...` with
+`--council COUNCIL_ID`. `coding resume CODING_ID` manually advances a durable stage
+if the pool server is absent; it is not needed when that coordinator is running.
+
+The pipeline:
+
+1. Freeze the project's source, trusted verifier/data and configuration. Independently
+   train/verify a baseline and archive it before spending agent calls on candidates.
+2. Send each agent the goal, metric, editable text files and contract, with a common
+   base SHA-256. Agents return complete replacement text for changed allowlisted
+   files. They do not receive the trusted dataset/verifier contents and do not run
+   training on remote machines. Limit: 2–8 members, 160,000 characters per editable
+   file and a bounded combined payload.
+3. Collect proposals from distinct eligible members. Proposals may run concurrently
+   through the worker pool; after the proposal wait, retain any completed results.
+4. Reject stale base hashes, protected/duplicate file paths and no-op proposals.
+   Materialize each accepted candidate in its own snapshot. There is no shared
+   write directory or automatic merge between independent alternatives.
+5. Independently train and verify candidates with the existing `evaluate` pipeline,
+   under the same frozen configuration. Only externally verified metrics can update
+   the best candidate; a failed/worse candidate leaves the baseline or earlier best.
+   Candidate evaluations are sequential within a round; at most two rounds are
+   advanced concurrently by one coordinator process. These are not GPU resource leases.
+6. Keep reports, candidate provenance, source hashes and replayable ZIP archives.
+   The original project source is not overwritten. The panel displays each member's
+   candidate and metric and downloads the hash-checked best archive.
+
+The one-hour coding budget is **additional** to the council's research budget.
+The proposal wait uses at most half that budget; baseline/evaluation work also counts
+against it. Stop prevents subsequent work and queued claims; already-running work
+remains bounded by its deadline. Model-quota handling comes from the existing pool.
+Native evaluation failure is recorded, never automatically retried ambiguously.
+
+Deterministic evaluation run IDs and native receipts recover a crash after training
+but before the controller records the result. Successful work is not rerun on resume.
+Changing frozen inputs or the best archive blocks normal progression. A best metric
+validates this project's configured protocol, not general research novelty or truth.
+The model may propose changes to an allowed config (including optimization settings);
+there is no claim that this automatically enforces matched-compute experimental design.
+
+This version provides independent implementations and verified comparison, rather
+than autonomous agents sharing an unrestricted shell or merging conflicting changes.
+The local trainer executes allowed candidate code under the existing project's trust
+model; an OS/container isolation service is not added by this release.

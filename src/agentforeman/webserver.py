@@ -191,6 +191,29 @@ class Handler(BaseHTTPRequestHandler):
                     from .pool import Pool
                     pool = Pool(self.server.project)
                     result = {"members": pool.members(), "tasks": [{k: t[k] for k in ("id", "group_id", "stage", "status", "member", "attempts", "deadline")} for t in pool.tasks()]}
+            elif path == "/api/coding":
+                from .coding import CodingRound
+                result = {"coding": CodingRound(self.server.project).list()} if (self.server.project / ".foreman" / "coding").exists() else {"coding": []}
+            elif match := re.fullmatch(r"/api/coding/([0-9a-f]{12})(/archive)?", path):
+                from .coding import CodingRound
+                coding = CodingRound(self.server.project)
+                result = coding.get(match[1])
+                if match[2]:
+                    root = coding.path(match[1]).resolve()
+                    best = result.get("best") or {}
+                    archive = (root / best.get("archive", "")).resolve()
+                    if not archive.is_relative_to(root) or not archive.is_file() or digest(archive) != best.get("archive_sha256"):
+                        raise ValueError("No intact verified code archive")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/zip")
+                    self.send_header("Content-Length", str(archive.stat().st_size))
+                    self.send_header("Content-Disposition", f'attachment; filename="{match[1]}-code.zip"')
+                    self.send_header("Cache-Control", "no-store")
+                    self.end_headers()
+                    with archive.open("rb") as source:
+                        while chunk := source.read(1024 * 1024):
+                            self.wfile.write(chunk)
+                    return
             elif path == "/api/councils":
                 from .council import Council
                 result = {"councils": Council(self.server.project).list()} if (self.server.project / ".foreman" / "councils").exists() else {"councils": []}
@@ -249,6 +272,18 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Expected a JSON object")
             with self.server.actions:
                 path = urlsplit(self.path).path
+                if path == "/api/coding":
+                    from .coding import CodingRound
+                    if set(body)-{"goal", "members", "council_id", "budget_seconds", "proposal_seconds"}:
+                        raise ValueError("Unknown coding setting")
+                    cid = CodingRound(self.server.project).create(**body)
+                    return self.send(201, {"id": cid})
+                if match := re.fullmatch(r"/api/coding/([0-9a-f]{12})/stop", path):
+                    from .coding import CodingRound
+                    coding = CodingRound(self.server.project)
+                    coding.get(match[1])
+                    atomic_text(coding.path(match[1]) / "stop.request", "stop\n")
+                    return self.send(200, {"stop_requested": True})
                 if path == "/api/councils":
                     from .council import Council
                     allowed = {"question", "members", "chair", "sources", "budget_seconds", "stage_seconds", "min_answers", "experiment_policy", "start_at"}

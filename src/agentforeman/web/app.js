@@ -197,7 +197,9 @@ const councilStatus={running:'运行中',completed_candidate:'候选答案已完
 const councilStage={explore:'独立探索',peer_review:'匿名互评',synthesize:'主席综合',audit:'独立审查'};
 let councilSelected=null, councilDetail=null, councilMemberKey='';
 async function refreshCouncil() {
-  const [pool,list]=await Promise.all([api('/api/pool'),api('/api/councils')]);
+  const [pool,list,codes]=await Promise.all([api('/api/pool'),api('/api/councils'),api('/api/coding')]);
+  $('#coding-list').innerHTML=codes.coding.map(c=>`<button class="councilSelect" data-coding="${esc(c.id)}"><strong>${esc(c.goal)}</strong><small>${esc(c.status)} · ${esc(c.phase)} · 最佳 ${metric(c.best?.metric)}</small></button>`).join('')||'<p class="muted">尚无代码候选实验。</p>';
+  if(codingSelected)await selectCoding(codingSelected);
   $('#pool-members').innerHTML=pool.members.map(m=>`<div class="statCard"><strong>${esc(m.id)}</strong><span>${!m.enabled?'已禁用':m.not_before>Date.now()/1000?'额度冷却至 '+date(m.not_before):m.last_seen>Date.now()/1000-60?'在线':'未连接或离线'}</span><small>${esc(m.description)}</small></div>`).join('')||'<p class="muted">尚无节点。先用 pool register 注册成员，再在成员机器上运行 pool worker。</p>';
   const key=pool.members.map(m=>m.id+':'+m.enabled).join(',');
   if(key!==councilMemberKey){councilMemberKey=key;const options=pool.members.filter(m=>m.enabled).map(m=>`<option value="${esc(m.id)}">${esc(m.id)}</option>`).join('');$('#council-members').innerHTML=options;$('#council-chair').innerHTML='<option value="">选择主席节点</option>'+options;}
@@ -208,6 +210,7 @@ async function refreshCouncil() {
 async function selectCouncil(cid){
   councilSelected=cid;
   const c=await api('/api/councils/'+cid);if(councilSelected!==cid)return;councilDetail=c;
+  $('#start-coding').disabled=!['completed_candidate','needs_evidence'].includes(c.status)||Object.keys(c.protocol_errors||{}).length>0;
   const final=c.stages.synthesize?.[0]?.result,audit=c.stages.audit?.[0]?.result;
   $('#council-detail').innerHTML=`<h3>${esc(c.question)}</h3><p>${esc(councilStatus[c.status]||c.status)} · ${esc(councilStage[c.stage]||c.stage)}</p><p class="muted">截止 ${date(c.deadline)} · 主席 ${esc(c.chair)}</p><div class="detailActions"><button data-council-action="export">导出完整记录</button><button data-council-action="stop" ${c.status==='running'?'':'disabled'}>停止后续阶段</button></div><div class="infoBox">模型共识不等于事实核验。下列实验建议尚未执行。</div>${final?`<h3>主席答案</h3><pre>${esc(final.answer)}</pre><h3>待验证问题</h3><pre>${esc(JSON.stringify({unresolved:final.unresolved,experiments:final.experiments,finding_responses:final.finding_responses},null,2))}</pre>`:'<p>正在等待各节点按阶段提交结果。</p>'}${audit?`<h3>独立审查</h3><pre>${esc(JSON.stringify(audit,null,2))}</pre>`:''}${c.experiment?`<h3>本项目实验</h3><pre>${esc(JSON.stringify(c.experiment,null,2))}</pre><p class="muted">可在实验调度页查看对应任务。项目指标不等于论文结论或新颖性已验证。</p>`:''}<h3>质量检查</h3><pre>${esc(JSON.stringify(c.quality,null,2))}</pre>${['explore','peer_review'].map(stage=>`<details><summary>${councilStage[stage]} · ${(c.stages[stage]||[]).length} 份</summary><pre>${esc(JSON.stringify(c.stages[stage]||[],null,2))}</pre></details>`).join('')}${c.stop_reason?`<p>结束原因：${esc(c.stop_reason)}</p>`:''}`;
 }
@@ -219,5 +222,21 @@ $('#council-form').onsubmit=async event=>{
 document.addEventListener('click',async event=>{
   const b=event.target.closest('button');if(!b||b.disabled)return;
   try{if(b.dataset.council)await selectCouncil(b.dataset.council);if(b.dataset.councilAction==='export')await download(null,'council-'+councilSelected+'.json',councilDetail);if(b.dataset.councilAction==='stop'){await api('/api/councils/'+councilSelected+'/stop',{});await refreshCouncil();}}
+  catch(e){showError(e.message);}
+});
+
+let codingSelected=null,codingDetail=null;
+async function selectCoding(cid){
+  codingSelected=cid;const c=await api('/api/coding/'+cid);if(codingSelected!==cid)return;codingDetail=c;
+  $('#coding-detail').innerHTML=`<h3>代码候选 ${esc(cid)}</h3><p>${esc(c.status)} · ${esc(c.phase)} · 基线 ${metric(c.baseline?.metric)} · 最佳 ${metric(c.best?.metric)}</p><div class="detailActions"><button data-code-action="export">导出代码候选记录</button>${c.best?'<button data-code-action="archive">下载最佳代码归档</button>':''}<button data-code-action="stop" ${c.status==='running'?'':'disabled'}>停止后续候选</button></div>${c.candidates.map(x=>`<div class="infoBox"><strong>${esc(x.member)} · ${esc(x.status)} · ${metric(x.metric)}</strong><p>${esc(x.answer.summary)}</p><p>${esc(x.reason||'')}</p></div>`).join('')}<p class="muted">独立验证的项目指标不等于论文新颖性或广泛事实已验证。</p>`;
+}
+$('#start-coding').onclick=async()=>{
+  const b=$('#start-coding');b.disabled=true;
+  try{const result=await api('/api/coding',{goal:'',members:councilDetail.members,council_id:councilDetail.id,budget_seconds:3600,proposal_seconds:600});codingSelected=result.id;notice('代码候选任务已保存：'+result.id);await refreshCouncil();}
+  catch(e){showError(e.message);}finally{b.disabled=!councilDetail||!['completed_candidate','needs_evidence'].includes(councilDetail.status);}
+};
+document.addEventListener('click',async event=>{
+  const b=event.target.closest('button');if(!b||b.disabled)return;
+  try{if(b.dataset.coding)await selectCoding(b.dataset.coding);if(b.dataset.codeAction==='export')await download(null,'coding-'+codingSelected+'.json',codingDetail);if(b.dataset.codeAction==='archive')await download('/api/coding/'+codingSelected+'/archive',codingSelected+'-code.zip');if(b.dataset.codeAction==='stop'){await api('/api/coding/'+codingSelected+'/stop',{});await selectCoding(codingSelected);}}
   catch(e){showError(e.message);}
 });

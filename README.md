@@ -2,6 +2,15 @@
 
 **Assign Codex an experiment tonight. Wait through quota resets without model calls. Review verified results tomorrow.**
 
+## Multiple coding agents (v0.9)
+
+Codex, Claude Code and Gemini CLI can participate through the same durable worker
+pool. An existing local LinJun/CLIProxyAPI endpoint can also supply an API worker.
+Independent code candidates share a frozen base, are validated against the edit
+allowlist, and are separately trained/verified before selecting the best archive.
+The shared council panel can start an implementation round from its research plan.
+[Multi-agent setup, boundaries and attribution](docs/MULTI_AGENT.md).
+
 ## Shared overnight council (v0.8)
 
 Pool your group's member-owned Codex workers and API workers: **independent answers

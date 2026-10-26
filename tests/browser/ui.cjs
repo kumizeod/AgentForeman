@@ -117,6 +117,20 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
   assert.equal(councilTranscript.stages.audit.length,1);
   assert.equal(councilTranscript.quality.factual_correctness_verified,false);
   completed.push('Council form, three HTTP pull workers, native supervised fixtures, anonymous review, chair, audit and transcript export; missing sources remain needs_evidence');
+  await page.locator('#start-coding').click();
+  let codingId;
+  await until(async()=>{const r=await request('/api/coding');codingId=r.coding[0]?.id;return !!codingId;},'multi-agent coding round created');
+  execFileSync(python,[path.join(root,'tests/run_coding_fixture.py'),project,codingId],{cwd:root,timeout:70000});
+  await page.locator('#refresh').click();
+  await until(async()=>(await page.locator('#coding-detail').innerText()).includes('verified'),'two independently verified code candidates displayed');
+  const coding=await request('/api/coding/'+codingId);
+  assert.equal(coding.candidates.length,2);
+  assert(coding.candidates.every(c=>c.status==='verified'));
+  assert(coding.best.metric>coding.baseline.metric);
+  const [codeDownload]=await Promise.all([page.waitForEvent('download'),page.locator('[data-code-action=archive]').click()]);
+  const codeZip=path.join(output,'multi-agent-best.zip');await codeDownload.saveAs(codeZip);
+  execFileSync(python,['-m','agentforeman','verify-archive',codeZip],{cwd:root});
+  completed.push('Codex and Claude CLI fixtures submit independent code candidates through HTTP; real training/verifier selects best; intact archive downloads');
   fs.writeFileSync(path.join(output,'browser-summary.json'),JSON.stringify({passed:true,checks:completed,page_errors:failures,disclosure:'TEST-ONLY Codex planner/editor/metadata fixtures. Training, checkpoint verification, process restart and archive replay are real.'},null,2));
   console.log(JSON.stringify({passed:true,checks:completed,output},null,2));
 })().catch(async error=>{console.error(error);if(page)await page.screenshot({path:path.join(output,'failure.png')}).catch(()=>{});process.exitCode=1;}).finally(async()=>{
