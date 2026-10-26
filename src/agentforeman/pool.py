@@ -154,7 +154,7 @@ class Pool:
             for row in c.execute("SELECT * FROM tasks WHERE status='queued' AND deadline>? ORDER BY created,id", (now,)):
                 if member not in json.loads(row['eligible']):
                     continue
-                used = c.execute("SELECT 1 FROM tasks WHERE group_id=? AND stage=? AND member=? AND status IN ('leased','uncertain','completed')",
+                used = c.execute("SELECT 1 FROM tasks WHERE group_id=? AND stage=? AND member=? AND status IN ('leased','uncertain','completed','failed')",
                                  (row['group_id'], row['stage'], member)).fetchone()
                 if used:
                     continue

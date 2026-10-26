@@ -144,3 +144,48 @@ python -m agentforeman council start --project .\my-experiment --question "在�
 本仓库的自动化测试使用明确标注的模型样例及 API mock，真实执行 HTTP 分发、
 SQLite 租约、进程监督、训练、独立验证、恢复和归档。小组真实账号、付费 Claude
 回复质量、真实整夜运行和额度重置，需要你们按上述流程在本机验收。
+
+## 8. v0.9：让不同 coding agent 参与代码实现
+
+现在除了 Codex，也可以使用 Claude Code 和 Gemini CLI。每个成员仍保留自己的
+登录和独立 worker 令牌。先在对应成员的机器上检查工具是否存在：
+
+```powershell
+python -m agentforeman pool agents
+```
+
+这只检查可执行文件，不会读取账号文件，也不调用模型。对应配置模板：
+
+- Codex：`examples/pool/member.toml`。
+- Claude Code：`examples/pool/claude-code.toml`。
+- Gemini CLI：`examples/pool/gemini-cli.toml`。
+- 已有的本地 LinJun 代理：`examples/pool/linjun.toml`。
+
+成员在自己的机器完成对应工具的登录，设置各自的节点令牌，再运行同一个
+`pool worker --config ...` 命令。LinJun 代理入口使用其本地 API key 和实际模型
+别名，不需要把账号登录文件上传到 AgentForeman。不同进程使用不同成员身份。
+
+委员会完成后，网页点击“让多个 agent 实现当前委员会的方案”，会使用该
+委员会的成员发起一轮代码候选实验，额外默认预算一小时。也可以直接运行：
+
+```powershell
+python -m agentforeman coding start --project .\my-experiment --goal "在现有验证协议下改进模型，保留可复现结果" --members member-codex member-claude member-gemini --budget-seconds 3600 --proposal-seconds 600
+python -m agentforeman coding list --project .\my-experiment
+python -m agentforeman coding report CODING_ID --project .\my-experiment
+```
+
+`--members` 后填写实际注册的成员 ID；不一定要使用上面的名称。把 `--goal`
+换成 `--council COUNCIL_ID`，就会沿用委员会的问题和第一条实验建议。
+
+流程是：冻结项目 → 独立测基线 → 多 agent 分别提交修改文件 → 检查原始代码
+指纹与可编辑范围 → 各自在独立快照里训练、验证 → 保留最佳归档。成员可以
+并行产生候选，本机逐个评测，原项目源码不会被覆盖。网页可查看结果、停止
+后续候选并下载最佳 ZIP。没有加入人工审批，也不会自动合并不同候选的冲突。
+
+当前 coding agent 在受限模式下生成结构化代码修改，控制器负责实际落盘和
+训练。这已经能比较不同 agent 的实现，但尚未提供多个 agent 共享终端、
+共同编辑一个分支或远程 GPU 集群执行。可编辑配置也可能改变训练预算，不能
+仅凭指标提高就声称验证了网络创新。详细边界见 [多 agent 文档](MULTI_AGENT.md)。
+
+Codex 的额度等待沿用原有策略；新 CLI 无法识别的限额或错误会明确记为失败，
+不会猜测其重置时间。Claude/Gemini 的真实登录、权限和额度恢复仍需本机联调。

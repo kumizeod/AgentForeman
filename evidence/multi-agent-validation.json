@@ -32,5 +32,15 @@
     "page_errors": [],
     "disclosure": "TEST-ONLY Codex planner/editor/metadata fixtures. Training, checkpoint verification, process restart and archive replay are real."
   },
-  "disclosure": "Model calls use explicitly named CLI fixtures and API mocks. HTTP worker dispatch, native job supervision, independent baseline/candidate training, checkpoint validation, best-result retention, crash receipt reuse and downloaded ZIP verification run for real. No live Claude/Gemini login, actual LinJun deployment, subscription reset timing or measured answer-quality gain is claimed. Proposals replace only existing allowlisted text files in isolated snapshots; no shared-shell collaboration, conflict merge or GPU cluster execution is added."
+  "disclosure": "Model calls use explicitly named CLI fixtures and API mocks. HTTP worker dispatch, native job supervision, independent baseline/candidate training, checkpoint validation, best-result retention, crash receipt reuse and downloaded ZIP verification run for real. No live Claude/Gemini login, actual LinJun deployment, subscription reset timing or measured answer-quality gain is claimed. Proposals replace only existing allowlisted text files in isolated snapshots; no shared-shell collaboration, conflict merge or GPU cluster execution is added.",
+  "final_pool_and_coding_regression": {
+    "passed": true,
+    "tests": 19,
+    "seconds": 21.231,
+    "includes": "failed member cannot drain other independent candidate slots"
+  },
+  "wheel": {
+    "name": "agentforeman-0.9.0-py3-none-any.whl",
+    "built": true
+  }
 }

@@ -147,3 +147,12 @@ class PoolTests(unittest.TestCase):
         with patch.dict(os.environ,{'ANTHROPIC_API_KEY':'secret-test-only'}),patch('urllib.request.build_opener',return_value=Opener()):
             result=request_json({'provider':'anthropic','model':'test-explicit-model','timeout_seconds':5},{'prompt':'test','schema':SCHEMA})
         self.assertEqual(result['answer'],{'answer':'Claude'})
+
+    def test_failed_member_does_not_consume_other_independent_candidate_slots(self):
+        self.enqueue();self.enqueue()
+        task=self.pool.claim('a','a')
+        self.pool.complete('a',task['id'],task['lease'],'failed')
+        self.assertIsNone(self.pool.claim('a','a'))
+        next_task=self.pool.claim('b','b')
+        self.assertIsNotNone(next_task)
+        self.assertNotEqual(next_task['id'],task['id'])

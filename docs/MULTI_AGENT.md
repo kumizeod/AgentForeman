@@ -94,7 +94,9 @@ The pipeline:
    files. They do not receive the trusted dataset/verifier contents and do not run
    training on remote machines. Limit: 2–8 members, 160,000 characters per editable
    file and a bounded combined payload.
-3. Collect proposals from distinct eligible members. Proposals may run concurrently
+3. Collect proposals from distinct eligible members. A member that explicitly
+   fails this stage cannot drain the remaining candidate slots before others claim
+   them. Quota cooldown/reassignment still follows the existing pool policy. Proposals may run concurrently
    through the worker pool; after the proposal wait, retain any completed results.
 4. Reject stale base hashes, protected/duplicate file paths and no-op proposals.
    Materialize each accepted candidate in its own snapshot. There is no shared
