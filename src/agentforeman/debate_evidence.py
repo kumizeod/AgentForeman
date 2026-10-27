@@ -20,6 +20,13 @@ def normalize(value):
     return ' '.join(value.split())
 
 
+def portable_name(value):
+    name(value)
+    if value.upper() in {'CON','PRN','AUX','NUL',*[f'COM{i}' for i in range(1,10)],*[f'LPT{i}' for i in range(1,10)]}:
+        raise ValueError('Artifact/check ID is a reserved Windows filename')
+    return value
+
+
 def prepare(project,root,evidence,checks):
     if not isinstance(evidence,list) or len(evidence)>30:
         raise ValueError('Evidence must be a list of at most 30 supplied records')
@@ -36,7 +43,7 @@ def prepare(project,root,evidence,checks):
     frozen=[]
     for check in checks:
         if not isinstance(check,dict):raise ValueError('Invalid check')
-        name(check['id']);kind=check['kind']
+        portable_name(check['id']);kind=check['kind']
         expected={'json_value':{'id','kind','artifact_id','pointer','expected'},
                   'contains':{'id','kind','artifact_id','expected'},
                   'python':{'id','kind','script','timeout_seconds'}}.get(kind)
@@ -53,14 +60,14 @@ def prepare(project,root,evidence,checks):
             atomic_text(target,script.read_text(encoding='utf-8'))
             entry['script']=target.relative_to(root).as_posix();entry['script_sha256']=digest(target)
         else:
-            name(check['artifact_id'])
+            portable_name(check['artifact_id'])
             if kind=='contains' and (not isinstance(check['expected'],str) or not check['expected']):
                 raise ValueError('Contains check needs a nonempty literal')
             if kind=='json_value' and (not isinstance(check['pointer'],str) or (check['pointer'] and not check['pointer'].startswith('/'))):
                 raise ValueError('Expected a JSON pointer')
         fingerprint(entry)  # Reject non-JSON/NaN configuration before scheduling.
         frozen.append(entry)
-    if len({c['id'] for c in frozen})!=len(frozen):raise ValueError('Duplicate check ID')
+    if len({c['id'].casefold() for c in frozen})!=len(frozen):raise ValueError('Duplicate check ID')
     atomic_json(root/'evidence.json',sources)
     atomic_json(root/'checks.json',frozen)
     return sources,frozen,{'evidence':digest(root/'evidence.json'),'checks':digest(root/'checks.json')}
@@ -78,7 +85,7 @@ def materialize(root,proposal):
     root.mkdir(parents=True,exist_ok=True)
     ids=[]
     for artifact in proposal['artifacts']:
-        aid=name(artifact['id']);ids.append(aid)
+        aid=portable_name(artifact['id']);ids.append(aid.casefold())
         atomic_text(root/aid,artifact['content'])
     if len(ids)!=len(set(ids)) or 'answer' not in ids:raise ValueError('Unique artifact IDs including answer are required')
     atomic_json(root/'manifest.json',[{'id':a['id'],'media_type':a['media_type']} for a in proposal['artifacts']])
@@ -159,7 +166,7 @@ def anchor_valid(anchor,state,version):
     elif kind=='source':content=next((s['content'] for s in state['evidence'] if s['id']==ref),None)
     else:
         receipt=next((r for r in version['checks'] if r['check_id']==ref),None)
-        content=json.dumps(receipt,ensure_ascii=False,indent=2) if receipt is not None else None
+        content=json.dumps(receipt,ensure_ascii=False,indent=2,sort_keys=True) if receipt is not None else None
     if content is None:return False
     lines=content.splitlines();start=anchor['line_start'];end=anchor['line_end']
     return 1<=start<=end<=len(lines) and bool(anchor['quote'].strip()) and anchor['quote'] in '\n'.join(lines[start-1:end])

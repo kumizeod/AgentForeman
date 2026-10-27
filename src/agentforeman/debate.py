@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import math
+import json
 import secrets
 import time
 from pathlib import Path
 
 from .council import obj, choice, items, strings, BOUNDARY
 from .debate_evidence import (fingerprint, normalize, prepare, assert_frozen,
-                              materialize, verify, anchor_valid)
+                              materialize, verify, anchor_valid, portable_name)
 from .files import atomic_json, atomic_text, inventory, read_json
 from .platforms import file_lock
 from .pool import Pool, dumps, name, validate
@@ -77,6 +78,8 @@ class Debate:
 
     def open_issues(self,state):return [i for i in state['issues'] if i['status']!='check_passed_scoped']
 
+    def reviewer_members(self,state):return state['members'][1:]
+
     def selected(self,state):
         def score(v):
             passed=sum(r['passed'] for r in v['checks']);all_passed=bool(state['checks']) and len(v['checks'])==len(state['checks']) and all(r['passed'] for r in v['checks'])
@@ -98,11 +101,16 @@ class Debate:
             extra='Produce an initial answer and concrete task artifacts. responses must be empty.' if stage=='propose' else 'Revise the artifacts and respond to EVERY open issue ID exactly once. Cite any added evidence with an exact supplied quotation. Unchanged or cycling artifacts without new anchored support stop automatically.'
             jobs=[([state['members'][0]],PROPOSAL,extra)]
         elif stage=='critique':
+            documents=[{'kind':'artifact','ref':a['id'],'content':a['content']} for a in self.current(state)['proposal']['artifacts']]
+            documents += [{'kind':'source','ref':s['id'],'content':s['content']} for s in state['evidence']]
+            documents += [{'kind':'check','ref':r['check_id'],'content':json.dumps(r,ensure_ascii=False,indent=2,sort_keys=True)} for r in self.current(state)['checks']]
+            context['anchor_documents']=documents
             extra=('Independently criticize the current artifacts. Each issue needs an exact quote and valid line range '
-                   'from an artifact, supplied source or check receipt. Point to the check that actually failed when possible. '
+                   'from an anchor_documents content string (line numbers start at 1 within that string). '
+                   'Point to the check that actually failed when possible. '
                    'Do not invent bugs to meet a quota. accept requires no major/blocking issues; revise requires a concrete issue. '
                    'Check all prior open issues. You cannot mark them factually resolved.')
-            jobs=[([m],CRITIQUE,extra) for m in state['members'][1:]]
+            jobs=[([m],CRITIQUE,extra) for m in self.reviewer_members(state)]
         else:
             chosen=self.selected(state)
             context.update(selected_candidate=chosen,stop_reason=state.get('pending_stop_reason'))
@@ -120,8 +128,8 @@ class Debate:
 
     def validate_proposal(self,state,answer):
         validate(answer,PROPOSAL)
-        aids=[name(a['id']) for a in answer['artifacts']]
-        if len(set(aids))!=len(aids) or 'answer' not in aids:raise ValueError('Unique artifacts including answer required')
+        aids=[portable_name(a['id']) for a in answer['artifacts']]
+        if len({a.casefold() for a in aids})!=len(aids) or 'answer' not in aids:raise ValueError('Unique portable artifacts including answer required')
         if sum(len(a['content'].encode()) for a in answer['artifacts'])>100000:raise ValueError('Artifact content exceeds 100 KB')
         claims=[name(c['id']) for c in answer['claims']]
         if len(set(claims))!=len(claims):raise ValueError('Duplicate claim ID')
@@ -188,7 +196,7 @@ class Debate:
                        'status':'open','failed_check':failed_check,
                        'evidence_status':'reproduced_check_failure' if failed_check else 'anchor_matches_unverified_criticism'}
                 state['issues'].append(issue);known[key]=issue
-        if len(valid)!=len(state['members'])-1:self.conclude(state,'invalid_or_missing_criticism')
+        if len(valid)!=len(self.reviewer_members(state)):self.conclude(state,'invalid_or_missing_criticism')
         elif any(r['verdict']=='reject' for r in valid):self.conclude(state,'reviewer_rejected')
         elif all(r['verdict']=='accept' for r in valid):self.conclude(state,'critics_accept')
         elif state['round']>=state['max_rounds']:self.conclude(state,'round_budget')

@@ -6,8 +6,8 @@ from .debate import Debate
 from .files import atomic_text
 
 
-def add_parser(sub):
-    p=sub.add_parser('debate',help='Evidence-bound adversarial mode for general complex tasks')
+def add_parser(sub,command='debate'):
+    p=sub.add_parser(command,help='Bounded multi-agent mode for general complex tasks')
     actions=p.add_subparsers(dest='debate_command',required=True)
     for action in ('start','advance','status','list','report','stop'):
         a=actions.add_parser(action);a.add_argument('--project',type=Path,default=Path.cwd())
@@ -15,6 +15,7 @@ def add_parser(sub):
         if action=='start':
             a.add_argument('--question',required=True);a.add_argument('--members',nargs='+',required=True)
             a.add_argument('--chair',required=True)
+            if command=='cooperate':a.add_argument('--reviewers',nargs='+',required=True)
             a.add_argument('--evidence',type=Path,help='JSON list of supplied id/title/content records')
             a.add_argument('--checks',type=Path,help='Local JSON list of frozen scoped checks')
             a.add_argument('--max-rounds',type=int,default=3)
@@ -23,13 +24,18 @@ def add_parser(sub):
 
 
 def run(args):
-    debate=Debate(args.project);action=args.debate_command
+    if args.command=='cooperate':
+        from .cooperate import Cooperation
+        debate=Cooperation(args.project)
+    else:debate=Debate(args.project)
+    action=args.debate_command
     if action=='start':
         kwargs={k:getattr(args,k) for k in ('max_rounds','budget_seconds','stage_seconds')}
+        if args.command=='cooperate':kwargs['reviewers']=args.reviewers
         evidence=json.loads(args.evidence.read_text(encoding='utf-8')) if args.evidence else []
         checks=json.loads(args.checks.read_text(encoding='utf-8')) if args.checks else []
         did=debate.create(args.question,args.members,args.chair,evidence=evidence,checks=checks,**kwargs)
-        print(json.dumps({'id':did,'mode':'adversarial','note':'Keep pool serve and member workers running; checks are scoped, chair opinions advisory.'}))
+        print(json.dumps({'id':did,'mode':debate.get(did)['mode'],'note':'Keep pool serve and member workers running; checks are scoped, chair opinions advisory.'}))
     elif action=='list':print(json.dumps(debate.list(),ensure_ascii=False,indent=2))
     elif action=='report':print((debate.path(args.debate_id)/'report.md').read_text(encoding='utf-8'))
     else:

@@ -33,7 +33,8 @@ class PoolServer(ThreadingHTTPServer):
     def advance_coding(self):
         from .coding import CodingRound
         from .debate import Debate
-        controllers=[CodingRound(self.pool.root.parent),Debate(self.pool.root.parent)]
+        from .cooperate import Cooperation
+        controllers=[CodingRound(self.pool.root.parent),Debate(self.pool.root.parent),Cooperation(self.pool.root.parent)]
         def run(controller,cid,key):
             try:
                 controller.advance(cid)
@@ -54,6 +55,7 @@ class PoolServer(ThreadingHTTPServer):
                                 threading.Thread(target=run,args=(controller,state['id'],key),daemon=True).start()
                 except Exception:
                     pass
+            controllers=controllers[1:]+controllers[:1]
 
     def server_close(self):
         self.pump_stop.set()

@@ -158,9 +158,10 @@ def main(argv: list[str] | None = None) -> int:
     add_coding_parser(sub)
     from .debate_cli import add_parser as add_debate_parser
     add_debate_parser(sub)
+    add_debate_parser(sub,'cooperate')
     args = parser.parse_args(argv)
     try:
-        if args.command == "debate":
+        if args.command in {"debate", "cooperate"}:
             from .debate_cli import run
             return run(args)
         if args.command == "coding":

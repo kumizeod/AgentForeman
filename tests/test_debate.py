@@ -29,7 +29,7 @@ class DebateTests(unittest.TestCase):
             'claims':[],'responses':responses or []}
     def criticism(self,state,valid=True):
         receipt=state['versions'][-1]['checks'][0]
-        lines=json.dumps(receipt,ensure_ascii=False,indent=2).splitlines()
+        lines=json.dumps(receipt,ensure_ascii=False,indent=2,sort_keys=True).splitlines()
         n=next(i+1 for i,s in enumerate(lines) if '"passed"' in s)
         return {'verdict':'revise','summary':'Wrong total','issues':[{'severity':'major','problem':'The supplied total fails the frozen check',
             'anchor':{'kind':'check','ref':'total' if valid else 'invented','quote':'"passed": false','line_start':n,'line_end':n},
@@ -174,3 +174,11 @@ class DebateTests(unittest.TestCase):
         self.result(did,'critic',critique);state=self.chair(did)
         self.assertEqual(state['stop_reason'],'invalid_or_missing_criticism')
         self.assertEqual(state['pending_questions'][-1]['kind'],'protocol')
+
+    def test_artifact_names_are_portable_across_windows_and_posix(self):
+        did=self.create();state=self.debate.get(did)
+        for aid in ('CON','nul','COM1','ANSWER'):
+            with self.subTest(id=aid):
+                proposal=self.proposal(60)
+                proposal['artifacts'].append({'id':aid,'media_type':'text/plain','content':'collision'})
+                with self.assertRaises(ValueError):self.debate.validate_proposal(state,proposal)
