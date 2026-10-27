@@ -1,0 +1,68 @@
+{
+  "tested_commit": "92bab3b5141767c72499587ebe64e4aceebfb273",
+  "tested_tree": "175b77831b8d16a9b91354cf71deb90b7f70dcf1",
+  "run_id": 40525445422,
+  "run_url": "https://github.com/kumizeod/AgentForeman/actions/runs/40525445422",
+  "local_python_tests": 185,
+  "browser_workflow_groups": 12,
+  "jobs": [
+    {
+      "name": "browser",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40525445422/job/122263648923"
+    },
+    {
+      "name": "test (macos-latest, 3.12)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40525445422/job/122263649462"
+    },
+    {
+      "name": "test (macos-latest, 3.11)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40525445422/job/122263649496"
+    },
+    {
+      "name": "test (windows-latest, 3.12)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40525445422/job/122263649550"
+    },
+    {
+      "name": "test (macos-latest, 3.13)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40525445422/job/122263649555"
+    },
+    {
+      "name": "test (windows-latest, 3.13)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40525445422/job/122263649563"
+    },
+    {
+      "name": "test (ubuntu-latest, 3.13)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40525445422/job/122263649615"
+    },
+    {
+      "name": "test (ubuntu-latest, 3.12)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40525445422/job/122263649641"
+    },
+    {
+      "name": "test (ubuntu-latest, 3.11)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40525445422/job/122263649871"
+    },
+    {
+      "name": "test (windows-latest, 3.11)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40525445422/job/122263649965"
+    }
+  ],
+  "scope": [
+    "Human-chairman question/reply and explicit version-bound confirmation before task dispatch",
+    "Human contract/setting edits, stale/duplicate confirmation protection and crash-safe stable launch IDs",
+    "Frozen inputs/checkers/contracts, declared scope-change pause and unverified manual acceptance",
+    "Cooperative and adversarial task execution, actual independent failure/revision/retest, exports and mobile layout",
+    "Native supervisor receipt preserved through bounded cleanup timeout without command replay"
+  ],
+  "disclosure": "Chairman/model replies use scripted fixtures. HTTP transport, native processes, checker execution, version/confirmation gates and recovery are real. This does not establish live model quality, understanding of every requirement, detection of every semantic scope deviation, or successful live multi-account authentication."
+}

@@ -17,6 +17,11 @@ the same child task ID. Manual acceptance remains unverified, and explicitly
 reported scope changes pause execution. Natural-language boundaries are instructions,
 not a guarantee of detecting every semantic deviation. [中文操作与边界](docs/BRIEFING.md).
 
+Validation at `92bab3b`: **185 local Python tests**, all **nine native
+Windows/macOS/Linux × Python 3.11/3.12/3.13 jobs**, and **12 browser workflow
+groups** passed. [CI run](https://github.com/kumizeod/AgentForeman/actions/runs/40525445422)
+· [Pinned evidence and fixture disclosure](evidence/briefing-ci.json).
+
 ## Cooperative and adversarial tasks (v0.10)
 
 Use member-owned workers for general reports, data analysis and design artifacts:
