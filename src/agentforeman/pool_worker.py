@@ -98,12 +98,19 @@ class Worker:
         return json.loads(raw)
 
     def run_once(self):
+        self.last_attempt={'status':'no_task','model_called':False}
         # Persist-before-send makes settlement acknowledgment loss safe, including quota.
         outbox = self.root/'outbox.json'
         if outbox.exists():
-            self.post('/complete',read_json(outbox))
+            pending=read_json(outbox)
+            self.post('/complete',pending)
+            self.last_attempt={'status':pending['outcome'],'task_id':pending['task'],
+                               'model_called':False,'completion_acknowledged':True,
+                               'retry_at':pending.get('retry_at'),'replayed_upload':True}
+            atomic_json(self.root/'last-attempt.json',self.last_attempt)
             outbox.unlink()
         if not available(self.settings):
+            self.last_attempt['status']='inactive_window'
             return False
         task = self.post('/claim',{'session':self.session})['task']
         if task is None:
@@ -123,9 +130,18 @@ class Worker:
         thread.start()
         try:
             value = self.execute(task)
+            self.last_attempt={'status':value['outcome'],'task_id':task['id'],
+                               'model_called':None,'retry_at':value.get('retry_at'),
+                               'completion_acknowledged':False}
+            if value['outcome'] in {'failed','uncertain'}:
+                from .worker_diagnostics import diagnose
+                self.last_attempt['diagnostic']=diagnose(self.root/'tasks'/task['id']/str(task['attempts']))
             body = {'task':task['id'],'lease':task['lease'],**value}
             atomic_json(outbox,body)
+            atomic_json(self.root/'last-attempt.json',self.last_attempt)
             self.post('/complete',body)
+            self.last_attempt['completion_acknowledged']=True
+            atomic_json(self.root/'last-attempt.json',self.last_attempt)
             outbox.unlink()
         finally:
             stop.set();thread.join(timeout=16)
@@ -191,6 +207,6 @@ class Worker:
                         raise RuntimeError('Worker request failed; credentials and provider details are not printed') from None
                     worked = False
                 if once:
-                    return
+                    return self.last_attempt
                 if not worked:
                     time.sleep(poll_seconds)

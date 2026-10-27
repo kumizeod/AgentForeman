@@ -11,7 +11,7 @@ from .pool import Pool
 def add_parser(sub):
     parser = sub.add_parser('pool',help='Member-owned Codex/API worker pool')
     actions = parser.add_subparsers(dest='pool_command',required=True)
-    for action in ('register','serve','worker','status','submit','agents'):
+    for action in ('register','serve','worker','status','submit','agents','smoke'):
         p = actions.add_parser(action)
         p.add_argument('--project',type=Path,default=Path.cwd())
         if action=='register':
@@ -24,6 +24,9 @@ def add_parser(sub):
         elif action=='worker':
             p.add_argument('--config',type=Path,required=True)
             p.add_argument('--once',action='store_true')
+        elif action=='smoke':
+            p.add_argument('--config',type=Path,required=True)
+            p.add_argument('--timeout-seconds',type=float,default=90)
         elif action=='submit':
             p.add_argument('--members',nargs='+',required=True)
             p.add_argument('--prompt-file',type=Path,required=True)
@@ -32,9 +35,17 @@ def add_parser(sub):
 
 
 def run(args):
+    if args.pool_command=='smoke':
+        from .smoke import run_smoke
+        result=run_smoke(args.project,args.config,args.timeout_seconds)
+        print(json.dumps(result,ensure_ascii=False,indent=2))
+        return 0 if result['passed'] else 2
     if args.pool_command=='worker':
         from .pool_worker import Worker,load_worker
-        Worker(load_worker(args.config)).run(once=args.once)
+        result=Worker(load_worker(args.config)).run(once=args.once)
+        if args.once:
+            print(json.dumps(result,ensure_ascii=False,indent=2))
+            if result['status'] in {'failed','uncertain'}:return 2
         return 0
     if args.pool_command=='agents':
         from .agents import detect

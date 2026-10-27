@@ -22,6 +22,11 @@ agreement and source-quote matching do not establish general factual correctness
 [Cooperation and dashboard guide](docs/COOPERATIVE.md) ·
 [Adversarial controls and CLI](docs/ADVERSARIAL.md).
 
+Before using real accounts overnight, run `foreman pool smoke --project ./my-experiment --config ./member.toml`:
+it exercises the configured provider through a private HTTP/native worker and
+independently checks its output. Authentication, quota and execution failures
+return nonzero exit status. [Live provider diagnostic guide](docs/WORKER_POOL.md#verify-a-real-provider-before-an-overnight-task).
+
 The browser suite exercises both forms through concurrent HTTP workers with
 scripted model replies and a real Python checker: failed result → criticism →
 revision → passing retest. It also checks escaped content, downloads, mobile

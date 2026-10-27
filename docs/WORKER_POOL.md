@@ -56,6 +56,40 @@ has authorized those members and configured providers to see.
 new work outside that window; existing work continues until its task deadline or
 local timeout. `--once` attempts one claim, useful for diagnostics.
 
+### Verify a real provider before an overnight task
+
+Run this on a machine with a valid local Codex/Claude/Gemini login or API key:
+
+```text
+python -m agentforeman pool smoke --project ./my-experiment --config ./member.toml --timeout-seconds 90
+```
+
+This creates an isolated local HTTP pool, runs one bounded task through the
+configured provider and native worker, and checks the returned sum independently.
+It ignores production active hours and leaves the production coordinator and
+worker state untouched. Credentials stay in the existing local login or
+environment; no login files are copied. It can consume model/API quota.
+AgentForeman does not retry this test automatically; the provider CLI may retry
+connections within the timeout.
+
+Exit code 0 means `passed: true`. Authentication failure, unavailable command,
+quota waiting, provider failure and an incorrect answer return exit code 2.
+A sanitized report is saved under `.foreman/smoke/ID/report.json`, with fixed
+diagnostic codes rather than raw provider bodies or secrets. Do not publish raw
+job logs. A passing arithmetic test validates transport and execution, not
+multi-model independence or research quality.
+
+`pool worker --once` prints its provider outcome and exits 2 for failed or
+uncertain execution. Acknowledged upload is distinct from controller acceptance
+and independent verification. No task and an inactive night window are explicit
+non-calling states. Local `last-attempt.json` records the attempt status.
+An uncertain job must be reconciled from its existing receipt, not blindly replayed.
+
+If smoke reports `authentication_failed`, repair the login on that same worker
+machine (for Codex, run `codex login` and then smoke again). A login file or
+`codex login status` alone does not prove that the model service accepts it.
+Do not send credentials or `auth.json` to the coordinator or a chat.
+
 ## Claude chair and other API workers
 
 `examples/pool/chair.toml` uses the Anthropic Messages API. Select an explicit

@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-27",
+  "provider": "codex",
+  "result": "blocked",
+  "diagnostic": "authentication_failed",
+  "observed_provider_error": "401 authentication rejection",
+  "real_provider_attempted": true,
+  "http_pool_claim_and_failure_upload_executed": true,
+  "native_provider_process_executed": true,
+  "model_answer_received": false,
+  "independent_answer_check_executed": false,
+  "smoke_cli_exit_code": 2,
+  "smoke_timeout_seconds": 20,
+  "credentials_copied_or_published": false,
+  "claude_api_tested": false,
+  "multiple_accounts_tested": false,
+  "disclosure": "A local login file existed but was not accepted by the model service. This records a failed real attempt, not a successful live multi-agent run. Scripted regression tests are separate from this evidence.",
+  "next_step": "Run pool smoke on a member machine with a valid local provider login or API environment, then run the cooperative/adversarial workflow. Never upload account credentials."
+}
