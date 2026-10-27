@@ -34,7 +34,8 @@ class PoolServer(ThreadingHTTPServer):
         from .coding import CodingRound
         from .debate import Debate
         from .cooperate import Cooperation
-        controllers=[CodingRound(self.pool.root.parent),Debate(self.pool.root.parent),Cooperation(self.pool.root.parent)]
+        from .briefing import Briefing
+        controllers=[CodingRound(self.pool.root.parent),Debate(self.pool.root.parent),Cooperation(self.pool.root.parent),Briefing(self.pool.root.parent)]
         def run(controller,cid,key):
             try:
                 controller.advance(cid)

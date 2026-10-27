@@ -74,7 +74,11 @@ def prepare(project,root,evidence,checks):
 
 
 def assert_frozen(root,state):
-    if {'evidence':digest(root/'evidence.json'),'checks':digest(root/'checks.json')}!=state['frozen']:
+    observed={'evidence':digest(root/'evidence.json'),'checks':digest(root/'checks.json')}
+    if 'contract' in state['frozen']:
+        observed['contract']=digest(root/'task-contract.json')
+        if read_json(root/'task-contract.json')!=state.get('task_contract'):raise ValueError('Confirmed task contract changed')
+    if observed!=state['frozen']:
         raise ValueError('Frozen verification inputs changed')
     for check in state['checks']:
         if check['kind']=='python' and digest(root/check['script'])!=check['script_sha256']:

@@ -13,6 +13,13 @@ body{margin:0;font:14px/1.55 var(--font-ui);color:var(--ink);background:var(--bo
 .councilSelect{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;margin:8px 0;white-space:normal;overflow-wrap:anywhere}
 #council-detail pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:480px;overflow:auto}
 #mode-detail pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:420px;overflow:auto;font-size:12px}
+#briefing-detail{min-width:0;overflow-wrap:anywhere}
+#briefing-detail pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:300px;overflow:auto}
+#briefing-detail .briefMessages{max-height:380px;overflow:auto;margin-block:12px}
+#briefing-detail .briefMessages p{white-space:pre-wrap}
+#briefing-detail h4{margin-bottom:6px}
+#briefing-detail form{margin-block:14px}
+#briefing-detail ul{padding-left:20px}
 #mode-detail,#modes-workspace{min-width:0;overflow-wrap:anywhere}
 #mode-form .formGrid{margin:14px 0}
 #mode-form select[multiple]{min-height:110px}

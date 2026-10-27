@@ -51,7 +51,10 @@ class Debate:
         return sorted([{k:s.get(k) for k in ('id','question','status','stage','round','max_rounds','created_at','deadline','stop_reason','members','chair')}
                        for p in self.root.glob('*/state.json') for s in [read_json(p)]],key=lambda s:s['created_at'],reverse=True)
 
-    def create(self,question,members,chair,*,evidence=None,checks=None,max_rounds=3,budget_seconds=3600,stage_seconds=600):
+    def create(self,question,members,chair,*,evidence=None,checks=None,max_rounds=3,budget_seconds=3600,stage_seconds=600,run_id=None,task_contract=None):
+        from .task_contract import existing, bind
+        resumed=existing(self,run_id,task_contract)
+        if resumed:return resumed
         if not isinstance(question,str) or not question.strip() or len(question)>16000:raise ValueError('Provide a bounded question')
         if not isinstance(members,list) or not 2<=len(members)<=5 or any(not isinstance(m,str) for m in members) or len(set(members))!=len(members):raise ValueError('Choose 2..5 distinct members; first proposes, others critique')
         for m in [*members,chair]:name(m)
@@ -61,7 +64,7 @@ class Debate:
         if type(max_rounds) is not int or not 1<=max_rounds<=5:raise ValueError('max_rounds must be 1..5')
         for v in (budget_seconds,stage_seconds):
             if type(v) not in (int,float) or not math.isfinite(v) or not 10<=v<=86400:raise ValueError('Finite budgets 10..86400 seconds required')
-        did=secrets.token_hex(6);root=self.path(did)
+        did=run_id or secrets.token_hex(6);root=self.path(did)
         evidence,checks,frozen=prepare(self.project,root,[] if evidence is None else evidence,[] if checks is None else checks)
         if len(dumps(evidence).encode())>100000:raise ValueError('Combined evidence exceeds 100 KB')
         now=time.time()
@@ -71,6 +74,7 @@ class Debate:
                'evidence':evidence,'checks':checks,'frozen':frozen,'versions':[],'issues':[],
                'reviews':[],'protocol_errors':[],'progress':[],
                'quality':{'factual_correctness_verified':False,'chair_is_advisory':True}}
+        bind(root,state,task_contract)
         self.enter(state,'propose');self.save(state);self.advance(did)
         return did
 
@@ -80,6 +84,16 @@ class Debate:
 
     def reviewer_members(self,state):return state['members'][1:]
 
+    def proposal_schema(self,state):
+        if not state.get('task_contract'):return PROPOSAL
+        return obj(**PROPOSAL['properties'],scope_change=obj(required={'type':'boolean'},reason=txt(2000)))
+
+    def pause_for_contract(self,state,reason):
+        state.update(status='waiting_clarification',stage='paused',change_request=reason)
+        state['pending_questions']=self.pending_questions(state)
+        with self.pool.connect() as c:c.execute("UPDATE tasks SET status='cancelled' WHERE group_id=? AND status='queued'",(state['id'],))
+        self.save(state);return state
+
     def selected(self,state):
         def score(v):
             passed=sum(r['passed'] for r in v['checks']);all_passed=bool(state['checks']) and len(v['checks'])==len(state['checks']) and all(r['passed'] for r in v['checks'])
@@ -88,6 +102,7 @@ class Debate:
 
     def context(self,state):
         return {'question':state['question'],'evidence':state['evidence'],
+                'task_contract':state.get('task_contract'),
                 'checks':[{'id':c['id'],'kind':c['kind'],'artifact_id':c.get('artifact_id'),
                            'scope':'Frozen check only; not general factual truth'} for c in state['checks']],
                 'current':self.current(state) if state['versions'] else None,
@@ -99,7 +114,8 @@ class Debate:
         context=self.context(state)
         if stage in {'propose','revise'}:
             extra='Produce an initial answer and concrete task artifacts. responses must be empty.' if stage=='propose' else 'Revise the artifacts and respond to EVERY open issue ID exactly once. Cite any added evidence with an exact supplied quotation. Unchanged or cycling artifacts without new anchored support stop automatically.'
-            jobs=[([state['members'][0]],PROPOSAL,extra)]
+            if state.get('task_contract'):extra+=' If the task requires changing its goal, constraints, acceptance or autonomous authority, set scope_change.required=true and explain; execution will pause for clarification. Otherwise set it false.'
+            jobs=[([state['members'][0]],self.proposal_schema(state),extra)]
         elif stage=='critique':
             documents=[{'kind':'artifact','ref':a['id'],'content':a['content']} for a in self.current(state)['proposal']['artifacts']]
             documents += [{'kind':'source','ref':s['id'],'content':s['content']} for s in state['evidence']]
@@ -127,9 +143,12 @@ class Debate:
         state['task_specs']=specs
 
     def validate_proposal(self,state,answer):
-        validate(answer,PROPOSAL)
+        validate(answer,self.proposal_schema(state))
         aids=[portable_name(a['id']) for a in answer['artifacts']]
         if len({a.casefold() for a in aids})!=len(aids) or 'answer' not in aids:raise ValueError('Unique portable artifacts including answer required')
+        if state.get('task_contract') and state['stage']!='contribute':
+            required={d['id'] for d in state['task_contract']['bundle']['contract']['deliverables']}
+            if required-set(aids):raise ValueError('Missing contracted deliverable artifacts')
         if sum(len(a['content'].encode()) for a in answer['artifacts'])>100000:raise ValueError('Artifact content exceeds 100 KB')
         claims=[name(c['id']) for c in answer['claims']]
         if len(set(claims))!=len(claims):raise ValueError('Duplicate claim ID')
@@ -146,6 +165,9 @@ class Debate:
         return fingerprint(normalized),support
 
     def accept_proposal(self,state,answer):
+        validate(answer,self.proposal_schema(state))
+        if state.get('task_contract') and answer['scope_change']['required']:
+            self.pause_for_contract(state,answer['scope_change']['reason']);return
         artifact_digest,support=self.validate_proposal(state,answer)
         seen={v['artifact_digest'] for v in state['versions']}
         prior_support={s for v in state['versions'] for s in v['source_support']}
@@ -213,6 +235,9 @@ class Debate:
         questions=[{'kind':'issue','ref':i['id'],'question':i['problem'],
                     'suggested_verification':i['suggested_change'],'anchor':i['anchor']}
                    for i in self.open_issues(state)]
+        if state.get('change_request'):
+            questions.append({'kind':'contract_change','ref':'scope_change','question':state['change_request'],
+                              'suggested_verification':'Start a new clarification and explicitly confirm a revised task contract before changing scope.'})
         selected=self.selected(state)
         receipts={r['check_id']:r for r in selected['checks']} if selected else {}
         for check in state['checks']:
@@ -229,7 +254,8 @@ class Debate:
             questions.append({'kind':'protocol','ref':'invalid_evidence',
                               'question':'Can invalid or missing evidence be replaced with checkable support?',
                               'suggested_verification':'Inspect the retained protocol errors before treating criticism or agreement as supported.'})
-        return questions
+        from .task_contract import manual_questions
+        return questions+manual_questions(state)
 
     def finish(self,state,reason):
         selected=self.selected(state)
@@ -239,6 +265,8 @@ class Debate:
         state['quality'].update(configured_checks_passed=all_checks,verification_scope=[c['id'] for c in state['checks']],
                                 unresolved_issues=[i['id'] for i in self.open_issues(state)],factual_correctness_verified=False)
         state['pending_questions']=self.pending_questions(state)
+        from .task_contract import manual_questions
+        if manual_questions(state):state['status']='needs_evidence'
         with self.pool.connect() as c:c.execute("UPDATE tasks SET status='cancelled' WHERE group_id=? AND status='queued'",(state['id'],))
         self.save(state);return state
 
@@ -305,6 +333,11 @@ class Debate:
         lines=[f'# Adversarial task {state["id"]}','',state['question'],'',f'Status: {state["status"]}; round {state["round"]}/{state["max_rounds"]}; stage: {state["stage"]}',
                '', 'Chair/model agreement is advisory. Checks certify only their declared scope; factual correctness is not generally verified.']
         selected=self.selected(state)
+        if state.get('task_contract'):
+            binding=state['task_contract']
+            lines+=['','## Human-confirmed task contract',
+                    '',f'Briefing {binding["briefing_id"]}; version {binding["version"]}; SHA-256 {binding["sha256"]}',
+                    '',dumps(binding['bundle']['contract'])]
         if selected:
             answer=next(a['content'] for a in selected['proposal']['artifacts'] if a['id']=='answer')
             lines+=['',f'## Controller-selected candidate {selected["id"]}','',answer,'','## Independent scoped checks','',dumps(selected['checks'])]

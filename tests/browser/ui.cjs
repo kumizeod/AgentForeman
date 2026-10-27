@@ -134,6 +134,7 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
   execFileSync(python,['-m','agentforeman','verify-archive',codeZip],{cwd:root});
   completed.push('Codex and Claude CLI fixtures submit independent code candidates through HTTP; real training/verifier selects best; intact archive downloads');
   for(const route of ['debates','cooperations']){
+    await page.locator('#brief-first').uncheck();
     await page.locator('#mode-kind').selectOption(route);
     await page.locator('#mode-form [name=question]').fill('TEST ONLY '+route+' sales analysis <img src=x onerror="window.modeInjected=true">');
     await page.locator('#mode-author').selectOption('member-a');
@@ -167,6 +168,61 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
     await page.screenshot({path:path.join(output,route+'-mobile.png'),fullPage:true});
     await page.setViewportSize({width:1440,height:1000});
     completed.push(route+': form, concurrent HTTP/native workers, failed real Python check, criticism, revision and passing retest, escaped artifacts, transcript/report downloads and mobile layout');
+  }
+  for(const route of ['debates','cooperations']){
+    const before=(await request('/api/'+route)).tasks.length;
+    const oldBriefIds=new Set((await request('/api/briefings')).briefings.map(c=>c.id));
+    await page.locator('#brief-first').check();
+    await page.locator('#mode-kind').selectOption(route);
+    await page.locator('#mode-form [name=question]').fill('TEST ONLY clarify sales task before work '+route);
+    await page.locator('#mode-author').selectOption('member-a');
+    await page.locator('#mode-reviewers').selectOption(['member-b']);
+    await page.locator('#mode-chair').selectOption('claude-chair');
+    if(route==='cooperations')await page.locator('#mode-contributors').selectOption(['contributor-a','contributor-b']);
+    await page.locator('#submit-mode').click();let bid;
+    await until(async()=>{bid=(await request('/api/briefings')).briefings.find(c=>!oldBriefIds.has(c.id))?.id;return !!bid;},'briefing created');
+    assert.equal((await request('/api/'+route)).tasks.length,before);
+    execFileSync(python,[path.join(root,'tests/run_briefing_fixture.py'),project,bid],{cwd:root,timeout:45000});
+    await page.locator('#refresh').click();
+    await until(async()=>await page.locator('#brief-reply').count()===1,'chair asks questions');
+    assert.equal(await page.locator('#brief-confirm').count(),0);
+    assert.equal((await request('/api/'+route)).tasks.length,before);
+    await page.locator('#brief-reply').fill('Yes, include report.total JSON and explain input limitations.');
+    await page.locator('#brief-send').click();
+    await until(async()=>(await request('/api/briefings/'+bid)).turn===2,'human reply persisted');
+    execFileSync(python,[path.join(root,'tests/run_briefing_fixture.py'),project,bid],{cwd:root,timeout:45000});
+    await page.locator('#refresh').click();await page.locator('#brief-confirm').waitFor();
+    assert.equal((await request('/api/'+route)).tasks.length,before);
+    const old=await request('/api/briefings/'+bid);
+    await page.locator('#brief-goal').fill('Calculate sales total, state limitations, and return report.total.');
+    assert.equal(await page.locator('#brief-confirm').isDisabled(),true);
+    await page.locator('#brief-save').click();
+    await until(async()=>(await request('/api/briefings/'+bid)).version===old.version+1,'human edit creates new version');
+    await until(async()=>!(await page.locator('#brief-confirm').isDisabled()),'new contract review enabled');
+    const bad=await fetch(origin+'/api/briefings/'+bid+'/confirm',{method:'POST',headers:{'X-Foreman-Token':capability,Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({version:old.version,sha256:old.sha256})});
+    assert.equal(bad.status,400);
+    const reviewed=await request('/api/briefings/'+bid);
+    await page.locator('#brief-confirm').click();
+    await until(async()=>(await request('/api/briefings/'+bid)).status==='launched','explicit confirmation starts work');
+    const confirmed=await request('/api/briefings/'+bid),id=confirmed.launch.id;
+    const duplicate=await request('/api/briefings/'+bid+'/confirm',{version:reviewed.version,sha256:reviewed.sha256});
+    assert.equal(duplicate.launch.id,id);assert.equal((await request('/api/'+route)).tasks.length,before+1);
+    execFileSync(python,[path.join(root,'tests/run_modes_fixture.py'),project,route,id],{cwd:root,timeout:90000});
+    await page.locator('#refresh').click();
+    await until(async()=>(await page.locator('#mode-detail').innerText()).includes('配置的检查范围内通过'),'confirmed task completes after human leaves');
+    const child=await request('/api/'+route+'/'+id);
+    assert.equal(child.task_contract.sha256,reviewed.sha256);
+    assert.equal(child.task_contract.bundle.contract.goal,reviewed.draft.contract.goal);
+    assert.equal(child.status,'completed_scoped');assert.equal(child.versions.length,2);
+    assert.equal(await page.evaluate(()=>window.briefInjected),undefined);
+    assert.equal(await page.locator('#briefing-detail img').count(),0);
+    const [briefDownload]=await Promise.all([page.waitForEvent('download'),page.locator('[data-brief-export]').click()]);
+    const briefPath=path.join(output,route+'-briefing.json');await briefDownload.saveAs(briefPath);
+    assert.equal(JSON.parse(fs.readFileSync(briefPath,'utf8')).status,'launched');
+    await page.setViewportSize({width:390,height:844});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    await page.setViewportSize({width:1440,height:1000});
+    completed.push(route+': chairman-human clarification, no execution before confirmation, human version editing, stale/duplicate confirmation protection, frozen contract and real check/revision/retest after launch');
   }
   // Stop a fresh cooperative plan through the UI, then reconcile via the controller.
   const stopped=await request('/api/cooperations',{question:'TEST stop',members:['member-a','contributor-a'],reviewers:['member-b'],chair:'claude-chair'});

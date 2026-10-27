@@ -2,6 +2,21 @@
 
 **Assign Codex an experiment tonight. Wait through quota resets without model calls. Review verified results tomorrow.**
 
+## Clarify before execution (v0.11)
+
+Discuss the task with a chairman before leaving: **idea → focused clarification
+→ versioned task contract → explicit human confirmation → autonomous cooperative
+or adversarial execution**. This is the default path in the shared task form.
+The contract records goals, inputs, deliverables, acceptance, constraints,
+priorities and autonomy boundaries. Waiting for human input dispatches no more
+model tasks, and the execution budget starts after confirmation.
+
+Confirmation binds the reviewed version, node/budget settings, evidence and frozen
+checks. Stale confirmations are rejected; repeated or interrupted launches reuse
+the same child task ID. Manual acceptance remains unverified, and explicitly
+reported scope changes pause execution. Natural-language boundaries are instructions,
+not a guarantee of detecting every semantic deviation. [中文操作与边界](docs/BRIEFING.md).
+
 ## Cooperative and adversarial tasks (v0.10)
 
 Use member-owned workers for general reports, data analysis and design artifacts:

@@ -117,6 +117,34 @@ class PanelTests(unittest.TestCase):
             self.assertTrue(self.request(base)[1]['stop_requested'])
             self.assertEqual(self.request('/api/'+route+'/../../foreman.toml')[0],404)
 
+    def test_briefing_api_explicit_version_bound_confirmation_and_auth(self):
+        from agentforeman.pool import Pool
+        from agentforeman.briefing import Briefing
+        from tests.test_briefing import reply
+        self.assertEqual(self.request('/api/briefings',token=False)[0],403)
+        self.assertEqual(self.request('/api/briefings')[1],{'briefings':[]})
+        pool=Pool(self.project)
+        for member in ('author','critic','chair'):pool.register(member,(member+'-')*8)
+        body={'idea':'Analyze sales','execution':{'mode':'adversarial','members':['author','critic'],'chair':'chair'},
+              'checks':[{'id':'total','kind':'json_value','artifact_id':'report','pointer':'/total','expected':60}]}
+        self.assertEqual(self.request('/api/briefings',body,origin=False)[0],403)
+        code,result,_=self.request('/api/briefings',body);self.assertEqual(code,201)
+        bid=result['id'];base='/api/briefings/'+bid
+        self.assertEqual(self.request('/api/debates')[1]['tasks'],[])
+        self.assertEqual(self.request(base+'/confirm',{'version':0,'sha256':None})[0],400)
+        task=pool.claim('chair','chair');pool.complete('chair',task['id'],task['lease'],'success',reply())
+        Briefing(self.project).advance(bid)
+        state=self.request(base)[1]
+        confirm={'version':state['version'],'sha256':state['sha256']}
+        self.assertEqual(self.request(base+'/confirm',confirm,token=False)[0],403)
+        self.assertEqual(self.request(base+'/confirm',{**confirm,'sha256':'wrong'})[0],400)
+        code,launched,_=self.request(base+'/confirm',confirm);self.assertEqual(code,200)
+        duplicate=self.request(base+'/confirm',confirm)[1]
+        self.assertEqual(launched['launch'],duplicate['launch'])
+        child=self.request('/api/debates/'+launched['launch']['id'])[1]
+        self.assertEqual(child['task_contract']['sha256'],state['sha256'])
+        self.assertEqual(self.request(base+'/message',{'version':state['version'],'content':'Silently change the goal'})[0],400)
+
     def test_submit_real_training_detail_logs_report_and_archive(self):
         code, result, _ = self.request('/api/campaigns', {'goal':'Improve accuracy <script>alert(1)</script>', 'target':.95, 'max_rounds':2})
         self.assertEqual(code, 201)

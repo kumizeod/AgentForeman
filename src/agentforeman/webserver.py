@@ -194,6 +194,12 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/coding":
                 from .coding import CodingRound
                 result = {"coding": CodingRound(self.server.project).list()} if (self.server.project / ".foreman" / "coding").exists() else {"coding": []}
+            elif path=="/api/briefings":
+                from .briefing import Briefing
+                result={'briefings':Briefing(self.server.project).list()} if (self.server.project/'.foreman/briefings').exists() else {'briefings':[]}
+            elif match := re.fullmatch(r"/api/briefings/([0-9a-f]{12})",path):
+                from .briefing import Briefing
+                result=Briefing(self.server.project).get(match[1])
             elif path in {"/api/debates", "/api/cooperations"}:
                 from .debate import Debate
                 from .cooperate import Cooperation
@@ -287,6 +293,16 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Expected a JSON object")
             with self.server.actions:
                 path = urlsplit(self.path).path
+                if path=='/api/briefings':
+                    from .briefing import Briefing
+                    if set(body)-{'idea','execution','evidence','checks','turn_seconds','max_turns'}:raise ValueError('Unknown briefing setting')
+                    return self.send(201,{'id':Briefing(self.server.project).create(**body)})
+                if match := re.fullmatch(r"/api/briefings/([0-9a-f]{12})/(message|edit|confirm|stop)",path):
+                    from .briefing import Briefing
+                    c=Briefing(self.server.project)
+                    allowed={'message':{'version','content'},'edit':{'version','contract','execution'},'confirm':{'version','sha256'},'stop':set()}[match[2]]
+                    if set(body)-allowed:raise ValueError('Unknown briefing action field')
+                    return self.send(200,getattr(c,match[2])(match[1],**body))
                 if path in {"/api/debates", "/api/cooperations"}:
                     from .debate import Debate
                     from .cooperate import Cooperation

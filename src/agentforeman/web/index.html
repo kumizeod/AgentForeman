@@ -48,6 +48,7 @@
       <section class="surface" id="modes-workspace"><h3>合作与对抗任务</h3>
         <p>报告、数据分析、方案设计等通用任务。合作模式先拆分、并行贡献和集成，再进入批评—修改—复测；对抗模式直接开始该闭环。</p>
         <form id="mode-form">
+          <label class="checkLabel"><input name="brief_first" id="brief-first" type="checkbox" checked> 先与 chairman 澄清需求，确认后再开工</label>
           <label class="field">工作模式<select name="mode" id="mode-kind"><option value="debates">对抗：批评—修改—复测</option><option value="cooperations">合作：拆分—贡献—集成—验收</option></select></label>
           <label class="field">任务目标<textarea name="question" required maxlength="16000" rows="3"></textarea></label>
           <div class="formGrid"><label class="field">提案者 / 集成者<select name="author" id="mode-author" required></select></label><label class="field">独立审查者（至少 1 位）<select name="reviewers" id="mode-reviewers" multiple size="4" required></select></label></div>
@@ -57,9 +58,10 @@
           <label class="field">资料 JSON（可选，id / title / content）<textarea name="evidence" rows="3" placeholder='[{"id":"sales","title":"原始记录","content":"item,amount\nA,10\nB,20\nC,30\n"}]'></textarea></label>
           <label class="field">独立检查 JSON（建议配置）<textarea name="checks" rows="3" placeholder='[{"id":"total","kind":"json_value","artifact_id":"report","pointer":"/total","expected":60}]'></textarea></label>
           <p class="muted">需运行 pool serve 和对应节点 worker。无独立检查时只输出待补证据。Python 检查器必须是已有的可信项目脚本，模型不能创建验证命令。资料引用匹配不等于已核实来源。表单总大小上限 32 KiB。</p>
-          <button class="primary" type="submit" id="submit-mode">提交合作 / 对抗任务</button>
+          <button class="primary" type="submit" id="submit-mode">先与主席澄清需求</button>
         </form>
       </section>
+      <div class="accountsWorkspace taskWorkspace" id="briefing-workspace"><section class="accountListPanel"><h3>开工前需求澄清</h3><div id="briefing-list"></div></section><section class="accountDetailPanel" id="briefing-detail"><p class="muted">先与主席讨论，确认具体版本后才会创建合作或对抗执行任务。等待你回复时不调用模型。</p></section></div>
       <div class="accountsWorkspace taskWorkspace"><section class="accountListPanel"><h3>合作 / 对抗任务列表</h3><div id="mode-list"></div></section><section class="accountDetailPanel" id="mode-detail"><p class="muted">选择任务查看产物、批评、复测和待验证问题。</p></section></div>
       <section class="surface"><h3>多 agent 代码候选</h3><p>让当前选中的委员会成员分别实现同一实验，由本机控制器独立训练、验证和选择最佳归档。默认额外预算 1 小时；不会覆盖项目源码。</p><button id="start-coding" class="primary" disabled>让多个 agent 实现当前委员会的方案</button><div id="coding-list"></div><div id="coding-detail"></div></section>
     </div>

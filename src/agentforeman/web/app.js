@@ -242,7 +242,7 @@ document.addEventListener('click',async event=>{
   catch(e){showError(e.message);}
 });
 
-const modeStatus={running:'运行中',completed_scoped:'配置的检查范围内通过',needs_evidence:'待补证据'};
+const modeStatus={running:'运行中',completed_scoped:'配置的检查范围内通过',needs_evidence:'待补证据',waiting_clarification:'等待需求澄清'};
 $('#open-modes').onclick=()=>$('#modes-workspace').scrollIntoView({block:'start'});
 const modeStage={plan:'任务拆分',contribute:'并行贡献',propose:'提案 / 集成',verify:'独立验证',critique:'可核查批评',revise:'修改产物',chair:'主席综合',done:'结束'};
 let modeSelected=null,modeDetail=null,modeMemberKey='';
@@ -263,6 +263,7 @@ async function refreshModes(members){
   $('#mode-list').innerHTML=rows.map(t=>`<button class="councilSelect" data-mode-route="${t.route}" data-mode-id="${esc(t.id)}"><strong>${esc(t.question)}</strong><small>${t.route==='debates'?'对抗':'合作'} · ${esc(modeStatus[t.status]||t.status)} · ${esc(modeStage[t.stage]||t.stage)} · ${t.round}/${t.max_rounds}</small></button>`).join('')||'<p class="muted">尚无合作或对抗任务。</p>';
   if(!modeSelected&&rows.length)modeSelected={route:rows[0].route,id:rows[0].id};
   if(modeSelected)await selectMode(modeSelected.route,modeSelected.id);
+  await refreshBriefings();
 }
 async function selectMode(route,id){
   modeSelected={route,id};const c=await api(`/api/${route}/${id}`);
@@ -271,7 +272,7 @@ async function selectMode(route,id){
   const selected=c.versions.find(v=>v.id===c.selected_version)||c.versions.at(-1);
   const answer=selected?.proposal.artifacts.find(a=>a.id==='answer')?.content;
   const json=value=>`<pre>${esc(JSON.stringify(value,null,2))}</pre>`;
-  $('#mode-detail').innerHTML=`<h3>${esc(c.question)}</h3><p>${route==='debates'?'对抗模式':'合作模式'} · ${esc(modeStatus[c.status]||c.status)} · ${esc(modeStage[c.stage]||c.stage)} · 第 ${c.round}/${c.max_rounds} 轮</p><p class="taskId">${esc(id)} · 截止 ${date(c.deadline)}</p><div class="detailActions"><button data-mode-action="export">导出完整记录</button><button data-mode-action="report">下载报告</button><button data-mode-action="stop" ${c.status==='running'&&!c.stop_requested?'':'disabled'}>${c.stop_requested?'已请求停止':'停止后续阶段'}</button></div><div class="infoBox">主席意见和模型共识不等于事实。检查仅验收其配置范围；未解决的批评不会因模型同意而消失。运行需保持 pool serve 与 worker 在线，重启后从保存状态继续。</div>${answer!==undefined?'<h3>当前选择的产物</h3><pre>'+esc(answer)+'</pre>':'<p>等待产物。</p>'}<h3>独立复测</h3>${json(selected?.checks||[])}<h3>待验证问题</h3>${json(c.pending_questions||c.issues.filter(i=>i.status!=='check_passed_scoped'))}<h3>批评与回应记录</h3>${json(c.reviews)}${c.plan?'<h3>拆分与集成约定</h3>'+json(c.plan):''}${c.contributions?'<h3>各成员贡献（尚非独立验收结论）</h3>'+json(c.contributions):''}${c.contribution_tasks?'<details><summary>子任务状态与部分结果</summary>'+json(c.contribution_tasks)+'</details>':''}<h3>修改与验证进展</h3>${json(c.progress)}<details><summary>全部版本与产物</summary>${json(c.versions)}</details><h3>主席意见（仅供综合）</h3>${json(c.chair_summary||null)}<h3>质量与协议错误</h3>${json({quality:c.quality,errors:c.protocol_errors})}${c.stop_reason?'<p>停止原因：'+esc(c.stop_reason)+'</p>':''}`;
+  $('#mode-detail').innerHTML=`${c.task_contract?'<div class="infoBox">已绑定人类确认的任务约定 v'+esc(c.task_contract.version)+' · '+esc(c.task_contract.sha256.slice(0,12))+'<br><button data-briefing="'+esc(c.task_contract.briefing_id)+'">查看原始澄清与约定</button></div>':''}<h3>${esc(c.question)}</h3><p>${route==='debates'?'对抗模式':'合作模式'} · ${esc(modeStatus[c.status]||c.status)} · ${esc(modeStage[c.stage]||c.stage)} · 第 ${c.round}/${c.max_rounds} 轮</p><p class="taskId">${esc(id)} · 截止 ${date(c.deadline)}</p><div class="detailActions"><button data-mode-action="export">导出完整记录</button><button data-mode-action="report">下载报告</button><button data-mode-action="stop" ${c.status==='running'&&!c.stop_requested?'':'disabled'}>${c.stop_requested?'已请求停止':'停止后续阶段'}</button></div><div class="infoBox">主席意见和模型共识不等于事实。检查仅验收其配置范围；未解决的批评不会因模型同意而消失。运行需保持 pool serve 与 worker 在线，重启后从保存状态继续。</div>${answer!==undefined?'<h3>当前选择的产物</h3><pre>'+esc(answer)+'</pre>':'<p>等待产物。</p>'}<h3>独立复测</h3>${json(selected?.checks||[])}<h3>待验证问题</h3>${json(c.pending_questions||c.issues.filter(i=>i.status!=='check_passed_scoped'))}<h3>批评与回应记录</h3>${json(c.reviews)}${c.plan?'<h3>拆分与集成约定</h3>'+json(c.plan):''}${c.contributions?'<h3>各成员贡献（尚非独立验收结论）</h3>'+json(c.contributions):''}${c.contribution_tasks?'<details><summary>子任务状态与部分结果</summary>'+json(c.contribution_tasks)+'</details>':''}<h3>修改与验证进展</h3>${json(c.progress)}<details><summary>全部版本与产物</summary>${json(c.versions)}</details><h3>主席意见（仅供综合）</h3>${json(c.chair_summary||null)}<h3>质量与协议错误</h3>${json({quality:c.quality,errors:c.protocol_errors})}${c.stop_reason?'<p>停止原因：'+esc(c.stop_reason)+'</p>':''}`;
 }
 $('#mode-form').onsubmit=async event=>{
   event.preventDefault();const button=$('#submit-mode');if(button.disabled)return;button.disabled=true;
@@ -282,8 +283,16 @@ $('#mode-form').onsubmit=async event=>{
     if(new Set(roles).size!==roles.length)throw new Error('提案者、贡献者、审查者和主席必须使用不同节点');
     const body={question:f.get('question'),members:[author,...(route==='cooperations'?contributors:reviewers)],chair:f.get('chair'),evidence:JSON.parse(f.get('evidence')||'[]'),checks:JSON.parse(f.get('checks')||'[]'),max_rounds:Number(f.get('max_rounds')),budget_seconds:Number(f.get('budget_hours'))*3600,stage_seconds:Number(f.get('stage_minutes'))*60};
     if(route==='cooperations')body.reviewers=reviewers;
-    const result=await api('/api/'+route,body);modeSelected={route,id:result.id};
-    notice('任务已保存：'+result.id+'。请保持 pool serve 和各角色 worker 在线。');await refreshCouncil();
+    if(f.has('brief_first')){
+      const execution={mode:route==='debates'?'adversarial':'cooperative',members:body.members,chair:body.chair,max_rounds:body.max_rounds,budget_seconds:body.budget_seconds,stage_seconds:body.stage_seconds};
+      if(body.reviewers)execution.reviewers=body.reviewers;
+      const result=await api('/api/briefings',{idea:body.question,execution,evidence:body.evidence,checks:body.checks});
+      briefingSelected=result.id;briefingRenderKey='';notice('已开始需求澄清。确认前只派发主席任务，不启动合作 / 对抗执行。');
+      await refreshCouncil();$('#briefing-workspace').scrollIntoView({block:'start'});
+    }else{
+      const result=await api('/api/'+route,body);modeSelected={route,id:result.id};
+      notice('任务已保存：'+result.id+'。请保持 pool serve 和各角色 worker 在线。');await refreshCouncil();
+    }
   }catch(e){showError(e.message+'。如网络中断，请先刷新列表确认是否已创建。');}finally{button.disabled=false;}
 };
 document.addEventListener('click',async event=>{
@@ -296,4 +305,60 @@ document.addEventListener('click',async event=>{
     if(b.dataset.modeAction==='report')return await download(`/api/${route}/${id}/report`,id+'-report.md');
     b.disabled=true;await api(`/api/${route}/${id}/stop`,{});await selectMode(route,id);
   }catch(e){showError(e.message);}
+});
+
+const briefingStatus={running:'主席整理中',waiting_human:'等待你补充',ready:'待你确认开工',launched:'已启动执行',stopped:'已停止澄清'};
+let briefingSelected=null,briefingDetail=null,briefingRenderKey='',briefingBusy=false,briefingDirty=false;
+$('#brief-first').onchange=()=>$('#submit-mode').textContent=$('#brief-first').checked?'先与主席澄清需求':'直接启动合作 / 对抗任务';
+async function refreshBriefings(){
+  const result=await api('/api/briefings');
+  $('#briefing-list').innerHTML=result.briefings.map(c=>`<button class="councilSelect" data-briefing="${esc(c.id)}"><strong>${esc(c.idea)}</strong><small>${esc(briefingStatus[c.status]||c.status)} · 约定 v${c.version} · 澄清 ${c.turn} 轮</small></button>`).join('')||'<p class="muted">新任务默认先与主席澄清，也可在表单中选择直接执行。</p>';
+  if(!briefingSelected&&result.briefings.length)briefingSelected=result.briefings[0].id;
+  if(briefingSelected)await selectBriefing(briefingSelected);
+}
+function contractView(c){
+  const items=values=>'<ul>'+values.map(v=>'<li>'+esc(v)+'</li>').join('')+'</ul>';
+  return `<h4>目标</h4><p>${esc(c.goal)}</p><h4>输入与条件</h4>${items(c.inputs)}<h4>交付物</h4>${items(c.deliverables.map(d=>d.id+'：'+d.description))}<h4>验收标准</h4>${items(c.acceptance.map(a=>(a.verification==='automated'?'程序检查 '+a.check_ids.join(', ')+'：':'仍需人工验收：')+a.criterion))}<h4>约束</h4>${items(c.constraints)}<h4>优先级</h4>${items(c.priorities)}<h4>不做的事情</h4>${items(c.exclusions)}<h4>可以自主决定</h4>${items(c.autonomy.allowed_decisions)}<h4>需要暂停澄清</h4>${items(c.autonomy.pause_conditions)}<h4>约定的默认处理</h4>${items(c.autonomy.defaults)}`;
+}
+async function selectBriefing(id){
+  briefingSelected=id;const c=await api('/api/briefings/'+id);if(briefingSelected!==id)return;
+  const key=JSON.stringify([id,c.status,c.version,c.turn,c.messages.length,c.errors.length,c.launch]);
+  briefingDetail=c;if(briefingRenderKey===key)return;briefingRenderKey=key;briefingDirty=false;
+  const ready=c.status==='ready',interactive=['waiting_human','ready'].includes(c.status);
+  $('#briefing-detail').innerHTML=`<h3>先把任务谈清楚</h3><p>${esc(briefingStatus[c.status]||c.status)} · 约定 v${c.version} · 澄清 ${c.turn}/${c.max_turns} 轮</p><div class="infoBox">此处确认的是目标与执行边界，不是结论正确。执行预算从正式启动时计算；等待你回复不会继续调用模型。自动检查由你事先配置，主席不能生成执行命令。</div><div class="briefMessages">${c.messages.map(m=>`<article class="infoBox"><strong>${m.role==='human'?'你':'Chairman'}</strong><p>${esc(m.content)}</p>${[...(m.questions||[]),...(m.open_questions||[])].map(q=>'<p>待澄清：'+esc(q)+'</p>').join('')}</article>`).join('')}</div>${interactive?`<form id="brief-reply-form"><label class="field">补充需求 / 回答问题<textarea id="brief-reply" required maxlength="8000" rows="3"></textarea></label><button type="submit" id="brief-send" ${c.turn>=c.max_turns?'disabled':''}>发给主席继续澄清</button></form>`:''}${c.draft?`<section class="contractPreview"><h3>任务约定 v${c.version}</h3>${contractView(c.draft.contract)}</section>`:''}<h4>执行配置</h4><p>${c.execution.mode==='cooperative'?'合作':'对抗'} · 成员 ${esc(c.execution.members.join(', '))} · 主席 ${esc(c.execution.chair)} · ${c.execution.budget_seconds/3600} 小时 · 最多 ${c.execution.max_rounds} 轮</p><details><summary>查看执行参数</summary><pre>${esc(JSON.stringify(c.execution,null,2))}</pre></details>${ready?`<form id="brief-edit-form"><label class="field">编辑目标<textarea id="brief-goal" rows="2" required maxlength="6000">${esc(c.draft.contract.goal)}</textarea></label><details><summary>编辑完整约定（JSON）</summary><label class="field">任务约定<textarea id="brief-contract-json" rows="12" required>${esc(JSON.stringify(c.draft.contract,null,2))}</textarea></label></details><details><summary>编辑节点与预算（JSON）</summary><label class="field">执行参数<textarea id="brief-execution-json" rows="8" required>${esc(JSON.stringify(c.execution,null,2))}</textarea></label></details><button type="submit" id="brief-save">保存为新版本</button></form><p class="muted" id="brief-dirty-note">确认将绑定当前展示的约定、资料、检查器、节点和预算。</p><button class="primary" id="brief-confirm">确认 v${c.version} 并正式开工</button>`:''}${c.status==='running'&&c.stage==='launch'?'<p>已保存启动意图，后台将恢复同一个执行任务。请勿重复创建任务。</p>':''}${c.launch?`<p>执行任务：${esc(c.launch.id)}</p>${c.status==='launched'?`<button data-brief-open="${esc(c.launch.id)}" data-brief-route="${c.launch.mode==='adversarial'?'debates':'cooperations'}">查看执行进度</button><p class="muted">已启动的约定保持冻结。调整目标请另建澄清任务，先停止或协调原任务。</p>`:''}`:''}${c.errors.length?'<h4>需要处理</h4><pre>'+esc(JSON.stringify(c.errors,null,2))+'</pre>':''}<button data-brief-export="${esc(id)}">导出澄清与约定记录</button>${!(["launched","stopped"].includes(c.status))&&c.stage!=="launch"?'<button data-brief-stop="'+esc(id)+'">停止澄清</button>':''}`;
+}
+document.addEventListener('input',event=>{
+  if(['brief-goal','brief-contract-json','brief-execution-json'].includes(event.target.id)){
+    briefingDirty=true;if($('#brief-confirm'))$('#brief-confirm').disabled=true;
+    $('#brief-dirty-note').textContent='有未保存的修改。请先保存新版本，再核对并确认。';
+  }
+});
+document.addEventListener('submit',async event=>{
+  if(!['brief-reply-form','brief-edit-form'].includes(event.target.id))return;
+  event.preventDefault();if(briefingBusy)return;briefingBusy=true;
+  const c=briefingDetail;
+  try{
+    if(event.target.id==='brief-reply-form'){
+      await api(`/api/briefings/${c.id}/message`,{version:c.version,content:$('#brief-reply').value});
+    }else{
+      const contract=JSON.parse($('#brief-contract-json').value);
+      if($('#brief-goal').value!==c.draft.contract.goal)contract.goal=$('#brief-goal').value;
+      await api(`/api/briefings/${c.id}/edit`,{version:c.version,contract,execution:JSON.parse($('#brief-execution-json').value)});
+    }
+    briefingRenderKey='';await refreshBriefings();
+  }catch(e){showError(e.message);}finally{briefingBusy=false;}
+});
+document.addEventListener('click',async event=>{
+  const b=event.target.closest('button');if(!b||b.disabled)return;
+  try{
+    if(b.dataset.briefing){briefingRenderKey='';return await selectBriefing(b.dataset.briefing);}
+    if(b.dataset.briefExport)return await download(null,b.dataset.briefExport+'-briefing.json',briefingDetail);
+    if(b.dataset.briefStop){await api('/api/briefings/'+b.dataset.briefStop+'/stop',{});briefingRenderKey='';return await refreshBriefings();}
+    if(b.dataset.briefOpen){await selectMode(b.dataset.briefRoute,b.dataset.briefOpen);$('#mode-detail').scrollIntoView({block:'start'});return;}
+    if(b.id!=='brief-confirm'||briefingBusy||briefingDirty)return;
+    briefingBusy=true;b.disabled=true;const c=briefingDetail;
+    const result=await api(`/api/briefings/${c.id}/confirm`,{version:c.version,sha256:c.sha256});
+    modeSelected={route:result.launch.mode==='adversarial'?'debates':'cooperations',id:result.launch.id};
+    briefingRenderKey='';notice('已确认并启动。可以离开页面，保持协调器和 worker 运行。');await refreshCouncil();
+  }catch(e){showError(e.message);if(b.id==='brief-confirm')b.disabled=false;}finally{if(b.id==='brief-confirm')briefingBusy=false;}
 });

@@ -23,7 +23,10 @@ class Cooperation(Debate):
     def reviewer_members(self,state):return state['reviewers']
 
     def create(self,question,members,chair,*,reviewers,evidence=None,checks=None,
-               max_rounds=3,budget_seconds=3600,stage_seconds=600):
+               max_rounds=3,budget_seconds=3600,stage_seconds=600,run_id=None,task_contract=None):
+        from .task_contract import existing, bind
+        resumed=existing(self,run_id,task_contract)
+        if resumed:return resumed
         if not isinstance(question,str) or not question.strip() or len(question)>16000:
             raise ValueError('Provide a bounded question')
         if not isinstance(members,list) or not 2<=len(members)<=5:
@@ -40,7 +43,7 @@ class Cooperation(Debate):
         for value in (budget_seconds,stage_seconds):
             if type(value) not in (int,float) or not math.isfinite(value) or not 10<=value<=86400:
                 raise ValueError('Finite budgets 10..86400 seconds required')
-        did=secrets.token_hex(6);root=self.path(did)
+        did=run_id or secrets.token_hex(6);root=self.path(did)
         sources,frozen_checks,frozen=prepare(self.project,root,[] if evidence is None else evidence,[] if checks is None else checks)
         if len(dumps(sources).encode())>100000:raise ValueError('Combined evidence exceeds 100 KB')
         now=time.time()
@@ -50,6 +53,7 @@ class Cooperation(Debate):
                'evidence':sources,'checks':frozen_checks,'frozen':frozen,'versions':[],'issues':[],
                'reviews':[],'protocol_errors':[],'progress':[],
                'quality':{'factual_correctness_verified':False,'chair_is_advisory':True}}
+        bind(root,state,task_contract)
         self.enter(state,'plan');self.save(state);self.advance(did)
         return did
 
@@ -76,11 +80,14 @@ class Cooperation(Debate):
                    'Assignments cannot depend on unfinished peer outputs. No executable commands.')
             jobs=[(state['members'][0],PLAN,context,extra)]
         else:
-            jobs=[(a['member'],PROPOSAL,{'question':state['question'],'evidence':state['evidence'],
+            jobs=[(a['member'],self.proposal_schema(state),{'question':state['question'],'evidence':state['evidence'],
+                   'task_contract':state.get('task_contract'),
                    'assignment':a,'integration_contract':state['plan']['integration_contract']},
                    'Perform only your assignment. Return concrete bounded artifacts including answer, '
                    'with supplied source quotations for claims. responses must be empty. '
-                   'Your contribution is not yet an accepted final answer.') for a in state['plan']['assignments']]
+                   'Your contribution is not yet an accepted final answer. If a task contract is present, set '
+                   'scope_change.required=true when fulfilling the assignment needs a change to its scope/authority; '
+                   'otherwise false. Explain in scope_change.reason.') for a in state['plan']['assignments']]
         state['task_specs']=[{'id':f'{state["id"]}_r1_{stage}_{i}','eligible':[member],
                              'request':{'prompt':RULES+'\n'+extra+'\n'+dumps(ctx),'schema':schema},
                              'deadline':state['stage_deadline']}
@@ -126,6 +133,9 @@ class Cooperation(Debate):
                     else:
                         contributions=[]
                         for row in done:
+                            validate(row['result'],self.proposal_schema(state))
+                            if state.get('task_contract') and row['result']['scope_change']['required']:
+                                return self.pause_for_contract(state,row['member']+': '+row['result']['scope_change']['reason'])
                             self.validate_proposal(state,row['result'])
                             contributions.append({'member':row['member'],'task_id':row['id'],
                                                   'proposal':row['result'],'sha256':fingerprint(row['result'])})

@@ -31,5 +31,6 @@ elif 'verdict' in keys:
 else:
     answer={'candidate_version':context['selected_candidate']['id'],'summary':'TEST ONLY advisory summary',
             'open_questions':[],'proposed_checks':[]}
+if 'scope_change' in keys:answer['scope_change']={'required':False,'reason':'TEST ONLY within confirmed task scope'}
 output.write_text(json.dumps(answer),encoding='utf-8')
 print(json.dumps({'type':'turn.completed'}))

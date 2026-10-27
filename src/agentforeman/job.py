@@ -142,10 +142,13 @@ def wait_for_job(job_dir: Path, spec: dict) -> dict:
         # Windows cannot remove/rename an open lock or log file. Let a completed
         # supervisor release its handles before archiving or caller cleanup.
         if wrapper is not None:
-            wrapper.wait(timeout=5)
+            try:
+                wrapper.wait(timeout=30)
+            except subprocess.TimeoutExpired as exc:
+                raise RuntimeError('Supervisor wrote a receipt but has not released its handles; resume this job without replaying it') from exc
         else:
             meta_path = job_dir / "process.json"
-            release_deadline = time.monotonic() + 5
+            release_deadline = time.monotonic() + 30
             while meta_path.exists() and alive(read_json(meta_path).get("supervisor")):
                 if time.monotonic() >= release_deadline:
                     raise RuntimeError("Supervisor wrote a receipt but did not release its handles")

@@ -1,0 +1,8 @@
+{
+  "mode": "adversarial",
+  "members": ["author", "critic"],
+  "chair": "chair",
+  "max_rounds": 3,
+  "budget_seconds": 28800,
+  "stage_seconds": 1800
+}
