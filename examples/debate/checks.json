@@ -1,0 +1,1 @@
+[{"id":"sales_total","kind":"python","script":"check_total.py","timeout_seconds":30}]

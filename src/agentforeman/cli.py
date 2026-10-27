@@ -156,8 +156,13 @@ def main(argv: list[str] | None = None) -> int:
     add_council_parser(sub)
     from .coding_cli import add_parser as add_coding_parser
     add_coding_parser(sub)
+    from .debate_cli import add_parser as add_debate_parser
+    add_debate_parser(sub)
     args = parser.parse_args(argv)
     try:
+        if args.command == "debate":
+            from .debate_cli import run
+            return run(args)
         if args.command == "coding":
             from .coding_cli import run
             return run(args)

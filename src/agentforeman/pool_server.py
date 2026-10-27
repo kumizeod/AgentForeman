@@ -32,25 +32,28 @@ class PoolServer(ThreadingHTTPServer):
 
     def advance_coding(self):
         from .coding import CodingRound
-        coding = CodingRound(self.pool.root.parent)
-        def run(cid):
+        from .debate import Debate
+        controllers=[CodingRound(self.pool.root.parent),Debate(self.pool.root.parent)]
+        def run(controller,cid,key):
             try:
-                coding.advance(cid)
+                controller.advance(cid)
             except Exception:
-                coding.fail(cid)
+                controller.fail(cid)
             finally:
                 with self.coding_lock:
-                    self.coding_active.discard(cid)
+                    self.coding_active.discard(key)
         while not self.pump_stop.wait(1):
-            try:
-                states=coding.list()
-                with self.coding_lock:
-                    for state in states:
-                        if state['status']=='running' and state['id'] not in self.coding_active and len(self.coding_active)<2:
-                            self.coding_active.add(state['id'])
-                            threading.Thread(target=run,args=(state['id'],),daemon=True).start()
-            except Exception:
-                pass
+            for controller in controllers:
+                try:
+                    states=controller.list()
+                    with self.coding_lock:
+                        for state in states:
+                            key=(type(controller).__name__,state['id'])
+                            if state['status']=='running' and key not in self.coding_active and len(self.coding_active)<2:
+                                self.coding_active.add(key)
+                                threading.Thread(target=run,args=(controller,state['id'],key),daemon=True).start()
+                except Exception:
+                    pass
 
     def server_close(self):
         self.pump_stop.set()
