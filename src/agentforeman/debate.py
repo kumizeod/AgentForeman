@@ -200,6 +200,29 @@ class Debate:
         if state['versions'] and time.time()<state['deadline']:self.enter(state,'chair')
         else:self.finish(state,reason)
 
+    def pending_questions(self,state):
+        """Controller-owned follow-ups survive even when the chair omits them."""
+        questions=[{'kind':'issue','ref':i['id'],'question':i['problem'],
+                    'suggested_verification':i['suggested_change'],'anchor':i['anchor']}
+                   for i in self.open_issues(state)]
+        selected=self.selected(state)
+        receipts={r['check_id']:r for r in selected['checks']} if selected else {}
+        for check in state['checks']:
+            receipt=receipts.get(check['id'])
+            if not receipt or not receipt['passed']:
+                questions.append({'kind':'check','ref':check['id'],
+                                  'question':'Can the selected artifacts pass this frozen check?',
+                                  'suggested_verification':receipt['summary'] if receipt else 'Run the configured check on a valid candidate.'})
+        if not state['checks']:
+            questions.append({'kind':'verification_gap','ref':'no_checks',
+                              'question':'Which independent checks can establish the required task outcome?',
+                              'suggested_verification':'Configure task-specific checks before a new run; model agreement alone is insufficient.'})
+        if state['protocol_errors']:
+            questions.append({'kind':'protocol','ref':'invalid_evidence',
+                              'question':'Can invalid or missing evidence be replaced with checkable support?',
+                              'suggested_verification':'Inspect the retained protocol errors before treating criticism or agreement as supported.'})
+        return questions
+
     def finish(self,state,reason):
         selected=self.selected(state)
         all_checks=bool(selected and state['checks'] and len(selected['checks'])==len(state['checks']) and all(r['passed'] for r in selected['checks']))
@@ -207,6 +230,7 @@ class Debate:
                      stop_reason=reason,selected_version=selected['id'] if selected else None,ended_at=time.time(),stage='done')
         state['quality'].update(configured_checks_passed=all_checks,verification_scope=[c['id'] for c in state['checks']],
                                 unresolved_issues=[i['id'] for i in self.open_issues(state)],factual_correctness_verified=False)
+        state['pending_questions']=self.pending_questions(state)
         with self.pool.connect() as c:c.execute("UPDATE tasks SET status='cancelled' WHERE group_id=? AND status='queued'",(state['id'],))
         self.save(state);return state
 
@@ -222,7 +246,17 @@ class Debate:
                 if (root/'stop.request').exists():return self.finish(state,'stop_requested')
                 if time.time()>=state['deadline']:return self.finish(state,'wall_clock_budget')
                 if state['stage']=='verify':
-                    version=self.current(state);version['checks']=verify(root,state,version)
+                    version=self.current(state)
+                    existing={p.parent.name for p in (root/'verification').glob('*/receipt.json')}
+                    version['checks']=verify(root,state,version)
+                    reused=[r['check_id'] for r in version['checks']
+                            if fingerprint({'proposal':version['check_input_sha256'],
+                                            'check':next(c for c in state['checks'] if c['id']==r['check_id'])}) in existing]
+                    state['progress'].append({'round':state['round'],'stage':'verify','version':version['id'],
+                                              'checked':[r['check_id'] for r in version['checks']],
+                                              'reused_receipts':reused,
+                                              'passed':[r['check_id'] for r in version['checks'] if r['passed']],
+                                              'scope':'Frozen checks only; cached receipts are not new executions'})
                     self.refresh_issues(state)
                     if time.time()>=state['deadline']:return self.finish(state,'wall_clock_budget')
                     self.enter(state,'critique');self.save(state);return state
@@ -267,6 +301,8 @@ class Debate:
             answer=next(a['content'] for a in selected['proposal']['artifacts'] if a['id']=='answer')
             lines+=['',f'## Controller-selected candidate {selected["id"]}','',answer,'','## Independent scoped checks','',dumps(selected['checks'])]
         lines+=['','## Remaining issues','',dumps(self.open_issues(state)),'','## Unsubstantiated or invalid criticism','',dumps(state['protocol_errors'])]
+        lines+=['','## Questions requiring verification','',dumps(self.pending_questions(state)),
+                '', '## Progress and verification ledger','',dumps(state['progress'])]
         if state.get('chair_summary'):lines+=['','## Chair summary (advisory)','',dumps(state['chair_summary'])]
         if state.get('stop_reason'):lines+=['',f'Stop reason: {state["stop_reason"]}']
         atomic_text(root/'report.md','\n'.join(lines)+'\n');atomic_json(root/'transcript.json',state)

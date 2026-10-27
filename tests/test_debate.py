@@ -95,3 +95,82 @@ class DebateTests(unittest.TestCase):
         state=self.result(did,'chair',{'candidate_version':'invented','summary':'Everything is true','open_questions':[],'proposed_checks':[]})
         self.assertEqual(state['stop_reason'],'invalid_chair_result')
         self.assertFalse(state['quality']['factual_correctness_verified'])
+
+    def test_restart_between_revision_and_retest_keeps_issue_and_tasks(self):
+        did=self.reviewed_failure();iid=self.debate.get(did)['issues'][0]['id']
+        self.result(did,'author',self.proposal(60,[{'issue_id':iid,'action':'change','explanation':'Fixed sum'}]))
+        before=len(self.debate.pool.tasks(did))
+        self.debate=Debate(self.project)
+        state=self.debate.advance(did)
+        self.assertEqual(len(self.debate.pool.tasks(did)),before)
+        self.assertEqual(state['issues'][0]['status'],'check_passed_scoped')
+        self.result(did,'critic',{'verdict':'accept','summary':'Check passes after restart','issues':[]})
+        state=self.chair(did)
+        self.assertEqual(state['status'],'completed_scoped')
+        self.assertEqual(state['pending_questions'],[])
+        self.assertEqual([p['version'] for p in state['progress'] if p.get('stage')=='verify'],['v1','v2'])
+
+    def test_restart_after_receipt_before_state_save_reuses_verification(self):
+        did=self.create();self.result(did,'author',self.proposal(60))
+        state=self.debate.get(did)
+        from agentforeman.debate_evidence import verify
+        verify(self.debate.path(did),state,state['versions'][0])
+        self.debate=Debate(self.project)
+        state=self.debate.advance(did)
+        self.assertEqual(state['progress'][-1]['reused_receipts'],['total'])
+        self.assertTrue(state['versions'][0]['checks'][0]['passed'])
+
+    def test_source_criticism_stays_open_despite_model_agreement(self):
+        did=self.create();self.result(did,'author',self.proposal(60));self.debate.advance(did)
+        critique={'verdict':'revise','summary':'Interpretation still unsupported','issues':[{
+            'severity':'major','problem':'The total alone does not establish completeness of the supplied data',
+            'anchor':{'kind':'artifact','ref':'answer','quote':'Total: 60','line_start':1,'line_end':1},
+            'suggested_change':'Independently audit whether input rows are complete'}]}
+        self.result(did,'critic',critique);iid=self.debate.get(did)['issues'][0]['id']
+        answer=self.proposal(60,[{'issue_id':iid,'action':'change','explanation':'Added limitation'}])
+        answer['artifacts'][0]['content']+='\nInput completeness has not been audited.'
+        self.result(did,'author',answer);self.debate.advance(did)
+        self.result(did,'critic',{'verdict':'accept','summary':'I agree now','issues':[]})
+        state=self.chair(did)
+        self.assertEqual(state['status'],'needs_evidence')
+        self.assertEqual(state['issues'][0]['status'],'open')
+        self.assertEqual(state['pending_questions'][0]['ref'],iid)
+        self.assertIn('Questions requiring verification',(self.debate.path(did)/'report.md').read_text())
+
+    def test_agreement_without_checks_does_not_establish_completion(self):
+        did=self.debate.create('Write an answer',['author','critic'],'chair',stage_seconds=30,budget_seconds=120)
+        self.result(did,'author',self.proposal(60));self.debate.advance(did)
+        self.result(did,'critic',{'verdict':'accept','summary':'Looks correct','issues':[]})
+        state=self.chair(did)
+        self.assertEqual(state['status'],'needs_evidence')
+        self.assertEqual(state['pending_questions'][0]['kind'],'verification_gap')
+
+    def test_failed_check_is_a_pending_question_even_if_critics_accept(self):
+        did=self.create();self.result(did,'author',self.proposal(50));self.debate.advance(did)
+        self.result(did,'critic',{'verdict':'accept','summary':'I consider it correct','issues':[]})
+        state=self.chair(did)
+        self.assertEqual(state['status'],'needs_evidence')
+        self.assertEqual(state['pending_questions'][0]['ref'],'total')
+
+    def test_wall_clock_budget_finishes_without_waiting_for_chair(self):
+        from unittest.mock import patch
+        did=self.reviewed_failure();state=self.debate.get(did)
+        with patch('agentforeman.debate.time.time',return_value=state['deadline']+1):
+            state=self.debate.advance(did)
+        self.assertEqual(state['stop_reason'],'wall_clock_budget')
+        self.assertTrue(state['pending_questions'])
+        self.assertEqual(state['stage'],'done')
+
+    def test_frozen_inputs_cannot_be_silently_changed_on_resume(self):
+        did=self.create();root=self.debate.path(did)
+        (root/'checks.json').write_text('[]',encoding='utf-8')
+        with self.assertRaisesRegex(ValueError,'Frozen verification inputs changed'):
+            Debate(self.project).advance(did)
+
+    def test_criticism_line_range_must_match_actual_quote(self):
+        did=self.create();self.result(did,'author',self.proposal(50));state=self.debate.advance(did)
+        critique=self.criticism(state)
+        critique['issues'][0]['anchor'].update(line_start=1,line_end=1)
+        self.result(did,'critic',critique);state=self.chair(did)
+        self.assertEqual(state['stop_reason'],'invalid_or_missing_criticism')
+        self.assertEqual(state['pending_questions'][-1]['kind'],'protocol')

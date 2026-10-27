@@ -31,6 +31,12 @@ workers to continue unfinished tasks. Existing pool lease/retry rules apply.
   Repeated artifacts without new support stop the debate; wording in the summary
   or response alone does not count as progress.
 - Round and time budgets bound execution. Reports preserve unresolved issues.
+- The controller writes a `pending_questions` list, including unresolved
+  criticism, failed or missing checks, absent verification coverage and protocol
+  errors. A chair cannot remove these follow-ups by omitting them from its summary.
+- The progress ledger records each verification stage, its candidate, passed
+  checks and reused receipts. Cached results are explicitly distinguished from
+  new check executions.
 - Checks are configured before debate and frozen. Supported checks are JSON value
   equality, literal containment and a copied Python checker. Models cannot submit
   executable check commands. Receipts are reused for identical check inputs.
@@ -53,3 +59,12 @@ evidence and output paths as shown in the example.
 
 Dashboard integration, additional task adapters, live model/overnight evaluation
 and a fresh full Windows/macOS/Linux regression run remain follow-up work.
+
+Run the targeted control and recovery tests with:
+
+```text
+python -m unittest tests.test_debate -v
+```
+
+These tests use scripted member replies and real controller/check execution;
+they do not establish the quality of live model criticism or research conclusions.
