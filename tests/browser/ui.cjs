@@ -15,8 +15,10 @@ from pathlib import Path
 import json,sys
 p=Path(sys.argv[1]); init_demo(p)
 from agentforeman.pool import Pool
-for member in ('member-a','member-b','claude-chair'): Pool(p).register(member,(member+'-')*8)
-c=p/'foreman.toml'; c.write_text(c.read_text().replace('executable = "codex"','executable = '+json.dumps(sys.argv[2])))`,project,path.join(root,'tests/fixture_campaign.py')], {cwd:root});
+for member in ('member-a','member-b','claude-chair','contributor-a','contributor-b'): Pool(p).register(member,(member+'-')*8)
+import shutil
+shutil.copy2(Path(sys.argv[3])/'examples/debate/check_total.py',p/'check_total.py')
+c=p/'foreman.toml'; c.write_text(c.read_text().replace('executable = "codex"','executable = '+json.dumps(sys.argv[2])))`,project,path.join(root,'tests/fixture_campaign.py'),root], {cwd:root});
 const child=spawn(python,['-m','agentforeman','ui','--project',project,'--port','0','--no-open'],{cwd:root,stdio:['ignore','pipe','pipe'],env:{...process.env,FOREMAN_TEST_REVIEWS:'["revise","approve"]'}});
 let browser, page, capability, origin, cid, waitingCid;
 const failures=[];
@@ -131,6 +133,51 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
   const codeZip=path.join(output,'multi-agent-best.zip');await codeDownload.saveAs(codeZip);
   execFileSync(python,['-m','agentforeman','verify-archive',codeZip],{cwd:root});
   completed.push('Codex and Claude CLI fixtures submit independent code candidates through HTTP; real training/verifier selects best; intact archive downloads');
+  for(const route of ['debates','cooperations']){
+    await page.locator('#mode-kind').selectOption(route);
+    await page.locator('#mode-form [name=question]').fill('TEST ONLY '+route+' sales analysis <img src=x onerror="window.modeInjected=true">');
+    await page.locator('#mode-author').selectOption('member-a');
+    await page.locator('#mode-reviewers').selectOption(['member-b']);
+    await page.locator('#mode-chair').selectOption('claude-chair');
+    if(route==='cooperations')await page.locator('#mode-contributors').selectOption(['contributor-a','contributor-b']);
+    await page.locator('#mode-form [name=evidence]').fill(JSON.stringify([{id:'sales',title:'Sales rows',content:'item,amount\nA,10\nB,20\nC,30\n'}]));
+    await page.locator('#mode-form [name=checks]').fill(JSON.stringify([{id:'sum',kind:'python',script:'check_total.py',timeout_seconds:10}]));
+    await page.locator('#submit-mode').click();
+    let modeId;
+    await until(async()=>{modeId=(await request('/api/'+route)).tasks[0]?.id;return !!modeId;},'mode form creates '+route);
+    execFileSync(python,[path.join(root,'tests/run_modes_fixture.py'),project,route,modeId],{cwd:root,timeout:90000});
+    await page.locator('#refresh').click();
+    await until(async()=>(await page.locator('#mode-detail').innerText()).includes('配置的检查范围内通过'),'verified mode shown');
+    const mode=await request('/api/'+route+'/'+modeId);
+    assert.equal(mode.status,'completed_scoped');assert.equal(mode.versions.length,2);
+    assert.equal(mode.versions[0].checks[0].passed,false);assert.equal(mode.versions[1].checks[0].passed,true);
+    assert.equal(mode.quality.factual_correctness_verified,false);
+    if(route==='cooperations')assert.equal(mode.contributions.length,2);
+    assert.equal(await page.evaluate(()=>window.modeInjected),undefined);
+    assert.equal(await page.locator('#mode-detail img').count(),0);
+    const [transcriptDownload]=await Promise.all([page.waitForEvent('download'),page.locator('[data-mode-action=export]').click()]);
+    const transcriptPath=path.join(output,route+'-transcript.json');await transcriptDownload.saveAs(transcriptPath);
+    assert.equal(JSON.parse(fs.readFileSync(transcriptPath,'utf8')).status,'completed_scoped');
+    const [reportDownload]=await Promise.all([page.waitForEvent('download'),page.locator('[data-mode-action=report]').click()]);
+    const reportPath=path.join(output,route+'-report.md');await reportDownload.saveAs(reportPath);
+    assert(fs.readFileSync(reportPath,'utf8').includes('Questions requiring verification'));
+    await page.screenshot({path:path.join(output,route+'-desktop.png'),fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    await page.screenshot({path:path.join(output,route+'-mobile.png'),fullPage:true});
+    await page.setViewportSize({width:1440,height:1000});
+    completed.push(route+': form, concurrent HTTP/native workers, failed real Python check, criticism, revision and passing retest, escaped artifacts, transcript/report downloads and mobile layout');
+  }
+  // Stop a fresh cooperative plan through the UI, then reconcile via the controller.
+  const stopped=await request('/api/cooperations',{question:'TEST stop',members:['member-a','contributor-a'],reviewers:['member-b'],chair:'claude-chair'});
+  await page.locator('#refresh').click();
+  await until(async()=>await page.locator(`[data-mode-id="${stopped.id}"]`).count()===1,'new task listed');
+  await page.locator(`[data-mode-id="${stopped.id}"]`).click();
+  await page.locator('[data-mode-action=stop]').click();
+  await until(async()=>(await request('/api/cooperations/'+stopped.id)).stop_requested,'stop is durable');
+  execFileSync(python,['-m','agentforeman','cooperate','advance',stopped.id,'--project',project],{cwd:root});
+  assert.equal((await request('/api/cooperations/'+stopped.id)).stop_reason,'stop_requested');
+  assert.deepEqual(failures,[]);
   fs.writeFileSync(path.join(output,'browser-summary.json'),JSON.stringify({passed:true,checks:completed,page_errors:failures,disclosure:'TEST-ONLY Codex planner/editor/metadata fixtures. Training, checkpoint verification, process restart and archive replay are real.'},null,2));
   console.log(JSON.stringify({passed:true,checks:completed,output},null,2));
 })().catch(async error=>{console.error(error);if(page)await page.screenshot({path:path.join(output,'failure.png')}).catch(()=>{});process.exitCode=1;}).finally(async()=>{

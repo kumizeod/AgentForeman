@@ -40,10 +40,27 @@
       <div class="bottomNote">关闭浏览器不影响已启动的后台实验。请保持电脑唤醒；额度等待不调用模型。</div>
     </div>
     <div id="view-council" class="page" hidden>
+      <div class="detailActions"><button type="button" id="open-modes">合作 / 对抗工作台</button><span class="muted">共享同一节点池，按任务选择执行方式。</span></div>
       <div class="pageHeading"><div><div class="eyebrow">SHARED OVERNIGHT COUNCIL</div><h2>把闲置时间，交给一个共同问题。</h2><p>独立探索 · 匿名互评 · Claude 主席综合 · 独立审查</p></div></div>
       <section class="surface"><h3>共享节点</h3><p class="muted">成员在自己的电脑上登录并运行 worker；账号凭据不上传。节点注册通过本机 CLI 完成。</p><div id="pool-members" class="statsGrid"></div></section>
       <section class="surface"><h3>布置委员会任务</h3><form id="council-form"><label class="field">研究问题<textarea name="question" rows="3" required maxlength="16000" placeholder="说明目标、约束和需要检验的问题"></textarea></label><div class="formGrid"><label class="field">探索成员（至少选择 2 位）<select id="council-members" name="members" multiple required size="4"></select></label><label class="field">主席节点（单独注册的 Claude/API worker）<select id="council-chair" name="chair" required></select></label></div><div class="formGrid"><label class="field">总预算（小时）<input name="budget_hours" type="number" value="8" min="1" max="168" required></label><label class="field">每阶段等待（分钟）<input name="stage_minutes" type="number" value="30" min="1" max="1440" required></label></div><label class="field">延后开始（可选，本机时间）<input name="start_at" type="datetime-local"></label><label class="checkLabel"><input name="experiment" type="checkbox"> 委员会完成后，在本项目执行一次有独立验证的实验（额外预算 1 小时）</label><label class="field">证据目录 JSON（可选）<textarea name="sources" rows="2" placeholder='[{"id":"S1","title":"论文标题","url":"https://…","excerpt":"核对过的相关内容"}]'></textarea></label><p class="muted">需另行运行 pool serve 及各节点 worker。来源内容由你提供；模型共识和投票不等于已验证。缺少证据会明确标为待补证据。</p><button type="submit" id="submit-council" class="primary">提交到共享节点</button></form></section>
       <div class="accountsWorkspace taskWorkspace"><section class="accountListPanel"><h3>委员会任务</h3><div id="council-list"></div></section><section class="accountDetailPanel" id="council-detail"><p class="muted">选择任务，查看独立答案、评议、主席结论和证据缺口。</p></section></div>
+      <section class="surface" id="modes-workspace"><h3>合作与对抗任务</h3>
+        <p>报告、数据分析、方案设计等通用任务。合作模式先拆分、并行贡献和集成，再进入批评—修改—复测；对抗模式直接开始该闭环。</p>
+        <form id="mode-form">
+          <label class="field">工作模式<select name="mode" id="mode-kind"><option value="debates">对抗：批评—修改—复测</option><option value="cooperations">合作：拆分—贡献—集成—验收</option></select></label>
+          <label class="field">任务目标<textarea name="question" required maxlength="16000" rows="3"></textarea></label>
+          <div class="formGrid"><label class="field">提案者 / 集成者<select name="author" id="mode-author" required></select></label><label class="field">独立审查者（至少 1 位）<select name="reviewers" id="mode-reviewers" multiple size="4" required></select></label></div>
+          <div class="formGrid"><label class="field" id="mode-contributors-field" hidden>合作贡献者（1–4 位）<select name="contributors" id="mode-contributors" multiple size="4"></select></label><label class="field">主席（独立节点）<select name="chair" id="mode-chair" required></select></label></div>
+          <p class="muted">所有角色使用不同节点。合作贡献者提交各自的产物；集成者须合并所有贡献。审查者不参与产出。</p>
+          <div class="formGrid"><label class="field">总预算（小时）<input name="budget_hours" type="number" min="0.1" max="24" step="0.1" value="8" required></label><label class="field">每阶段等待（分钟）<input name="stage_minutes" type="number" min="1" max="1440" value="30" required></label><label class="field">最多审查轮数<input name="max_rounds" type="number" min="1" max="5" value="3" required></label></div>
+          <label class="field">资料 JSON（可选，id / title / content）<textarea name="evidence" rows="3" placeholder='[{"id":"sales","title":"原始记录","content":"item,amount\nA,10\nB,20\nC,30\n"}]'></textarea></label>
+          <label class="field">独立检查 JSON（建议配置）<textarea name="checks" rows="3" placeholder='[{"id":"total","kind":"json_value","artifact_id":"report","pointer":"/total","expected":60}]'></textarea></label>
+          <p class="muted">需运行 pool serve 和对应节点 worker。无独立检查时只输出待补证据。Python 检查器必须是已有的可信项目脚本，模型不能创建验证命令。资料引用匹配不等于已核实来源。表单总大小上限 32 KiB。</p>
+          <button class="primary" type="submit" id="submit-mode">提交合作 / 对抗任务</button>
+        </form>
+      </section>
+      <div class="accountsWorkspace taskWorkspace"><section class="accountListPanel"><h3>合作 / 对抗任务列表</h3><div id="mode-list"></div></section><section class="accountDetailPanel" id="mode-detail"><p class="muted">选择任务查看产物、批评、复测和待验证问题。</p></section></div>
       <section class="surface"><h3>多 agent 代码候选</h3><p>让当前选中的委员会成员分别实现同一实验，由本机控制器独立训练、验证和选择最佳归档。默认额外预算 1 小时；不会覆盖项目源码。</p><button id="start-coding" class="primary" disabled>让多个 agent 实现当前委员会的方案</button><div id="coding-list"></div><div id="coding-detail"></div></section>
     </div>
     <div id="view-usage" class="page" hidden><div class="pageHeading"><div><div class="eyebrow">CODEX QUOTA</div><h2>额度管理</h2><p>分别查看 manager 和 worker 的额度窗口与重置时间。</p></div><button id="refresh-quota" class="primary"><span data-icon="refresh"></span> 读取最新额度</button></div><div id="quota-cards" class="quotaGrid"></div><div class="infoBox">日常刷新只读取缓存。点击“读取最新额度”才会请求官方只读元数据，不启动模型任务。过期缓存和未知余量会明确标注。</div></div>

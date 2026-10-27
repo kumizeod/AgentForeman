@@ -2,6 +2,32 @@
 
 **Assign Codex an experiment tonight. Wait through quota resets without model calls. Review verified results tomorrow.**
 
+## Cooperative and adversarial tasks (v0.10)
+
+Use member-owned workers for general reports, data analysis and design artifacts:
+
+- **Adversarial:** propose → independent checks → anchored criticism → revision
+  → retest, bounded by round/time budgets. No-progress stops preserve disagreements.
+- **Cooperative:** an integrator decomposes independent assignments, contributors
+  run in parallel, then the combined result enters the same independent acceptance
+  loop. Missing contributions block integration; reviewers cannot be contributors.
+
+Both modes are available in **共享委员会 → 合作与对抗任务** in the local panel,
+with task status, contributions, versions, receipts, pending questions, stop
+controls and JSON/Markdown downloads. Keep `pool serve` and workers running;
+durable task IDs and receipts support restart without resubmission.
+
+Chair summaries are advisory. Passing status covers configured checks only;
+agreement and source-quote matching do not establish general factual correctness.
+[Cooperation and dashboard guide](docs/COOPERATIVE.md) ·
+[Adversarial controls and CLI](docs/ADVERSARIAL.md).
+
+The browser suite exercises both forms through concurrent HTTP workers with
+scripted model replies and a real Python checker: failed result → criticism →
+revision → passing retest. It also checks escaped content, downloads, mobile
+layout and stopping. Live paid-model quality and overnight performance remain
+unmeasured. Historical CI results below apply to their pinned commits.
+
 ## Multiple coding agents (v0.9)
 
 Codex, Claude Code and Gemini CLI can participate through the same durable worker

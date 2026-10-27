@@ -12,6 +12,11 @@ body{margin:0;font:14px/1.55 var(--font-ui);color:var(--ink);background:var(--bo
 #view-council .accountListPanel,#view-council .accountDetailPanel{padding:18px}
 .councilSelect{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;margin:8px 0;white-space:normal;overflow-wrap:anywhere}
 #council-detail pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:480px;overflow:auto}
+#mode-detail pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:420px;overflow:auto;font-size:12px}
+#mode-detail,#modes-workspace{min-width:0;overflow-wrap:anywhere}
+#mode-form .formGrid{margin:14px 0}
+#mode-form select[multiple]{min-height:110px}
+@media(max-width:800px){#mode-form .formGrid{grid-template-columns:1fr}#mode-detail pre{max-height:280px}}
 #council-detail details{margin:16px 0}
 #pool-members .statCard strong{font-size:18px;overflow-wrap:anywhere}
 #pool-members .statCard span{white-space:normal}

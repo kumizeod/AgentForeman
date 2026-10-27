@@ -3,7 +3,8 @@
 This initial implementation supports general text, JSON and CSV task artifacts,
 including reports and data analysis. It uses the existing member worker pool.
 The first member proposes, the remaining members critique, and a separate chair
-summarizes. The dashboard does not yet expose this mode.
+summarizes. The dashboard exposes this mode under **共享委员会 → 合作与对抗任务**;
+see [cooperation and dashboard instructions](COOPERATIVE.md).
 
 ## Run the supplied sales example
 
@@ -57,8 +58,8 @@ Python checkers are trusted local programs with timeouts, not sandboxed programs
 Configure them only from code you trust; standalone checkers receive artifact,
 evidence and output paths as shown in the example.
 
-Dashboard integration, additional task adapters, live model/overnight evaluation
-and a fresh full Windows/macOS/Linux regression run remain follow-up work.
+Additional task adapters, live model/overnight evaluation and a fresh full
+Windows/macOS/Linux regression run remain follow-up work.
 
 Run the targeted control and recovery tests with:
 

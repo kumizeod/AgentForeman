@@ -91,6 +91,32 @@ class PanelTests(unittest.TestCase):
             refresh.assert_called_once_with(self.project.resolve(), 'worker', refresh=True)
         self.assertEqual(self.request('/api/usage', {'role':'invalid'})[0], 400)
 
+    def test_general_modes_routes_authorization_and_durable_stop(self):
+        from agentforeman.pool import Pool
+        for route in ('debates','cooperations'):
+            self.assertEqual(self.request('/api/'+route,token=False)[0],403)
+            self.assertEqual(self.request('/api/'+route)[1],{'tasks':[]})
+        pool=Pool(self.project)
+        for member in ('author','worker','critic','chair'):pool.register(member,(member+'-')*8)
+        for route in ('debates','cooperations'):
+            body={'question':'Analyze data <script>not executable</script>',
+                  'members':['author','critic'] if route=='debates' else ['author','worker'],
+                  'chair':'chair','budget_seconds':120,'stage_seconds':30}
+            if route=='cooperations':body['reviewers']=['critic']
+            self.assertEqual(self.request('/api/'+route,body,origin=False)[0],403)
+            self.assertEqual(self.request('/api/'+route,{**body,'command':['unexpected']})[0],400)
+            code,result,_=self.request('/api/'+route,body)
+            self.assertEqual(code,201);did=result['id'];base='/api/'+route+'/'+did
+            self.assertEqual(self.request('/api/'+route)[1]['tasks'][0]['id'],did)
+            self.assertEqual(self.request(base)[1]['status'],'running')
+            self.assertEqual(self.request(base+'/report',token=False)[0],403)
+            code,report,headers=self.request(base+'/report')
+            self.assertEqual(code,200);self.assertIn(b'not executable',report)
+            self.assertIn('attachment;',headers['Content-Disposition'])
+            self.assertEqual(self.request(base+'/stop',{})[0],200)
+            self.assertTrue(self.request(base)[1]['stop_requested'])
+            self.assertEqual(self.request('/api/'+route+'/../../foreman.toml')[0],404)
+
     def test_submit_real_training_detail_logs_report_and_archive(self):
         code, result, _ = self.request('/api/campaigns', {'goal':'Improve accuracy <script>alert(1)</script>', 'target':.95, 'max_rounds':2})
         self.assertEqual(code, 201)

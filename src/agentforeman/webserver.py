@@ -194,6 +194,21 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/coding":
                 from .coding import CodingRound
                 result = {"coding": CodingRound(self.server.project).list()} if (self.server.project / ".foreman" / "coding").exists() else {"coding": []}
+            elif path in {"/api/debates", "/api/cooperations"}:
+                from .debate import Debate
+                from .cooperate import Cooperation
+                cls=Debate if path.endswith('debates') else Cooperation
+                folder='debates' if cls is Debate else 'cooperations'
+                result={"tasks":cls(self.server.project).list()} if (self.server.project/'.foreman'/folder).exists() else {"tasks":[]}
+            elif match := re.fullmatch(r"/api/(debates|cooperations)/([0-9a-f]{12})(/report)?", path):
+                from .debate import Debate
+                from .cooperate import Cooperation
+                controller=(Debate if match[1]=='debates' else Cooperation)(self.server.project)
+                result=controller.get(match[2])
+                result['stop_requested']=(controller.path(match[2])/'stop.request').exists()
+                if match[3]:
+                    return self.send(200,(controller.path(match[2])/'report.md').read_bytes(),
+                                     'text/markdown; charset=utf-8',filename=match[2]+'-report.md')
             elif match := re.fullmatch(r"/api/coding/([0-9a-f]{12})(/archive)?", path):
                 from .coding import CodingRound
                 coding = CodingRound(self.server.project)
@@ -272,6 +287,22 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Expected a JSON object")
             with self.server.actions:
                 path = urlsplit(self.path).path
+                if path in {"/api/debates", "/api/cooperations"}:
+                    from .debate import Debate
+                    from .cooperate import Cooperation
+                    allowed={"question","members","chair","evidence","checks","max_rounds","budget_seconds","stage_seconds"}
+                    if path.endswith('cooperations'):allowed.add('reviewers')
+                    if set(body)-allowed:raise ValueError('Unknown multi-agent setting')
+                    controller=(Debate if path.endswith('debates') else Cooperation)(self.server.project)
+                    return self.send(201,{"id":controller.create(**body)})
+                if match := re.fullmatch(r"/api/(debates|cooperations)/([0-9a-f]{12})/(stop)", path):
+                    from .debate import Debate
+                    from .cooperate import Cooperation
+                    controller=(Debate if match[1]=='debates' else Cooperation)(self.server.project)
+                    result=controller.get(match[2])
+                    if match[3]=='stop':
+                        atomic_text(controller.path(match[2])/'stop.request','stop\n')
+                        return self.send(200,{"stop_requested":True})
                 if path == "/api/coding":
                     from .coding import CodingRound
                     if set(body)-{"goal", "members", "council_id", "budget_seconds", "proposal_seconds"}:

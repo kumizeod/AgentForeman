@@ -206,6 +206,7 @@ async function refreshCouncil() {
   $('#council-list').innerHTML=list.councils.map(c=>`<button class="councilSelect" data-council="${esc(c.id)}"><strong>${esc(c.question)}</strong><small>${esc(councilStatus[c.status]||c.status)} · ${esc(councilStage[c.stage]||c.stage)} · ${esc(c.id)}</small></button>`).join('')||'<p class="muted">尚无委员会任务。</p>';
   if(!councilSelected&&list.councils.length)councilSelected=list.councils[0].id;
   if(councilSelected)await selectCouncil(councilSelected);
+  await refreshModes(pool.members);
 }
 async function selectCouncil(cid){
   councilSelected=cid;
@@ -239,4 +240,60 @@ document.addEventListener('click',async event=>{
   const b=event.target.closest('button');if(!b||b.disabled)return;
   try{if(b.dataset.coding)await selectCoding(b.dataset.coding);if(b.dataset.codeAction==='export')await download(null,'coding-'+codingSelected+'.json',codingDetail);if(b.dataset.codeAction==='archive')await download('/api/coding/'+codingSelected+'/archive',codingSelected+'-code.zip');if(b.dataset.codeAction==='stop'){await api('/api/coding/'+codingSelected+'/stop',{});await selectCoding(codingSelected);}}
   catch(e){showError(e.message);}
+});
+
+const modeStatus={running:'运行中',completed_scoped:'配置的检查范围内通过',needs_evidence:'待补证据'};
+$('#open-modes').onclick=()=>$('#modes-workspace').scrollIntoView({block:'start'});
+const modeStage={plan:'任务拆分',contribute:'并行贡献',propose:'提案 / 集成',verify:'独立验证',critique:'可核查批评',revise:'修改产物',chair:'主席综合',done:'结束'};
+let modeSelected=null,modeDetail=null,modeMemberKey='';
+$('#mode-kind').onchange=()=>{
+  const cooperative=$('#mode-kind').value==='cooperations';
+  $('#mode-contributors-field').hidden=!cooperative;
+  $('#mode-contributors').required=cooperative;
+};
+async function refreshModes(members){
+  const key=members.map(m=>m.id+':'+m.enabled).join(',');
+  if(key!==modeMemberKey){
+    modeMemberKey=key;
+    const options=members.filter(m=>m.enabled).map(m=>`<option value="${esc(m.id)}">${esc(m.id)}</option>`).join('');
+    for(const id of ['author','reviewers','contributors','chair'])$('#mode-'+id).innerHTML=(['author','chair'].includes(id)?'<option value="">选择节点</option>':'')+options;
+  }
+  const [debates,cooperations]=await Promise.all([api('/api/debates'),api('/api/cooperations')]);
+  const rows=[...debates.tasks.map(t=>({...t,route:'debates'})),...cooperations.tasks.map(t=>({...t,route:'cooperations'}))].sort((a,b)=>b.created_at-a.created_at);
+  $('#mode-list').innerHTML=rows.map(t=>`<button class="councilSelect" data-mode-route="${t.route}" data-mode-id="${esc(t.id)}"><strong>${esc(t.question)}</strong><small>${t.route==='debates'?'对抗':'合作'} · ${esc(modeStatus[t.status]||t.status)} · ${esc(modeStage[t.stage]||t.stage)} · ${t.round}/${t.max_rounds}</small></button>`).join('')||'<p class="muted">尚无合作或对抗任务。</p>';
+  if(!modeSelected&&rows.length)modeSelected={route:rows[0].route,id:rows[0].id};
+  if(modeSelected)await selectMode(modeSelected.route,modeSelected.id);
+}
+async function selectMode(route,id){
+  modeSelected={route,id};const c=await api(`/api/${route}/${id}`);
+  if(modeSelected.route!==route||modeSelected.id!==id)return;
+  modeDetail=c;
+  const selected=c.versions.find(v=>v.id===c.selected_version)||c.versions.at(-1);
+  const answer=selected?.proposal.artifacts.find(a=>a.id==='answer')?.content;
+  const json=value=>`<pre>${esc(JSON.stringify(value,null,2))}</pre>`;
+  $('#mode-detail').innerHTML=`<h3>${esc(c.question)}</h3><p>${route==='debates'?'对抗模式':'合作模式'} · ${esc(modeStatus[c.status]||c.status)} · ${esc(modeStage[c.stage]||c.stage)} · 第 ${c.round}/${c.max_rounds} 轮</p><p class="taskId">${esc(id)} · 截止 ${date(c.deadline)}</p><div class="detailActions"><button data-mode-action="export">导出完整记录</button><button data-mode-action="report">下载报告</button><button data-mode-action="stop" ${c.status==='running'&&!c.stop_requested?'':'disabled'}>${c.stop_requested?'已请求停止':'停止后续阶段'}</button></div><div class="infoBox">主席意见和模型共识不等于事实。检查仅验收其配置范围；未解决的批评不会因模型同意而消失。运行需保持 pool serve 与 worker 在线，重启后从保存状态继续。</div>${answer!==undefined?'<h3>当前选择的产物</h3><pre>'+esc(answer)+'</pre>':'<p>等待产物。</p>'}<h3>独立复测</h3>${json(selected?.checks||[])}<h3>待验证问题</h3>${json(c.pending_questions||c.issues.filter(i=>i.status!=='check_passed_scoped'))}<h3>批评与回应记录</h3>${json(c.reviews)}${c.plan?'<h3>拆分与集成约定</h3>'+json(c.plan):''}${c.contributions?'<h3>各成员贡献（尚非独立验收结论）</h3>'+json(c.contributions):''}${c.contribution_tasks?'<details><summary>子任务状态与部分结果</summary>'+json(c.contribution_tasks)+'</details>':''}<h3>修改与验证进展</h3>${json(c.progress)}<details><summary>全部版本与产物</summary>${json(c.versions)}</details><h3>主席意见（仅供综合）</h3>${json(c.chair_summary||null)}<h3>质量与协议错误</h3>${json({quality:c.quality,errors:c.protocol_errors})}${c.stop_reason?'<p>停止原因：'+esc(c.stop_reason)+'</p>':''}`;
+}
+$('#mode-form').onsubmit=async event=>{
+  event.preventDefault();const button=$('#submit-mode');if(button.disabled)return;button.disabled=true;
+  try{
+    const f=new FormData(event.currentTarget),route=f.get('mode');
+    const author=f.get('author'),reviewers=f.getAll('reviewers'),contributors=f.getAll('contributors');
+    const roles=[author,...reviewers,...(route==='cooperations'?contributors:[]),f.get('chair')];
+    if(new Set(roles).size!==roles.length)throw new Error('提案者、贡献者、审查者和主席必须使用不同节点');
+    const body={question:f.get('question'),members:[author,...(route==='cooperations'?contributors:reviewers)],chair:f.get('chair'),evidence:JSON.parse(f.get('evidence')||'[]'),checks:JSON.parse(f.get('checks')||'[]'),max_rounds:Number(f.get('max_rounds')),budget_seconds:Number(f.get('budget_hours'))*3600,stage_seconds:Number(f.get('stage_minutes'))*60};
+    if(route==='cooperations')body.reviewers=reviewers;
+    const result=await api('/api/'+route,body);modeSelected={route,id:result.id};
+    notice('任务已保存：'+result.id+'。请保持 pool serve 和各角色 worker 在线。');await refreshCouncil();
+  }catch(e){showError(e.message+'。如网络中断，请先刷新列表确认是否已创建。');}finally{button.disabled=false;}
+};
+document.addEventListener('click',async event=>{
+  const b=event.target.closest('button');if(!b||b.disabled)return;
+  try{
+    if(b.dataset.modeId)return await selectMode(b.dataset.modeRoute,b.dataset.modeId);
+    if(!b.dataset.modeAction||!modeSelected)return;
+    const {route,id}=modeSelected;
+    if(b.dataset.modeAction==='export')return await download(null,id+'-transcript.json',modeDetail);
+    if(b.dataset.modeAction==='report')return await download(`/api/${route}/${id}/report`,id+'-report.md');
+    b.disabled=true;await api(`/api/${route}/${id}/stop`,{});await selectMode(route,id);
+  }catch(e){showError(e.message);}
 });
