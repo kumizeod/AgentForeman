@@ -1,0 +1,66 @@
+{
+  "tested_commit": "95757684bc930f32c63a0eb71dcaed536ed2de63",
+  "tested_tree": "e8caf19d2bf871e3d168db58bd91bf17e03aec0d",
+  "run_id": 40444781682,
+  "run_url": "https://github.com/kumizeod/AgentForeman/actions/runs/40444781682",
+  "local_python_tests": 159,
+  "browser_workflow_groups": 10,
+  "jobs": [
+    {
+      "name": "browser",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40444781682/job/121993342423"
+    },
+    {
+      "name": "test (windows-latest, 3.13)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40444781682/job/121993342546"
+    },
+    {
+      "name": "test (macos-latest, 3.13)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40444781682/job/121993342552"
+    },
+    {
+      "name": "test (ubuntu-latest, 3.13)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40444781682/job/121993342611"
+    },
+    {
+      "name": "test (ubuntu-latest, 3.11)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40444781682/job/121993342661"
+    },
+    {
+      "name": "test (windows-latest, 3.11)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40444781682/job/121993342678"
+    },
+    {
+      "name": "test (ubuntu-latest, 3.12)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40444781682/job/121993342710"
+    },
+    {
+      "name": "test (macos-latest, 3.12)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40444781682/job/121993342821"
+    },
+    {
+      "name": "test (macos-latest, 3.11)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40444781682/job/121993342881"
+    },
+    {
+      "name": "test (windows-latest, 3.12)",
+      "conclusion": "success",
+      "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40444781682/job/121993342936"
+    }
+  ],
+  "scope": [
+    "Cooperative decomposition, concurrent contributions, integration and independent critique/revision/retest",
+    "Adversarial evidence anchors, progress stops, scoped acceptance and restart receipts",
+    "Dashboard task creation, downloads, stop, escaped content and mobile layout"
+  ],
+  "disclosure": "Model replies are scripted fixtures, not live paid model calls. HTTP transport, native process supervision, Python checker execution, failed/revised/passing results, training, verification and archives are real. These tests do not measure live model quality, novelty, or overnight performance."
+}

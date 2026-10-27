@@ -28,6 +28,11 @@ revision → passing retest. It also checks escaped content, downloads, mobile
 layout and stopping. Live paid-model quality and overnight performance remain
 unmeasured. Historical CI results below apply to their pinned commits.
 
+Validation at `9575768`: local **159 Python tests** passed; all **nine native
+Windows/macOS/Linux × Python 3.11/3.12/3.13 jobs** and the browser's **ten workflow
+groups** passed in CI. [CI run](https://github.com/kumizeod/AgentForeman/actions/runs/40444781682)
+· [Pinned evidence and fixture disclosure](evidence/cooperative-ci.json).
+
 ## Multiple coding agents (v0.9)
 
 Codex, Claude Code and Gemini CLI can participate through the same durable worker
