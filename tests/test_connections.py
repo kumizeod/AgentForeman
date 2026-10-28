@@ -133,5 +133,19 @@ class ConnectionTests(unittest.TestCase):
         self.assertNotIn('shell',launch.call_args.kwargs)
         with self.assertRaises(ValueError):self.c.login('openai-compatible')
 
+    def test_connection_test_finishes_only_after_worker_is_published(self):
+        c=self.add();entered=threading.Event();release=threading.Event();original=self.c.start
+        def start(connection):
+            entered.set();release.wait(10);return original(connection)
+        with patch.object(self.c,'start',side_effect=start):
+            self.c.test(c['id'])
+            try:
+                self.assertTrue(entered.wait(15))
+                self.assertIn(c['id'],self.c.testing)
+            finally:release.set()
+            self.until(lambda:c['id'] not in self.c.testing)
+        self.assertTrue(self.c.public(self.c.get(c['id']))['worker_running'])
+        self.assertIn('local_'+c['id'],[r['member'] for r in self.c.candidates()])
+
     def test_anthropic_messages_compatible_relay(self):
         self.connect_tested(provider='anthropic')

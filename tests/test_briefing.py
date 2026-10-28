@@ -1,4 +1,6 @@
 import copy
+import threading
+import time
 import tempfile
 from pathlib import Path
 import unittest
@@ -62,6 +64,19 @@ class BriefingTests(unittest.TestCase):
         self.assertEqual(state['status'],'waiting_human');self.assertIsNone(state['draft'])
         self.assertEqual(Debate(self.project).list(),[])
         self.assertEqual(state['execution']['budget_seconds'],120)
+
+    def test_confirmation_waits_for_background_controller_lock_without_duplicate_launch(self):
+        from agentforeman.platforms import file_lock
+        bid=self.create();ready=self.chair(bid);results=[];errors=[]
+        def confirm():
+            try:results.append(self.c.confirm(bid,ready['version'],ready['sha256']))
+            except Exception as exc:errors.append(exc)
+        with file_lock(self.c.path(bid)/'controller.lock'):
+            thread=threading.Thread(target=confirm);thread.start();time.sleep(.05)
+            self.assertTrue(thread.is_alive())
+        thread.join(timeout=5)
+        self.assertFalse(thread.is_alive());self.assertEqual(errors,[])
+        self.assertEqual(results[0]['status'],'launched');self.assertEqual(len(Debate(self.project).list()),1)
 
     def test_only_chair_is_dispatched_before_explicit_human_confirmation(self):
         bid=self.create();self.assertIsNone(self.c.pool.claim('author','author'))

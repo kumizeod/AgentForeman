@@ -254,8 +254,9 @@ class Connections:
                 if current.get('test_generation',0)==generation and not self.stop.is_set():
                     current['enabled']=receipt['passed'] if receipt['status']!='busy' else current['enabled'];self.save(current)
                     with self.pool.connect() as db:db.execute('UPDATE members SET enabled=? WHERE id=?',(int(current['enabled']),'local_'+cid))
-                self.testing.discard(cid)
-                if current.get('enabled') and current.get('test_generation',0)==generation and not self.stop.is_set():self.start(current)
+                try:
+                    if current.get('enabled') and current.get('test_generation',0)==generation and not self.stop.is_set():self.start(current)
+                finally:self.testing.discard(cid)
         with self.lock:
             generation=c.get('test_generation',0)+1;c['test_generation']=generation;self.save(c)
         t=threading.Thread(target=run,daemon=True);self.tests[cid]=t;t.start()
@@ -309,9 +310,14 @@ class Connections:
         t=threading.Thread(target=run,daemon=True);self.threads[c['id']]=t;t.start()
 
     def candidates(self):
-        now=time.time()
-        return [self.public(c) for c in self.records() if c.get('enabled') and c.get('test',{}).get('passed')
-                and available(self.settings(c)) and self.public(c)['worker_running'] and self.public(c)['key_available'] and self.public(c)['retry_at']<=now]
+        # Publication of a successful test and its running worker is atomic.
+        # Otherwise a chairman can observe a different roster between planning
+        # and receiving the candidate set, especially during account onboarding.
+        with self.lock:
+            now=time.time();rows=[self.public(c) for c in self.records()]
+            return [r for r in rows if r.get('enabled') and r.get('test',{}).get('passed')
+                    and not r['testing'] and r['active_now'] and r['worker_running']
+                    and r['key_available'] and r['retry_at']<=now]
 
     def plan(self,chair=None,mode='adversarial'):
         self.require_owner()

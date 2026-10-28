@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+from contextlib import contextmanager, ExitStack
 from pathlib import Path
 import secrets
 import time
@@ -22,6 +23,20 @@ CONTRACT=obj(goal=txt(6000),inputs=seq(txt(2000),maximum=12),deliverables=seq(DE
                           defaults=seq(txt(2000),maximum=12)))
 REPLY=obj(reply=txt(8000),questions=seq(txt(2000),maximum=8),contract=CONTRACT,
           open_questions=seq(txt(2000),maximum=12),ready={'type':'boolean'})
+
+
+@contextmanager
+def action_lock(path):
+    """Human mutations wait briefly for a background state publication to finish."""
+    deadline=time.monotonic()+3
+    with ExitStack() as stack:
+        while True:
+            try:
+                stack.enter_context(file_lock(path));break
+            except BlockingIOError:
+                if time.monotonic()>=deadline:raise ValueError('Controller is busy; reload and retry this action') from None
+                time.sleep(.02)
+        yield
 
 
 class Briefing:
@@ -146,7 +161,7 @@ class Briefing:
         return expected
 
     def message(self,bid,version,content):
-        with file_lock(self.path(bid)/'controller.lock'):
+        with action_lock(self.path(bid)/'controller.lock'):
             state=self.get(bid);assert_frozen(self.path(bid),state)
             if (self.path(bid)/'terminate.request').exists():raise ValueError('This task was terminated; create a new task to restart')
             if version!=state['version'] or type(version) is not int:raise ValueError('Stale briefing version; reload before replying')
@@ -157,7 +172,7 @@ class Briefing:
         return self.advance(bid)
 
     def edit(self,bid,version,contract,execution=None):
-        with file_lock(self.path(bid)/'controller.lock'):
+        with action_lock(self.path(bid)/'controller.lock'):
             state=self.get(bid);assert_frozen(self.path(bid),state)
             if (self.path(bid)/'terminate.request').exists():raise ValueError('This task was terminated; create a new task to restart')
             if type(version) is not int or version!=state['version'] or state['status']!='ready':
@@ -169,7 +184,7 @@ class Briefing:
             self.save(state);return state
 
     def confirm(self,bid,version,sha256):
-        with file_lock(self.path(bid)/'controller.lock'):
+        with action_lock(self.path(bid)/'controller.lock'):
             state=self.get(bid);assert_frozen(self.path(bid),state)
             if (self.path(bid)/'terminate.request').exists():raise ValueError('This task was terminated; create a new task to restart')
             if type(version) is not int or version!=state['version'] or sha256!=state['sha256']:
@@ -184,7 +199,7 @@ class Briefing:
             return self.launch(state)
 
     def stop(self,bid):
-        with file_lock(self.path(bid)/'controller.lock'):
+        with action_lock(self.path(bid)/'controller.lock'):
             state=self.get(bid)
             if state['status']=='launched' or state['stage']=='launch':
                 raise ValueError('Execution launch already committed; stop the execution task instead')
