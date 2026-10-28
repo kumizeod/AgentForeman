@@ -136,6 +136,20 @@ class TerminationTests(unittest.TestCase):
         with patch.object(worker,'post',side_effect=post),patch.object(worker,'execute',return_value={'outcome':'uncertain','result':None,'retry_at':None}) as execute:
             worker.run_once();execute.assert_called_once()
         self.assertEqual(bodies[0]['outcome'],'uncertain')
+    @unittest.skipUnless(sys.platform=='darwin','macOS zombie process-group semantics')
+    def test_finished_root_is_not_force_signalled_as_a_zombie_group(self):
+        import signal
+        from agentforeman.quota import probe_limits
+        import agentforeman.platforms as platforms
+        original=platforms.os.killpg
+        def reject_escalation(pid,sig):
+            if sig==signal.SIGKILL:raise PermissionError('TEST macOS empty group')
+            return original(pid,sig)
+        fixture=Path(__file__).with_name('fixture_campaign.py').resolve()
+        with patch('agentforeman.platforms.os.killpg',side_effect=reject_escalation):
+            result=probe_limits({'command':[sys.executable,str(fixture)]},timeout=5)
+        self.assertTrue(result['ok'])
+
     def test_api_termination_closes_live_http_request_without_claiming_provider_stopped(self):
         started=threading.Event();disconnected=threading.Event()
         class API(BaseHTTPRequestHandler):
@@ -145,6 +159,7 @@ class TerminationTests(unittest.TestCase):
                 inner.connection.settimeout(15)
                 try:
                     if inner.connection.recv(1)==b'':disconnected.set()
+                except (ConnectionResetError,ConnectionAbortedError):disconnected.set()
                 except OSError:pass
         api=ThreadingHTTPServer(('127.0.0.1',0),API);at=threading.Thread(target=api.serve_forever,daemon=True);at.start()
         server=PoolServer(self.root,port=0);st=threading.Thread(target=server.serve_forever,daemon=True);st.start()

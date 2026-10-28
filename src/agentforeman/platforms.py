@@ -137,18 +137,63 @@ def stop_process(child: subprocess.Popen):
         if denied:
             raise RuntimeError("Process-tree cleanup incomplete: " + "; ".join(denied))
         return
+    if sys.platform=='linux':
+        # /proc may expose host PIDs while Popen uses namespace-local PIDs.
+        # Native waitid/killpg use the correct namespace; WNOWAIT keeps the root
+        # PID reserved until its whole process group has been stopped.
+        try:os.killpg(child.pid,signal.SIGTERM)
+        except ProcessLookupError:
+            child.wait(timeout=5);return
+        deadline=time.monotonic()+3
+        while time.monotonic()<deadline:
+            try:
+                exited=os.waitid(os.P_PID,child.pid,os.WEXITED|os.WNOHANG|os.WNOWAIT)
+            except ChildProcessError as exc:
+                raise RuntimeError('Child was reaped before process-group cleanup; inspect descendants') from exc
+            if exited is not None:break
+            time.sleep(.05)
+        try:os.killpg(child.pid,signal.SIGKILL)
+        except ProcessLookupError:pass
+        child.wait(timeout=5);return
     try:
-        os.killpg(child.pid, signal.SIGTERM)
+        root=psutil.Process(child.pid)
+        descendants=root.children(recursive=True)
+    except psutil.NoSuchProcess:
+        child.wait(timeout=5);return
+    try:
+        os.killpg(child.pid,signal.SIGTERM)
     except ProcessLookupError:
-        return
-    # Keep the root PID reserved until the whole group has been killed. Reaping
-    # a fast-exiting parent first can leave a SIGTERM-ignoring grandchild alive.
+        pass
+    except PermissionError:
+        # macOS can reject a signal to a group containing only a zombie.
+        # A live process with denied signal permission must remain an error.
+        if root.is_running() and root.status()!=psutil.STATUS_ZOMBIE:raise
     deadline=time.monotonic()+3
     while time.monotonic()<deadline:
         try:
-            if psutil.Process(child.pid).status()==psutil.STATUS_ZOMBIE:break
+            if not root.is_running() or root.status()==psutil.STATUS_ZOMBIE:break
         except psutil.NoSuchProcess:break
         time.sleep(.05)
-    try:os.killpg(child.pid,signal.SIGKILL)
-    except ProcessLookupError:pass
+    try:
+        if root.is_running() and root.status()!=psutil.STATUS_ZOMBIE:
+            try:os.killpg(child.pid,signal.SIGKILL)
+            except ProcessLookupError:pass
+    except psutil.NoSuchProcess:pass
+    # Do not signal an empty/zombie process group on macOS. Individually stop
+    # the known descendants even if their parent exited immediately; psutil's
+    # process objects verify birth identity before sending a signal.
+    for process in descendants:
+        try:
+            if process.is_running() and process.status()!=psutil.STATUS_ZOMBIE:process.kill()
+        except psutil.NoSuchProcess:pass
     child.wait(timeout=5)
+    deadline=time.monotonic()+5
+    while True:
+        remaining=[]
+        for process in descendants:
+            try:
+                if process.is_running() and process.status()!=psutil.STATUS_ZOMBIE:remaining.append(process)
+            except psutil.NoSuchProcess:pass
+        if not remaining:return
+        if time.monotonic()>=deadline:raise RuntimeError('Known descendant processes have not exited')
+        time.sleep(.05)

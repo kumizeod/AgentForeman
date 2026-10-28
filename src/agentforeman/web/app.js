@@ -374,9 +374,11 @@ function connectionGuide(){
   const accounts=accountData.filter(a=>a.provider===provider),accountKey=JSON.stringify([provider,accounts]);
   if(accountKey!==accountChoiceKey){const selected=$('#connection-account').value;accountChoiceKey=accountKey;$('#connection-account').innerHTML='<option value="">复用本机当前账号</option>'+accounts.map(a=>`<option value="${esc(a.id)}">${esc(a.label)}（独立账号配置）</option>`).join('');if(accounts.some(a=>a.id===selected))$('#connection-account').value=selected;}
   const guide=connectionData?.guides[provider],client=connectionData?.clients.find(c=>c.provider===provider);
-  $('#connection-guide').innerHTML=isAPI?'填写服务商实际提供的地址与模型名。添加后会发送一次有界小请求测试，可能消耗少量 API 额度。':`<strong>${client?.installed?'已检测到客户端；登录状态需实际测试。':'尚未检测到客户端。'}</strong><p>安装：<code>${esc(guide?.install||'请安装对应官方客户端')}</code></p><p>先在本机终端完成官方登录：<code>${esc(guide?.login||provider)}</code>。已登录可直接添加测试；账号令牌由客户端管理。</p><button type="button" data-connection-login="${esc(provider)}" ${client?.installed?'':'disabled'}>打开官方登录终端</button>`;
+  const loginHelp=isolated&&$('#connection-account').value?'所选账号使用独立配置，请点击下方按钮在官方登录页面完成登录。':`先在本机终端完成官方登录：<code>${esc(guide?.login||provider)}</code>。已登录可直接添加测试；账号令牌由客户端管理。`;
+  $('#connection-guide').innerHTML=isAPI?'填写服务商实际提供的地址与模型名。添加后会发送一次有界小请求测试，可能消耗少量 API 额度。':`<strong>${client?.installed?'已检测到客户端；登录状态需实际测试。':'尚未检测到客户端。'}</strong><p>安装：<code>${esc(guide?.install||'请安装对应官方客户端')}</code></p><p>${loginHelp}</p><button type="button" data-connection-login="${esc(provider)}" ${client?.installed?'':'disabled'}>打开官方登录终端</button>`;
 }
 $('#connection-provider').onchange=connectionGuide;
+$('#connection-account').onchange=connectionGuide;
 async function refreshConnections(){
   const [connections,accounts]=await Promise.all([api('/api/connections'),api('/api/accounts')]);connectionData=connections;accountData=accounts.accounts;
   $('#connection-service').textContent=connectionData.error||'本机协调服务已启动。测试通过后自动运行节点，无需手动配置 worker。';
@@ -433,7 +435,7 @@ $('#connection-new-account').onclick=async()=>{
   const b=$('#connection-new-account');if(b.disabled)return;b.disabled=true;
   try{
     const provider=$('#connection-provider').value,label=$('#connection-form [name=label]').value||((provider==='codex'?'ChatGPT':'Claude')+' 独立账号');
-    const a=await api('/api/accounts',{provider,label});accountData.push(a);connectionGuide();$('#connection-account').value=a.id;
+    const a=await api('/api/accounts',{provider,label});accountData.push(a);connectionGuide();$('#connection-account').value=a.id;connectionGuide();
     try{await api('/api/connections/login',{provider,account_id:a.id});notice('已打开独立账号的官方登录。完成后点击添加并测试；本机默认账号保持原配置。');}
     catch(e){showError('独立账号配置已创建。'+e.message+'；安装客户端后，选择此账号并点击打开官方登录终端。');}
   }catch(e){showError(e.message);}finally{b.disabled=false;}

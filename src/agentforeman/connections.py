@@ -96,8 +96,11 @@ class Connections:
         environment.update(profile_env)
         login_key=provider+('_'+account_id if account_id else '')
         import shlex
-        login_argv=None
-        argv=command(settings)+{'codex':['login'],'gemini-cli':[],'antigravity':[],
+        try:prefix=command(settings)
+        except (ValueError,OSError):
+            if account_id:raise ValueError('Cannot start the official client. Install/update it, then reopen login with this independent profile selected.') from None
+            raise
+        argv=prefix+{'codex':['login'],'gemini-cli':[],'antigravity':[],
                     'claude-code':['auth','login'],'opencode':['auth','login']}[provider]
         if time.time()-self.logins.get(login_key,0)<15:raise ValueError('Login was just opened; complete it in that terminal')
         login_argv=(['env',*[arg for key in unset for arg in ('-u',key)],*[k+'='+v for k,v in profile_env.items()],*argv] if profile_env else argv)

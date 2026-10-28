@@ -311,6 +311,7 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
     await page.locator('#connection-new-account').click();
     await until(async()=>!!await page.locator('#connection-account').inputValue(),'isolated account selected');
     const selected=await page.locator('#connection-account').inputValue();
+    assert((await page.locator('#connection-guide').innerText()).includes('独立配置'));
     const accounts=(await request('/api/accounts')).accounts;
     assert(accounts.some(a=>a.id===selected&&a.provider===provider));
     assert.equal(await page.locator('#connection-form input[type=password]:visible').count(),0);

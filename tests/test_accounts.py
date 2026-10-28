@@ -74,6 +74,8 @@ class AccountTests(unittest.TestCase):
                 self.assertEqual(env['CODEX_HOME'],str(self.a.directory(profile['id'],'codex')))
                 self.assertNotIn('OPENAI_API_KEY',env)
                 self.assertEqual(os.environ['CODEX_HOME'],'default-home')
+            with patch('agentforeman.agents.command',side_effect=ValueError('Run codex login')):
+                with self.assertRaisesRegex(ValueError,'independent profile'):c.login('codex',profile['id'])
             first=c.create(provider='codex',label='First model',account_id=profile['id'])
             second=c.create(provider='codex',label='Second model',account_id=profile['id'])
             default=c.create(provider='codex',label='Default account')
