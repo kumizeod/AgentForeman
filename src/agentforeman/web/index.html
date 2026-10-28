@@ -15,7 +15,8 @@
   <header class="topbar">
     <button class="brandLine homeLink" type="button" id="home"><span class="appLogo mark">AF</span><span><h1>AgentForeman</h1><small>OVERNIGHT EXPERIMENTS</small></span></button>
     <nav class="topSegmentedNav" aria-label="主导航">
-      <button class="topSegmentedButton isActive" data-view="tasks" aria-pressed="true">实验调度</button>
+      <button class="topSegmentedButton isActive" data-view="connections" aria-pressed="true">快速开始</button>
+      <button class="topSegmentedButton" data-view="tasks" aria-pressed="false">实验调度</button>
       <button class="topSegmentedButton" data-view="council" aria-pressed="false">共享委员会</button>
       <button class="topSegmentedButton" data-view="usage" aria-pressed="false">额度管理</button>
       <button class="topSegmentedButton" data-view="analytics" aria-pressed="false">用量统计</button>
@@ -26,7 +27,28 @@
   <div id="error" class="errorBanner" role="alert" hidden></div>
   <div id="notice" class="noticeBanner" role="status" hidden></div>
   <section class="viewStage">
-    <div id="view-tasks" class="page">
+    <div id="view-connections" class="page">
+      <div class="pageHeading"><div><div class="eyebrow">QUICK START</div><h2>接入模型，把任务交给主席。</h2><p>① 添加连接　② 测试通过　③ 说明任务、确认开工</p></div></div>
+      <div class="infoBox" id="connection-service">正在检查本机服务…</div>
+      <section class="surface"><h3>我的连接</h3><div id="connection-cards" class="statsGrid"></div></section>
+      <section class="surface"><h3>添加连接</h3><form id="connection-form">
+        <div class="formGrid"><label class="field">连接方式<select id="connection-provider" name="provider"><option value="codex">Codex / ChatGPT Plus</option><option value="gemini-cli">Gemini / Google AI Pro</option><option value="claude-code">Claude Code</option><option value="opencode">OpenCode / Go</option><option value="openai-compatible">API / 中转站（OpenAI Chat Completions）</option><option value="anthropic">API / 中转站（Anthropic Messages）</option></select></label><label class="field">名称<input name="label" maxlength="100" placeholder="例如：我的 Codex"></label></div>
+        <div id="connection-guide" class="infoBox"></div>
+        <label class="field">模型<input name="model" maxlength="200" placeholder="CLI 可留空使用默认；OpenCode 可填 provider/model；API 必填"></label>
+        <div id="connection-api-fields" hidden><label class="field" id="connection-url-field">API 基础地址<input name="base_url" placeholder="https://你的服务商地址/v1"></label><label class="field">API 密钥<input name="api_key" type="password" autocomplete="new-password" maxlength="8192" placeholder="只发送到此本机控制台，不回显"></label><label class="checkLabel"><input name="remember" type="checkbox"> 保存到系统凭据库（需安装 desktop 依赖）；否则仅本次进程有效</label><details><summary>高级：使用已有环境变量</summary><label class="field">密钥环境变量名（与密钥二选一）<input name="key_env" placeholder="例如 OPENAI_API_KEY"></label></details><p class="muted">订阅与 API 分别计费。支持 Chat Completions 的中转站可在这里接入；服务商兼容性以实际测试为准。</p></div>
+        <details><summary>更多选项</summary><label class="field">可用时段（留空全天）<input name="active_hours" placeholder="22:00-08:00"></label><label class="checkLabel"><input name="chair_preferred" type="checkbox"> 优先作为 chairman</label></details>
+        <button class="primary" id="connection-add" type="submit">添加并测试连接</button>
+      </form></section>
+      <section class="surface"><h3>布置任务</h3><p>主席会澄清需求并选择执行者、贡献者和批评者。你确认任务约定后才正式开工。</p><form id="quick-task-form">
+        <label class="field">你想完成什么？<textarea name="idea" required maxlength="8000" rows="4" placeholder="说明目标、已有资料、期望的交付物…"></textarea></label>
+        <div class="formGrid"><label class="field">主席<select name="chair" id="quick-chair"><option value="">自动选择（优先使用你标记的主席）</option></select></label><label class="field">执行方式<select name="mode"><option value="adversarial">自动：主席选择合作 / 对抗与角色</option><option value="cooperative">优先合作（至少 4 个连接）</option></select></label></div>
+        <details><summary>资料与独立检查（高级）</summary><label class="field">资料 JSON<textarea name="evidence" rows="3" placeholder='[{"id":"data","title":"数据","content":"..."}]'></textarea></label><label class="field">检查 JSON<textarea name="checks" rows="3" placeholder='[{"id":"total","kind":"json_value","artifact_id":"answer","pointer":"/total","expected":60}]'></textarea></label></details>
+        <p class="muted">默认执行时限 8 小时，最多 3 轮审查；可在确认前修改。至少需要 3 个通过测试的连接；相同账号的不同模型共享串行资源，不代表独立额度。未配置自动检查的标准会保留为待验证。当前通用任务通过受限文本 / 产物协议执行。</p>
+        <button class="primary" id="quick-task-submit" type="submit">先和 chairman 说清楚</button>
+      </form></section>
+      <p class="bottomNote">可以关闭浏览器，请保持此控制台进程和电脑运行。重启后自动恢复已保存且启用的连接；仅本次有效的 API 密钥需要重新提供。</p>
+    </div>
+    <div id="view-tasks" class="page" hidden>
       <div class="pageHeading"><div><div class="eyebrow">EXPERIMENT WORKSPACE</div><h2>今晚布置，明早验收。</h2><p>Codex 修改 · 真实训练 · 独立验证 · 结果归档</p></div><button class="primary" id="new-task"><span data-icon="plus"></span> 新建夜间任务</button></div>
       <div class="metaStrip" id="summary"></div>
       <div class="accountsWorkspace taskWorkspace">

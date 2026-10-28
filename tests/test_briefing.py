@@ -52,6 +52,17 @@ class BriefingTests(unittest.TestCase):
         return self.c.advance(bid)
     def confirm(self,bid):
         state=self.c.get(bid);return self.c.confirm(bid,state['version'],state['sha256'])
+    def test_automatic_role_plan_cannot_reuse_chair_or_change_budgets(self):
+        candidates=[{'member':m,'label':m,'provider':'codex','model':'test','resource_group':'codex'}
+                    for m in ('author','critic','worker','chair')]
+        bid=self.create(auto_candidates=candidates)
+        value=reply();value['role_plan']={'mode':'adversarial','members':['author','chair'],
+                                         'reviewers':[],'rationale':'TEST invalid reuse'}
+        state=self.chair(bid,value)
+        self.assertEqual(state['status'],'waiting_human');self.assertIsNone(state['draft'])
+        self.assertEqual(Debate(self.project).list(),[])
+        self.assertEqual(state['execution']['budget_seconds'],120)
+
     def test_only_chair_is_dispatched_before_explicit_human_confirmation(self):
         bid=self.create();self.assertIsNone(self.c.pool.claim('author','author'))
         self.assertEqual(Debate(self.project).list(),[])

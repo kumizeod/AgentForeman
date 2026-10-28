@@ -46,22 +46,22 @@ def request_json(settings, request):
     prompt = request['prompt']+'\nReturn only valid JSON conforming to this schema:\n'+json.dumps(request['schema'])
     headers = {'Content-Type':'application/json'}
     if provider == 'anthropic':
-        url = 'https://api.anthropic.com/v1/messages'
+        url = settings.get('base_url','https://api.anthropic.com/v1').rstrip('/')+'/messages'
         headers.update({'x-api-key':key,'anthropic-version':'2023-06-01'})
         body = {'model':model,'max_tokens':settings.get('max_output_tokens',4096),
                 'messages':[{'role':'user','content':prompt}]}
     elif provider == 'openai-compatible':
         url = settings.get('base_url', 'https://api.openai.com/v1').rstrip('/')+'/chat/completions'
-        parsed=urlsplit(url)
-        if parsed.username or parsed.password or parsed.query or parsed.fragment or not parsed.hostname:
-            raise ValueError('Invalid API endpoint')
-        if parsed.scheme!='https' and not (parsed.scheme=='http' and parsed.hostname in {'127.0.0.1','localhost','::1'}):
-            raise ValueError('Remote API endpoint requires HTTPS; HTTP is only allowed on loopback')
         headers['Authorization'] = 'Bearer '+key
         body = {'model':model,'max_tokens':settings.get('max_output_tokens',4096),
                 'messages':[{'role':'user','content':prompt}], 'response_format':{'type':'json_object'}}
     else:
         raise ValueError('Unknown API provider')
+    parsed=urlsplit(url)
+    if parsed.username or parsed.password or parsed.query or parsed.fragment or not parsed.hostname:
+        raise ValueError('Invalid API endpoint')
+    if parsed.scheme!='https' and not (parsed.scheme=='http' and parsed.hostname in {'127.0.0.1','localhost','::1'}):
+        raise ValueError('Remote API endpoint requires HTTPS; HTTP is only allowed on loopback')
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers, method='POST')
     with urllib.request.build_opener(NoRedirect).open(req, timeout=settings['timeout_seconds']) as response:
         raw = response.read(2000001)

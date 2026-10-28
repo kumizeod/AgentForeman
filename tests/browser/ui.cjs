@@ -20,7 +20,7 @@ import shutil
 shutil.copy2(Path(sys.argv[3])/'examples/debate/check_total.py',p/'check_total.py')
 c=p/'foreman.toml'; c.write_text(c.read_text().replace('executable = "codex"','executable = '+json.dumps(sys.argv[2])))`,project,path.join(root,'tests/fixture_campaign.py'),root], {cwd:root});
 const child=spawn(python,['-m','agentforeman','ui','--project',project,'--port','0','--no-open'],{cwd:root,stdio:['ignore','pipe','pipe'],env:{...process.env,FOREMAN_TEST_REVIEWS:'["revise","approve"]'}});
-let browser, page, capability, origin, cid, waitingCid;
+let browser, page, capability, origin, cid, waitingCid, connectionAPI;
 const failures=[];
 const completed=[];
 const until=async (predicate, label, timeout=30000)=>{const end=Date.now()+timeout;while(Date.now()<end){if(await predicate())return;await new Promise(r=>setTimeout(r,150));}throw new Error('Timed out: '+label);};
@@ -31,11 +31,13 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
   browser=await chromium.launch({headless:true,...(process.env.FOREMAN_BROWSER_EXECUTABLE?{executablePath:process.env.FOREMAN_BROWSER_EXECUTABLE,args:['--no-sandbox','--disable-gpu','--disable-dev-shm-usage']}: {})});
   page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});
   page.on('pageerror',e=>failures.push(e.message));
-  await page.goto(url); await page.locator('#sync').filter({hasText:'已同步'}).waitFor();
+  await page.goto(url); await page.locator('[data-view=tasks]').click(); await page.locator('#sync').filter({hasText:'已同步'}).waitFor();
+  await page.locator('[data-view=tasks]').click();
   assert.equal(await page.locator('#empty').isVisible(),true);
   assert.equal(await page.locator('#error').isVisible(),false);
   assert.equal(await page.evaluate(()=>location.hash),'');
   completed.push('Empty state, capability handoff and authenticated local sync');
+  if(!process.env.FOREMAN_BROWSER_CONNECTIONS_ONLY){
   await page.locator('#new-task').click();
   const goal='提高验证准确率 · TEST FIXTURE <img src=x onerror="window.injected=true">';
   await page.locator('[name=goal]').fill(goal);await page.locator('[name=target]').fill('0.95');
@@ -233,10 +235,66 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
   await until(async()=>(await request('/api/cooperations/'+stopped.id)).stop_requested,'stop is durable');
   execFileSync(python,['-m','agentforeman','cooperate','advance',stopped.id,'--project',project],{cwd:root});
   assert.equal((await request('/api/cooperations/'+stopped.id)).stop_reason,'stop_requested');
+  }
+  // New onboarding uses actual HTTP API transport and managed native workers.
+  // Only provider replies are scripted; no external account is accessed.
+  connectionAPI=spawn(python,['-m','tests.fixture_connection_api'],{cwd:root,stdio:['ignore','pipe','pipe']});
+  const apiURL=await new Promise((resolve,reject)=>{
+    let text='';const timer=setTimeout(()=>reject(new Error('Fixture API did not start')),10000);
+    connectionAPI.stdout.on('data',chunk=>{text+=chunk;const match=text.match(/http:\/\/127\.0\.0\.1:\d+\/v1/);if(match){clearTimeout(timer);resolve(match[0]);}});
+  });
+  await page.locator('[data-view=connections]').click();
+  await page.locator('#connection-service').filter({hasText:'本机协调服务已启动'}).waitFor();
+  await page.locator('#connection-form > details > summary').click();
+  for(let i=0;i<4;i++){
+    await page.locator('#connection-provider').selectOption('openai-compatible');
+    await page.locator('#connection-form [name=label]').fill('TEST connection '+i+' <img src=x onerror="window.connectionInjected=true">');
+    await page.locator('#connection-form [name=model]').fill('test/model');
+    await page.locator('#connection-form [name=base_url]').fill(apiURL);
+    await page.locator('#connection-form [name=api_key]').fill('TEST-ONLY-CONNECTION-KEY');
+    if(i===0)await page.locator('#connection-form [name=chair_preferred]').check();else await page.locator('#connection-form [name=chair_preferred]').uncheck();
+    await page.locator('#connection-add').click();
+    await until(async()=>{const r=await request('/api/connections');return r.connections.length===i+1&&r.connections.every(c=>c.enabled&&c.test.passed);},'connection tested and automatically enabled');
+    assert.equal(await page.locator('#connection-form [name=api_key]').inputValue(),'');
+  }
+  await page.locator('#refresh').click();
+  assert.equal(await page.locator('#connection-cards img').count(),0);
+  assert.equal(await page.evaluate(()=>window.connectionInjected),undefined);
+  assert(!(await page.locator('#connection-cards').innerText()).includes('TEST-ONLY-CONNECTION-KEY'));
+  await page.screenshot({path:path.join(output,'connections-desktop.png'),fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.screenshot({path:path.join(output,'connections-mobile.png'),fullPage:true});
+  await page.setViewportSize({width:1440,height:1000});
+  completed.push('Connection form, actual HTTP smoke, automatic local coordinator/workers, escaped cards, password clearing and mobile layout');
+  for(const [mode,route] of [['adversarial','debates'],['cooperative','cooperations']]){
+    await page.locator('[data-view=connections]').click();
+    const before=(await request('/api/'+route)).tasks.length;
+    await page.locator('#quick-task-form [name=idea]').fill('TEST ONLY sum supplied rows');
+    await page.locator('#quick-task-form [name=mode]').selectOption(mode);
+    if(!await page.locator('#quick-task-form details').evaluate(e=>e.open))await page.locator('#quick-task-form details summary').click();
+    await page.locator('#quick-task-form [name=evidence]').fill(JSON.stringify([{id:'sales',title:'Sales',content:'A,10\nB,20\nC,30'}]));
+    await page.locator('#quick-task-form [name=checks]').fill(JSON.stringify([{id:'total',kind:'json_value',artifact_id:'report',pointer:'/total',expected:60}]));
+    await page.locator('#quick-task-submit').click();
+    let quickId;
+    await until(async()=>{const r=await request('/api/briefings');quickId=r.briefings.find(b=>b.idea==='TEST ONLY sum supplied rows'&&b.status==='ready')?.id;return !!quickId;},'managed chair clarification and role assignment',60000);
+    await page.locator('#refresh').click();
+    await until(async()=>await page.locator('#brief-confirm').count()===1,'quick task contract ready');
+    const brief=await request('/api/briefings/'+quickId);
+    assert(brief.draft.role_plan.rationale.includes('TEST ONLY'));
+    assert.equal((await request('/api/'+route)).tasks.length,before);
+    await page.locator('#brief-confirm').click();
+    let result;
+    await until(async()=>{const b=await request('/api/briefings/'+quickId);if(!b.launch)return false;result=await request('/api/'+route+'/'+b.launch.id);return result.status!=='running';},'automatic managed execution through independent verification',90000);
+    assert.equal(result.status,'completed_scoped');
+    assert.equal(result.task_contract.sha256,brief.sha256);
+    assert.equal(result.quality.factual_correctness_verified,false);
+    completed.push(mode+': quick task, chair-selected roles, explicit confirmation and automatic workers complete frozen independent checks');
+  }
   assert.deepEqual(failures,[]);
-  fs.writeFileSync(path.join(output,'browser-summary.json'),JSON.stringify({passed:true,checks:completed,page_errors:failures,disclosure:'TEST-ONLY Codex planner/editor/metadata fixtures. Training, checkpoint verification, process restart and archive replay are real.'},null,2));
+  fs.writeFileSync(path.join(output,'browser-summary.json'),JSON.stringify({passed:true,checks:completed,page_errors:failures,disclosure:'TEST-ONLY scripted CLI and local API model replies. HTTP, native workers, training, verification, restart and archive replay are real; no external account or model quality verified.'},null,2));
   console.log(JSON.stringify({passed:true,checks:completed,output},null,2));
 })().catch(async error=>{console.error(error);if(page)await page.screenshot({path:path.join(output,'failure.png')}).catch(()=>{});process.exitCode=1;}).finally(async()=>{
   if(waitingCid)try{await request('/api/campaigns/'+waitingCid+'/stop',{});await until(async()=>(await request('/api/campaigns/'+waitingCid)).status==='completed','cleanup',5000);}catch{}
-  if(browser)await browser.close();child.kill('SIGTERM');
+  if(browser)await browser.close();child.kill('SIGTERM');if(connectionAPI)connectionAPI.kill('SIGTERM');
 });

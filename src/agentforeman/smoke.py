@@ -17,10 +17,10 @@ from .worker_diagnostics import diagnose
 
 
 
-def run_smoke(project,config,timeout_seconds=90):
+def run_smoke(project,config,timeout_seconds=90,*,settings_override=None):
     if type(timeout_seconds) not in (int,float) or not math.isfinite(timeout_seconds) or not 5<=timeout_seconds<=300:
         raise ValueError('Smoke timeout must be 5..300 seconds')
-    settings=load_worker(config)
+    settings=dict(settings_override) if settings_override is not None else load_worker(config)
     project=Path(project).resolve();sid=secrets.token_hex(6)
     root=project/'.foreman'/'smoke'/sid
     report={'id':sid,'passed':False,'status':'blocked','provider':settings['provider'],
@@ -31,11 +31,12 @@ def run_smoke(project,config,timeout_seconds=90):
         report['ended_at']=time.time();atomic_json(root/'report.json',report)
         return report
     try:
-        if settings['provider'] in {'codex','claude-code','gemini-cli'}:
+        if settings['provider'] in {'codex','claude-code','gemini-cli','opencode'}:
             provider=settings['provider']
             package,bin_name={'codex':('@openai/codex','codex'),
                               'claude-code':('@anthropic-ai/claude-code','claude'),
-                              'gemini-cli':('@google/gemini-cli','gemini')}[provider]
+                              'gemini-cli':('@google/gemini-cli','gemini'),
+                              'opencode':('opencode-ai','opencode')}[provider]
             resolve_command(settings,npm_package=package,bin_name=bin_name)
         else:
             key_env=settings.get('key_env','ANTHROPIC_API_KEY' if settings['provider']=='anthropic' else 'OPENAI_API_KEY')

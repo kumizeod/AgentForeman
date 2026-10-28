@@ -42,9 +42,22 @@ class ControlPanel(ThreadingHTTPServer):
         load_config(self.project)
         self.token = secrets.token_urlsafe(32)
         self.actions = threading.Lock()
+        self._connections = None
         super().__init__(("127.0.0.1", port), Handler)
         self.origin = f"http://127.0.0.1:{self.server_port}"
         self.url = self.origin + "/#" + self.token
+        if any((self.project/".foreman/connections").glob("*/connection.json")):self.connections()
+
+    def connections(self):
+        # Lazy startup preserves a read-only console until onboarding is opened.
+        if self._connections is None:
+            from .connections import Connections
+            self._connections = Connections(self.project)
+        return self._connections
+
+    def server_close(self):
+        if self._connections is not None:self._connections.close()
+        super().server_close()
 
     def campaign(self, cid):
         if not ID.fullmatch(cid):
@@ -182,7 +195,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, resource.read_bytes(), ASSETS[asset])
             if not self.authorized():
                 return self.send(403, {"error": "Open the complete console URL printed in your terminal."})
-            if path == "/api/overview":
+            if path == "/api/connections":
+                with self.server.actions:result = self.server.connections().listing()
+            elif path == "/api/overview":
                 result = self.server.overview()
             elif path == "/api/pool":
                 if not (self.server.project / ".foreman" / "pool.sqlite3").exists():
@@ -293,6 +308,30 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Expected a JSON object")
             with self.server.actions:
                 path = urlsplit(self.path).path
+                if path=='/api/connections/login':
+                    if set(body)!={'provider'}:raise ValueError('Provide provider')
+                    return self.send(200,self.server.connections().login(body['provider']))
+                if path=='/api/connections':
+                    return self.send(201,self.server.connections().create(**body))
+                if match := re.fullmatch(r"/api/connections/([0-9a-f]{12})/(test|enable|key)",path):
+                    c=self.server.connections()
+                    if match[2]=='key':
+                        if set(body)-{'api_key','remember'}:raise ValueError('Unknown credential option')
+                        return self.send(200,c.update_key(match[1],**body))
+                    if match[2]=='test':
+                        if body:raise ValueError('Test takes no options')
+                        return self.send(202,c.test(match[1]))
+                    if set(body)!={'enabled'}:raise ValueError('Provide enabled')
+                    return self.send(200,c.enable(match[1],body['enabled']))
+                if path=='/api/quick-tasks':
+                    from .briefing import Briefing
+                    if set(body)-{'idea','chair','mode','evidence','checks'}:raise ValueError('Unknown task option')
+                    c=self.server.connections();execution=c.plan(body.get('chair'),body.get('mode','adversarial'))
+                    candidates=[{k:v for k,v in row.items() if k in {'member','label','provider','model','resource_group'}} for row in c.candidates()][:12]
+                    if execution['chair'] not in {r['member'] for r in candidates}:raise ValueError('Choose a chairman within the first 12 available connections')
+                    bid=Briefing(self.server.project).create(body['idea'],execution,evidence=body.get('evidence'),
+                          checks=body.get('checks'),auto_candidates=candidates)
+                    return self.send(201,{'id':bid})
                 if path=='/api/briefings':
                     from .briefing import Briefing
                     if set(body)-{'idea','execution','evidence','checks','turn_seconds','max_turns'}:raise ValueError('Unknown briefing setting')
@@ -376,7 +415,7 @@ def run_ui(project: Path, port=8765, *, open_browser=True):
         raise ValueError("Port must be between 0 and 65535")
     with ControlPanel(project, port) as server:
         print(f"AgentForeman console: {server.url}", flush=True)
-        print("Local access only. Keep this URL private. Ctrl-C closes the panel; detached experiments continue.", flush=True)
+        print("Local access only. Keep this URL private. Keep this terminal running for local connections. Closing the browser is safe; Ctrl-C stops local scheduling. Detached experiments retain their receipts.", flush=True)
         if open_browser:
             threading.Timer(0.2, webbrowser.open, args=(server.url,)).start()
         try:

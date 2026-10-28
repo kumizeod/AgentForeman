@@ -27,7 +27,7 @@ const tag = status => `<span class="tag ${esc(status)}">${esc(labels[status] || 
 let token = location.hash.slice(1);
 try { if (token) sessionStorage.setItem('foreman-token', token); else token = sessionStorage.getItem('foreman-token') || ''; } catch {}
 if (location.hash) history.replaceState(null, '', location.pathname);
-const state = {view:'tasks', overview:null, selected:null, detail:null, tab:'summary', logKind:'controller', retry:false, stats:null, diagnostics:null, loading:false};
+const state = {view:'connections', overview:null, selected:null, detail:null, tab:'summary', logKind:'controller', retry:false, stats:null, diagnostics:null, loading:false};
 function showError(message) { $('#error').textContent = message; $('#error').hidden = false; }
 function notice(message) { $('#notice').textContent = message; $('#notice').hidden = false; }
 async function api(path, body) {
@@ -124,8 +124,8 @@ async function settings() {
 async function navigate(view) {
   state.view=view;
   document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('isActive',b.dataset.view===view);b.setAttribute('aria-pressed',String(b.dataset.view===view));});
-  ['tasks','council','usage','analytics','settings'].forEach(v=>$('#view-'+v).hidden=v!==view);
-  try { if (view==='council') await refreshCouncil(); if (view==='analytics') await analytics(); if (view==='settings') await settings(); } catch(e) {showError(e.message);}
+  ['connections','tasks','council','usage','analytics','settings'].forEach(v=>$('#view-'+v).hidden=v!==view);
+  try { if (view==='connections') await refreshConnections(); if (view==='council') await refreshCouncil(); if (view==='analytics') await analytics(); if (view==='settings') await settings(); } catch(e) {showError(e.message);}
 }
 async function refresh() {
   if (state.loading) return;
@@ -136,6 +136,7 @@ async function refresh() {
     document.title=`AgentForeman · ${state.overview.project_name}`;
     if (!state.selected && state.overview.campaigns.length) state.selected=state.overview.campaigns[0].id;
     if (state.selected) {rows(); await refreshDetail();}
+    if (state.view==='connections') await refreshConnections();
     if (state.view==='analytics') await analytics();
     if (state.view==='council') await refreshCouncil();
     $('#error').hidden=true;
@@ -325,7 +326,7 @@ async function selectBriefing(id){
   const key=JSON.stringify([id,c.status,c.version,c.turn,c.messages.length,c.errors.length,c.launch]);
   briefingDetail=c;if(briefingRenderKey===key)return;briefingRenderKey=key;briefingDirty=false;
   const ready=c.status==='ready',interactive=['waiting_human','ready'].includes(c.status);
-  $('#briefing-detail').innerHTML=`<h3>先把任务谈清楚</h3><p>${esc(briefingStatus[c.status]||c.status)} · 约定 v${c.version} · 澄清 ${c.turn}/${c.max_turns} 轮</p><div class="infoBox">此处确认的是目标与执行边界，不是结论正确。执行预算从正式启动时计算；等待你回复不会继续调用模型。自动检查由你事先配置，主席不能生成执行命令。</div><div class="briefMessages">${c.messages.map(m=>`<article class="infoBox"><strong>${m.role==='human'?'你':'Chairman'}</strong><p>${esc(m.content)}</p>${[...(m.questions||[]),...(m.open_questions||[])].map(q=>'<p>待澄清：'+esc(q)+'</p>').join('')}</article>`).join('')}</div>${interactive?`<form id="brief-reply-form"><label class="field">补充需求 / 回答问题<textarea id="brief-reply" required maxlength="8000" rows="3"></textarea></label><button type="submit" id="brief-send" ${c.turn>=c.max_turns?'disabled':''}>发给主席继续澄清</button></form>`:''}${c.draft?`<section class="contractPreview"><h3>任务约定 v${c.version}</h3>${contractView(c.draft.contract)}</section>`:''}<h4>执行配置</h4><p>${c.execution.mode==='cooperative'?'合作':'对抗'} · 成员 ${esc(c.execution.members.join(', '))} · 主席 ${esc(c.execution.chair)} · ${c.execution.budget_seconds/3600} 小时 · 最多 ${c.execution.max_rounds} 轮</p><details><summary>查看执行参数</summary><pre>${esc(JSON.stringify(c.execution,null,2))}</pre></details>${ready?`<form id="brief-edit-form"><label class="field">编辑目标<textarea id="brief-goal" rows="2" required maxlength="6000">${esc(c.draft.contract.goal)}</textarea></label><details><summary>编辑完整约定（JSON）</summary><label class="field">任务约定<textarea id="brief-contract-json" rows="12" required>${esc(JSON.stringify(c.draft.contract,null,2))}</textarea></label></details><details><summary>编辑节点与预算（JSON）</summary><label class="field">执行参数<textarea id="brief-execution-json" rows="8" required>${esc(JSON.stringify(c.execution,null,2))}</textarea></label></details><button type="submit" id="brief-save">保存为新版本</button></form><p class="muted" id="brief-dirty-note">确认将绑定当前展示的约定、资料、检查器、节点和预算。</p><button class="primary" id="brief-confirm">确认 v${c.version} 并正式开工</button>`:''}${c.status==='running'&&c.stage==='launch'?'<p>已保存启动意图，后台将恢复同一个执行任务。请勿重复创建任务。</p>':''}${c.launch?`<p>执行任务：${esc(c.launch.id)}</p>${c.status==='launched'?`<button data-brief-open="${esc(c.launch.id)}" data-brief-route="${c.launch.mode==='adversarial'?'debates':'cooperations'}">查看执行进度</button><p class="muted">已启动的约定保持冻结。调整目标请另建澄清任务，先停止或协调原任务。</p>`:''}`:''}${c.errors.length?'<h4>需要处理</h4><pre>'+esc(JSON.stringify(c.errors,null,2))+'</pre>':''}<button data-brief-export="${esc(id)}">导出澄清与约定记录</button>${!(["launched","stopped"].includes(c.status))&&c.stage!=="launch"?'<button data-brief-stop="'+esc(id)+'">停止澄清</button>':''}`;
+  $('#briefing-detail').innerHTML=`<h3>先把任务谈清楚</h3><p>${esc(briefingStatus[c.status]||c.status)} · 约定 v${c.version} · 澄清 ${c.turn}/${c.max_turns} 轮</p><div class="infoBox">此处确认的是目标与执行边界，不是结论正确。执行预算从正式启动时计算；等待你回复不会继续调用模型。自动检查由你事先配置，主席不能生成执行命令。</div><div class="briefMessages">${c.messages.map(m=>`<article class="infoBox"><strong>${m.role==='human'?'你':'Chairman'}</strong><p>${esc(m.content)}</p>${[...(m.questions||[]),...(m.open_questions||[])].map(q=>'<p>待澄清：'+esc(q)+'</p>').join('')}</article>`).join('')}</div>${interactive?`<form id="brief-reply-form"><label class="field">补充需求 / 回答问题<textarea id="brief-reply" required maxlength="8000" rows="3"></textarea></label><button type="submit" id="brief-send" ${c.turn>=c.max_turns?'disabled':''}>发给主席继续澄清</button></form>`:''}${c.draft?`<section class="contractPreview"><h3>任务约定 v${c.version}</h3>${contractView(c.draft.contract)}</section>`:''}${c.draft?.role_plan?'<h4>主席分工理由</h4><p>'+esc(c.draft.role_plan.rationale)+'</p>':''}<h4>执行配置</h4><p>${c.execution.mode==='cooperative'?'合作':'对抗'} · 成员 ${esc(c.execution.members.join(', '))} · 主席 ${esc(c.execution.chair)} · ${c.execution.budget_seconds/3600} 小时 · 最多 ${c.execution.max_rounds} 轮</p><details><summary>查看执行参数</summary><pre>${esc(JSON.stringify(c.execution,null,2))}</pre></details>${ready?`<form id="brief-edit-form"><label class="field">编辑目标<textarea id="brief-goal" rows="2" required maxlength="6000">${esc(c.draft.contract.goal)}</textarea></label><details><summary>编辑完整约定（JSON）</summary><label class="field">任务约定<textarea id="brief-contract-json" rows="12" required>${esc(JSON.stringify(c.draft.contract,null,2))}</textarea></label></details><details><summary>编辑节点与预算（JSON）</summary><label class="field">执行参数<textarea id="brief-execution-json" rows="8" required>${esc(JSON.stringify(c.execution,null,2))}</textarea></label></details><button type="submit" id="brief-save">保存为新版本</button></form><p class="muted" id="brief-dirty-note">确认将绑定当前展示的约定、资料、检查器、节点和预算。</p><button class="primary" id="brief-confirm">确认 v${c.version} 并正式开工</button>`:''}${c.status==='running'&&c.stage==='launch'?'<p>已保存启动意图，后台将恢复同一个执行任务。请勿重复创建任务。</p>':''}${c.launch?`<p>执行任务：${esc(c.launch.id)}</p>${c.status==='launched'?`<button data-brief-open="${esc(c.launch.id)}" data-brief-route="${c.launch.mode==='adversarial'?'debates':'cooperations'}">查看执行进度</button><p class="muted">已启动的约定保持冻结。调整目标请另建澄清任务，先停止或协调原任务。</p>`:''}`:''}${c.errors.length?'<h4>需要处理</h4><pre>'+esc(JSON.stringify(c.errors,null,2))+'</pre>':''}<button data-brief-export="${esc(id)}">导出澄清与约定记录</button>${!(["launched","stopped"].includes(c.status))&&c.stage!=="launch"?'<button data-brief-stop="'+esc(id)+'">停止澄清</button>':''}`;
 }
 document.addEventListener('input',event=>{
   if(['brief-goal','brief-contract-json','brief-execution-json'].includes(event.target.id)){
@@ -361,4 +362,63 @@ document.addEventListener('click',async event=>{
     modeSelected={route:result.launch.mode==='adversarial'?'debates':'cooperations',id:result.launch.id};
     briefingRenderKey='';notice('已确认并启动。可以离开页面，保持协调器和 worker 运行。');await refreshCouncil();
   }catch(e){showError(e.message);if(b.id==='brief-confirm')b.disabled=false;}finally{if(b.id==='brief-confirm')briefingBusy=false;}
+});
+
+let connectionData=null,connectionChoiceKey='';
+function connectionGuide(){
+  const provider=$('#connection-provider').value,isAPI=['anthropic','openai-compatible'].includes(provider);
+  $('#connection-api-fields').hidden=!isAPI;$('#connection-url-field').hidden=false;
+  const guide=connectionData?.guides[provider],client=connectionData?.clients.find(c=>c.provider===provider);
+  $('#connection-guide').innerHTML=isAPI?'填写服务商实际提供的地址与模型名。添加后会发送一次有界小请求测试，可能消耗少量 API 额度。':`<strong>${client?.installed?'已检测到客户端；登录状态需实际测试。':'尚未检测到客户端。'}</strong><p>安装：<code>${esc(guide?.install||'请安装对应官方客户端')}</code></p><p>先在本机终端完成官方登录：<code>${esc(guide?.login||provider)}</code>。已登录可直接添加测试；账号令牌由客户端管理。</p><button type="button" data-connection-login="${esc(provider)}" ${client?.installed?'':'disabled'}>打开官方登录终端</button>`;
+}
+$('#connection-provider').onchange=connectionGuide;
+async function refreshConnections(){
+  connectionData=await api('/api/connections');
+  $('#connection-service').textContent=connectionData.error||'本机协调服务已启动。测试通过后自动运行节点，无需手动配置 worker。';
+  const statuses={passed:'测试通过',failed:'测试失败',busy:'资源忙，请稍后重试',waiting_quota:'等待额度',blocked:'尚未连接'};
+  if(!document.activeElement?.closest('.connectionKeyForm'))$('#connection-cards').innerHTML=connectionData.connections.map(c=>`<article class="statCard"><strong>${esc(c.label)}</strong><span>${esc(c.provider)} · ${esc(c.model||'默认模型')}</span><small>${c.testing?'测试中…':!c.key_available?'需要重新提供 API 密钥':c.retry_at>Date.now()/1000?'额度等待至 '+date(c.retry_at):!c.enabled?(statuses[c.test?.status]||'尚未测试')+' · 未启用':!c.active_now?'等待可用时段':c.worker_running?'已启用 · 后台等待任务':'后台节点未运行'}</small><small>共享资源：${esc(c.resource_group)}${c.secret_storage?' · 密钥：'+esc(c.secret_storage==='os'?'系统凭据库':c.secret_storage==='session'?'仅本次进程':'环境变量'):''}</small>${c.test?'<small>'+esc(c.test.diagnostic)+'</small>':''}${!['codex','claude-code','gemini-cli','opencode'].includes(c.provider)?`<form class="connectionKeyForm" data-connection-key="${c.id}"><label class="field">更新密钥（仅本次进程）<input type="password" name="api_key" required autocomplete="new-password" maxlength="8192"></label><button type="submit">更新后重新测试</button></form>`:''}<div class="detailActions"><button data-connection-test="${c.id}" ${c.testing?'disabled':''}>${c.test?'重新测试':'测试并启用'}</button><button data-connection-enable="${c.id}" data-enabled="${!c.enabled}" ${!c.test?.passed?'disabled':''}>${c.enabled?'暂停领取新任务':'启用'}</button></div></article>`).join('')||'<p class="muted">添加你的第一个本机账号或 API 连接。</p>';
+  const choices=connectionData.connections.filter(c=>c.enabled&&c.test?.passed&&c.key_available&&c.worker_running);
+  const key=JSON.stringify(choices.map(c=>[c.member,c.label]));
+  if(key!==connectionChoiceKey){const selected=$('#quick-chair').value;connectionChoiceKey=key;$('#quick-chair').innerHTML='<option value="">自动选择（优先使用你标记的主席）</option>'+choices.map(c=>`<option value="${esc(c.member)}">${esc(c.label)} · ${esc(c.model||c.provider)}</option>`).join('');if(choices.some(c=>c.member===selected))$('#quick-chair').value=selected;}
+  connectionGuide();
+}
+$('#connection-form').onsubmit=async event=>{
+  event.preventDefault();const form=event.currentTarget,b=$('#connection-add');if(b.disabled)return;b.disabled=true;
+  try{
+    const f=new FormData(form),provider=f.get('provider');
+    const body={label:f.get('label'),provider,model:f.get('model'),active_hours:f.get('active_hours'),chair_preferred:f.has('chair_preferred')};
+    if(['anthropic','openai-compatible'].includes(provider))Object.assign(body,{api_key:f.get('api_key'),key_env:f.get('key_env'),remember:f.has('remember'),base_url:f.get('base_url')||(provider==='anthropic'?'https://api.anthropic.com/v1':'')});
+    const c=await api('/api/connections',body);
+    form.elements.api_key.value='';
+    await api(`/api/connections/${c.id}/test`,{});
+    notice('连接已保存，正在执行真实连接测试；通过后自动加入调度。');await refreshConnections();
+  }catch(e){showError(e.message);}finally{b.disabled=false;}
+};
+document.addEventListener('click',async event=>{
+  const b=event.target.closest('button');if(!b||b.disabled)return;
+  try{
+    if(b.dataset.connectionLogin){await api('/api/connections/login',{provider:b.dataset.connectionLogin});notice('请在新终端完成官方登录，然后添加 / 测试连接。');}
+    if(b.dataset.connectionTest){b.disabled=true;await api(`/api/connections/${b.dataset.connectionTest}/test`,{});await refreshConnections();}
+    if(b.dataset.connectionEnable){b.disabled=true;await api(`/api/connections/${b.dataset.connectionEnable}/enable`,{enabled:b.dataset.enabled==='true'});await refreshConnections();}
+  }catch(e){showError(e.message);b.disabled=false;}
+});
+$('#quick-task-form').onsubmit=async event=>{
+  event.preventDefault();const b=$('#quick-task-submit');if(b.disabled)return;b.disabled=true;
+  try{
+    const f=new FormData(event.currentTarget),body={idea:f.get('idea'),mode:f.get('mode'),evidence:JSON.parse(f.get('evidence')||'[]'),checks:JSON.parse(f.get('checks')||'[]')};
+    if(f.get('chair'))body.chair=f.get('chair');
+    const result=await api('/api/quick-tasks',body);briefingSelected=result.id;briefingRenderKey='';
+    notice('已交给主席澄清需求并分配角色。确认任务约定前不会正式开工。');
+    await navigate('council');$('#briefing-workspace').scrollIntoView({block:'start'});
+  }catch(e){showError(e.message+'。网络中断时请先查看澄清任务列表，避免重复提交。');}finally{b.disabled=false;}
+};
+
+document.addEventListener('submit',async event=>{
+  const form=event.target;if(!form.dataset.connectionKey)return;event.preventDefault();
+  const b=form.querySelector('button');if(b.disabled)return;b.disabled=true;
+  try{
+    await api(`/api/connections/${form.dataset.connectionKey}/key`,{api_key:form.elements.api_key.value});
+    form.elements.api_key.value='';await api(`/api/connections/${form.dataset.connectionKey}/test`,{});
+    notice('密钥已更新，正在重新测试。');await refreshConnections();
+  }catch(e){showError(e.message);}finally{b.disabled=false;}
 });

@@ -78,6 +78,25 @@ class PanelTests(unittest.TestCase):
             self.assertEqual(self.request(path)[0], 200)
         self.assertFalse((self.project / '.foreman').exists())
 
+    def test_connection_routes_keep_capability_origin_and_secret_boundaries(self):
+        self.assertEqual(self.request('/api/connections',token=False)[0],403)
+        body={'provider':'openai-compatible','label':'Test','model':'test',
+              'base_url':'https://example.invalid/v1','api_key':'TEST-CONNECTION-KEY'}
+        self.assertEqual(self.request('/api/connections',body,origin=False)[0],403)
+        self.assertEqual(self.request('/api/connections',body,token=False)[0],403)
+        code,c,_=self.request('/api/connections',body)
+        self.assertEqual(code,201);self.assertFalse(c['enabled'])
+        self.assertNotIn('TEST-CONNECTION-KEY',json.dumps(c))
+        self.assertNotIn('key_env',c)
+        listing=self.request('/api/connections')[1]
+        self.assertTrue(listing['service_running']);self.assertEqual(len(listing['connections']),1)
+        self.assertNotIn('TEST-CONNECTION-KEY',json.dumps(listing))
+        self.assertEqual(self.request('/api/connections/'+c['id']+'/enable',{'enabled':True})[0],400)
+        self.assertEqual(self.request('/api/quick-tasks',{'idea':'Test'})[0],400)
+        self.assertEqual(self.request('/api/briefings')[1],{'briefings':[]})
+        self.assertEqual(self.request('/api/connections/login',{'provider':'openai-compatible'})[0],400)
+        self.assertEqual(self.request('/api/connections/'+c['id']+'/test',{'command':'invalid'})[0],400)
+
     def test_input_validation_and_quota_refresh_is_explicit(self):
         for body in ({}, {'goal':'x','max_rounds':True}, {'goal':'x','preflight':'yes'},
                      {'goal':'x','deadline':'yesterday'}, {'goal':'x','target':float('nan')}):

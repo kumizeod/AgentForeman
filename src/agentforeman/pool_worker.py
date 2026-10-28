@@ -37,7 +37,7 @@ def load_worker(path):
     data['coordinator'] = data['coordinator'].rstrip('/')
     data.setdefault('provider','codex');data.setdefault('timeout_seconds',600)
     data.setdefault('token_env','FOREMAN_WORKER_TOKEN')
-    if data['provider'] not in {'codex','claude-code','gemini-cli','anthropic','openai-compatible'}:
+    if data['provider'] not in {'codex','claude-code','gemini-cli','opencode','anthropic','openai-compatible'}:
         raise ValueError('Unknown worker provider')
     if type(data['timeout_seconds']) not in {int,float} or not math.isfinite(data['timeout_seconds']) or not 1<=data['timeout_seconds']<=7200:
         raise ValueError('Worker timeout must be between 1 and 7200 seconds')
@@ -165,7 +165,7 @@ class Worker:
                 if self.settings['provider']=='codex':
                     context = folder/'context';context.mkdir(exist_ok=True)
                     spec = json_spec(folder,context,task['request']['prompt'],task['request']['schema'],self.settings,sandbox='read-only')
-                elif self.settings['provider'] in {'claude-code','gemini-cli'}:
+                elif self.settings['provider'] in {'claude-code','gemini-cli','opencode'}:
                     from .agents import make_spec
                     spec=make_spec(folder,folder/'context',task['request'],self.settings)
                 else:
@@ -176,8 +176,12 @@ class Worker:
                             'cwd':str(folder),'env':{},'timeout_seconds':timeout}
                 spec.update(timeout_seconds=timeout,deadline_at=task['deadline'])
             receipt = wait_for_job(job,spec)
+            if self.settings['provider'] in {'claude-code','gemini-cli','opencode'}:
+                from .agents import structured_quota
+                pause=structured_quota(job,receipt)
+                if pause:return {'outcome':'quota','result':None,'retry_at':pause['retry_at']}
             if receipt['exit_code']==0 and not any(receipt[k] for k in ('error','cancelled','timed_out')):
-                if self.settings['provider'] in {'claude-code','gemini-cli'}:
+                if self.settings['provider'] in {'claude-code','gemini-cli','opencode'}:
                     from .agents import read_answer
                     answer=read_answer(job,folder,task['request'],self.settings['provider'])
                 else:

@@ -74,12 +74,18 @@ class Briefing:
             if item['verification']=='automated' and not refs:raise ValueError('Automated acceptance requires configured check IDs')
             if item['verification']=='manual' and refs:raise ValueError('Manual acceptance cannot claim automated check coverage')
 
-    def create(self,idea,execution,*,evidence=None,checks=None,turn_seconds=600,max_turns=8):
+    def create(self,idea,execution,*,evidence=None,checks=None,turn_seconds=600,max_turns=8,auto_candidates=None):
         if not isinstance(idea,str) or not idea.strip() or len(idea)>8000:raise ValueError('Provide a bounded task idea')
         execution=self.execution(execution)
         if type(turn_seconds) not in (int,float) or not math.isfinite(turn_seconds) or not 10<=turn_seconds<=3600:
             raise ValueError('Clarification turn budget must be 10..3600 seconds')
         if type(max_turns) is not int or not 1<=max_turns<=12:raise ValueError('Choose 1..12 clarification turns')
+        if auto_candidates is not None:
+            if not isinstance(auto_candidates,list) or not 3<=len(auto_candidates)<=12:raise ValueError('Choose 3..12 candidate connections')
+            ids=[c['member'] for c in auto_candidates]
+            if len(set(ids))!=len(ids):raise ValueError('Duplicate candidates')
+            for member in ids:name(member)
+            if execution['chair'] not in ids:raise ValueError('Chair must belong to the candidate set')
         bid=secrets.token_hex(6);root=self.path(bid)
         sources,checks,frozen=prepare(self.project,root,[] if evidence is None else evidence,[] if checks is None else checks)
         if len(dumps(sources).encode())>100000:raise ValueError('Combined evidence exceeds 100 KB')
@@ -87,6 +93,7 @@ class Briefing:
                'version':0,'turn':0,'turn_seconds':turn_seconds,'max_turns':max_turns,'execution':execution,
                'evidence':sources,'checks':checks,'frozen':frozen,'draft':None,'sha256':None,'launch':None,
                'messages':[{'role':'human','content':idea}],'errors':[]}
+        if auto_candidates is not None:state['auto_candidates']=auto_candidates
         self.enter(state);self.save(state);self.advance(bid);return bid
 
     def enter(self,state):
@@ -101,10 +108,25 @@ class Briefing:
                 'You cannot confirm or start execution. The human must review the exact contract and execution settings.\n')
         context={k:state[k] for k in ('idea','messages','draft','execution','evidence')}
         context['checks']=[{k:c[k] for k in ('id','kind')} for c in state['checks']]
-        request={'prompt':prompt+dumps(context),'schema':REPLY}
+        schema=REPLY
+        if state.get('auto_candidates'):
+            context['available_connections']=state['auto_candidates']
+            prompt+=('Choose an execution role_plan from available_connections. Keep the chairman fixed. '
+                     'Use distinct connection identities. Choose adversarial for critique/revision, cooperative '
+                     'for separable contributions (requires at least 4 connections). Explain role choices. '
+                     'Shared resource_group means shared login/serial capacity, not independent quota. '
+                     'You cannot change budgets, add resources, run tools, or claim unconfigured verification.\n')
+            schema=self.reply_schema(state)
+        request={'prompt':prompt+dumps(context),'schema':schema}
         if len(dumps(request).encode())>700000:raise ValueError('Clarification context budget exhausted; start a new briefing')
         state['task_spec']={'id':f'{state["id"]}_clarify_{state["turn"]}',
                             'request':request}
+
+    def reply_schema(self,state):
+        if not state.get('auto_candidates'):return REPLY
+        identities=choice(*(c['member'] for c in state['auto_candidates']))
+        return obj(**REPLY['properties'],role_plan=obj(mode=choice('adversarial','cooperative'),
+                   members=seq(identities,2,5),reviewers=seq(identities,maximum=3),rationale=txt(2000)))
 
     def snapshot(self,state,contract,author):
         self.validate_contract(state,contract)
@@ -201,7 +223,13 @@ class Briefing:
                 row=next((t for t in self.pool.tasks(bid) if t['id']==spec['id']),None)
                 if row and row['status']=='completed':
                     try:
-                        draft=validate(row['result'],REPLY);self.validate_contract(state,draft['contract'])
+                        draft=validate(row['result'],self.reply_schema(state));self.validate_contract(state,draft['contract'])
+                        if state.get('auto_candidates'):
+                            plan=draft['role_plan']
+                            execution={**state['execution'],**{k:plan[k] for k in ('mode','members','reviewers')}}
+                            candidates={c['member'] for c in state['auto_candidates']}
+                            if set(execution['members']+execution['reviewers'])-candidates:raise ValueError('Chair invented a connection')
+                            state['execution']=self.execution(execution)
                         state['draft']=draft;self.snapshot(state,draft['contract'],'chairman')
                         state['messages'].append({'role':'chairman','content':draft['reply'],
                                                   'questions':draft['questions'],'open_questions':draft['open_questions']})

@@ -1,5 +1,8 @@
 # AgentForeman
 
+**v0.12 · Quick start connection center:** add local Codex, Gemini, Claude Code, OpenCode or API/relay connections; test them, then let a chairman clarify the task and propose roles before your confirmation. Local coordinator/workers start automatically. Windows: double-click `start-windows.cmd` after installing Python 3.11+. [Setup, authentication and current limits](docs/CONNECTIONS.md).
+
+
 **Assign Codex an experiment tonight. Wait through quota resets without model calls. Review verified results tomorrow.**
 
 ## Clarify before execution (v0.11)
