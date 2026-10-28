@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from pathlib import Path
 import tempfile
 import time
@@ -47,6 +48,7 @@ class AccountTests(unittest.TestCase):
             self.assertFalse((default/'fixture-used-profile').exists())
             self.assertEqual((default/'auth.json').read_text(),'DO NOT COPY OR CHANGE')
             for p in (worker.root/'tasks').rglob('*.json'):self.assertNotIn('TEST SECRET',p.read_text())
+    @unittest.skipUnless(sys.platform=='linux','Linux terminal fallback uses POSIX script permissions')
     def test_headless_linux_login_guidance_keeps_the_selected_profile(self):
         c=Connections(self.root)
         try:
