@@ -3,6 +3,8 @@
 **v0.13 · Three connection/control fixes:** Google AI Pro/Ultra now uses **Antigravity CLI (`agy`)**; **立即终止整个任务** interrupts active supervised calls and reports actual cancellation acknowledgements; Codex and Claude Code can **log in with another account using separate official-client profiles**, without replacing the default local login. Passwords stay on the official login page. [中文说明与边界](docs/V0_13.md).
 
 
+v0.13 validation at [`709f3ab`](https://github.com/kumizeod/AgentForeman/actions/runs/40719768093): **220 Python tests per native job**, all **9 Windows/macOS/Linux × Python 3.11–3.13 jobs**, and **18 browser workflow groups** passed. [Pinned evidence and scripted-provider disclosure](evidence/v0.13-validation.json). Real subscription login and provider-side billing cancellation still require deployment-side verification.
+
 **v0.12 · Quick start connection center:** add local Codex, Gemini, Claude Code, OpenCode or API/relay connections; test them, then let a chairman clarify the task and propose roles before your confirmation. Local coordinator/workers start automatically. Windows: double-click `start-windows.cmd` after installing Python 3.11+. [Setup, authentication and current limits](docs/CONNECTIONS.md).
 
 

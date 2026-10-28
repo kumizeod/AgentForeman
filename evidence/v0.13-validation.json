@@ -1,0 +1,123 @@
+{
+  "version": "0.13.0",
+  "ci_source_commit": "709f3ab71fcd4302cf5bc61729373b48d50d5f7c",
+  "ci_source_tree": "69f47a07cd6baf7be83074f477992ce6bd95e5d6",
+  "ci_run_id": 40719768093,
+  "ci_url": "https://github.com/kumizeod/AgentForeman/actions/runs/40719768093",
+  "ci_jobs": [
+    {
+      "id": 122927148291,
+      "name": "browser",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122927148823,
+      "name": "test (macos-latest, 3.12)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122927148876,
+      "name": "test (ubuntu-latest, 3.11)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122927148880,
+      "name": "test (ubuntu-latest, 3.13)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122927148941,
+      "name": "test (windows-latest, 3.13)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122927148990,
+      "name": "test (ubuntu-latest, 3.12)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122927149046,
+      "name": "test (windows-latest, 3.11)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122927149083,
+      "name": "test (macos-latest, 3.13)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122927149140,
+      "name": "test (macos-latest, 3.11)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 122927149250,
+      "name": "test (windows-latest, 3.12)",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "ci_native_tests_per_job": 220,
+  "local_python": {
+    "full_suite": {
+      "tests": 218,
+      "seconds": 282.946,
+      "passed": true,
+      "note": "Before the final two race regressions were added."
+    },
+    "final_race_suites": {
+      "tests": 32,
+      "seconds": 72.063,
+      "passed": true,
+      "source_commit": "709f3ab71fcd4302cf5bc61729373b48d50d5f7c"
+    }
+  },
+  "local_browser": {
+    "passed": true,
+    "checks": [
+      "Empty state, capability handoff and authenticated local sync",
+      "Form submission drives real train/independent verify; untrusted goal is escaped",
+      "Automatic reviewer criticism, proposer revision and approval are visible in the panel",
+      "Actual controller/worker logs, report, events and verified archive download",
+      "Search/filter and quota/statistics/diagnostics pages use real APIs",
+      "Light/dark/mobile layout; killed-controller UI resume and durable quota-wait stop",
+      "Council form, three HTTP pull workers, native supervised fixtures, anonymous review, chair, audit and transcript export; missing sources remain needs_evidence",
+      "Codex and Claude CLI fixtures submit independent code candidates through HTTP; real training/verifier selects best; intact archive downloads",
+      "debates: form, concurrent HTTP/native workers, failed real Python check, criticism, revision and passing retest, escaped artifacts, transcript/report downloads and mobile layout",
+      "cooperations: form, concurrent HTTP/native workers, failed real Python check, criticism, revision and passing retest, escaped artifacts, transcript/report downloads and mobile layout",
+      "debates: chairman-human clarification, no execution before confirmation, human version editing, stale/duplicate confirmation protection, frozen contract and real check/revision/retest after launch",
+      "cooperations: chairman-human clarification, no execution before confirmation, human version editing, stale/duplicate confirmation protection, frozen contract and real check/revision/retest after launch",
+      "Connection form, actual HTTP smoke, automatic local coordinator/workers, escaped cards, password clearing and mobile layout",
+      "adversarial: quick task, chair-selected roles, explicit confirmation and automatic workers complete frozen independent checks",
+      "cooperative: quick task, chair-selected roles, explicit confirmation and automatic workers complete frozen independent checks",
+      "Antigravity/legacy Google options and independent Codex/Claude profile creation, selected official-login routing, escaped labels and no password ingestion",
+      "Immediate terminate button closes a live API request, cancels queued work and shows actual worker exit acknowledgement",
+      "Offline worker cancellation stays unconfirmed; the UI does not claim all tokens or provider-side generation stopped"
+    ],
+    "page_errors": [],
+    "disclosure": "TEST-ONLY scripted CLI and local API model replies. HTTP, native workers, training, verification, restart and archive replay are real; no external account or model quality verified."
+  },
+  "limitations": [
+    "Provider model replies are scripted test fixtures; no real paid subscription login, entitlement, quota or model quality has been verified.",
+    "Independent Codex and Claude profiles use official client login; users must complete official authentication and connection testing on their own computer.",
+    "Local process exit and HTTP disconnect do not prove upstream provider generation or billing has stopped.",
+    "Offline or uncertain workers retain pending cancellation acknowledgements."
+  ],
+  "validation_recorded_at": "2026-10-28T15:59:06.936Z",
+  "ci_snapshot": {
+    "passed": 9,
+    "total": 9,
+    "pending": [],
+    "failed": [],
+    "browser_passed": true
+  }
+}
