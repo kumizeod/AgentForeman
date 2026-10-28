@@ -285,7 +285,7 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
     assert.equal((await request('/api/'+route)).tasks.length,before);
     await page.locator('#brief-confirm').click();
     let result;
-    await until(async()=>{const b=await request('/api/briefings/'+quickId);if(!b.launch)return false;result=await request('/api/'+route+'/'+b.launch.id);return result.status!=='running';},'automatic managed execution through independent verification',90000);
+    await until(async()=>{const b=await request('/api/briefings/'+quickId);if(b.status!=='launched')return false;result=await request('/api/'+route+'/'+b.launch.id);return result.status!=='running';},'automatic managed execution through independent verification',90000);
     assert.equal(result.status,'completed_scoped');
     assert.equal(result.task_contract.sha256,brief.sha256);
     assert.equal(result.quality.factual_correctness_verified,false);

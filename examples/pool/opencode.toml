@@ -1,0 +1,11 @@
+# Advanced/manual worker setup; the Quick Start UI manages this automatically.
+# Complete `opencode auth login` on this machine first.
+[worker]
+coordinator = "http://127.0.0.1:8770"
+state_dir = "opencode-state"
+token_env = "FOREMAN_OPENCODE_WORKER_TOKEN"
+provider = "opencode"
+timeout_seconds = 600
+# model = "provider/model-available-to-your-login"
+# active_hours = "22:00-08:00"
+# command = ["C:/path/to/opencode.exe"]

@@ -47,7 +47,7 @@ The existing loopback-only console requires its random capability, exact Host, a
 
 Opening the connection center starts an ephemeral-port local coordinator and one managed worker per enabled, tested connection. Saved enabled connections automatically resume when the console is restarted. Worker identity, job receipts, lease/outbox state and connection configuration persist under the project. A project-wide service lock rejects a second console owner instead of starting duplicate workers.
 
-Closing the browser is safe. Stopping the console stops local scheduling; a forced process exit is recovered conservatively through existing native receipts and leases. This is not an installed OS background service. External registered workers and `pool serve` continue to be available through the advanced workflow; the quick-task selector currently uses local managed connections only.
+The console opens on **快速开始** by default. Closing the browser is safe. Stopping the console stops local scheduling; a forced process exit is recovered conservatively through existing native receipts and leases. This is not an installed OS background service. External registered workers and `pool serve` continue to be available through the advanced workflow; the quick-task selector currently uses local managed connections only.
 
 Tests run one small, bounded model request through a private HTTP pool and verify the exact result of 17 + 25. A passed test enables/registers the worker automatically; installation detection alone never does. Tests can consume a small amount of subscription/API allowance and do not prove multi-model quality. A busy resource is reported for retry, rather than launching a concurrent call. The UI does not poll a model just to refresh status.
 
