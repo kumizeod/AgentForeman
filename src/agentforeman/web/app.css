@@ -31,3 +31,11 @@ body{margin:0;font:14px/1.55 var(--font-ui);color:var(--ink);background:var(--bo
 .classicApp .topSegmentedButton{font-size:12px;padding-inline:2px;white-space:nowrap;min-width:0}
 #view-council .taskWorkspace{grid-template-columns:minmax(230px,300px) minmax(0,1fr)}
 .councilSelect{align-items:flex-start}
+/* Six primary views; keep connections readable at desktop and phone widths. */
+.classicApp .topSegmentedNav{grid-template-columns:repeat(6,minmax(0,1fr))}
+.classicApp .topbar{grid-template-columns:minmax(200px,1fr) minmax(450px,580px) minmax(165px,1fr)}
+#connection-cards .statCard strong{font-size:18px;overflow-wrap:anywhere}
+#connection-cards .statCard span,#connection-cards .statCard small{white-space:normal;overflow-wrap:anywhere}
+#connection-form .formGrid,#quick-task-form .formGrid{margin:14px 0}
+@media(max-width:1100px){.classicApp .topSegmentedNav{grid-template-columns:repeat(3,minmax(0,1fr))}.classicApp .topbar{grid-template-columns:minmax(150px,1fr) minmax(300px,420px) auto}}
+@media(max-width:800px){.classicApp .topbar{grid-template-columns:1fr auto}#connection-form .formGrid,#quick-task-form .formGrid{grid-template-columns:1fr}}

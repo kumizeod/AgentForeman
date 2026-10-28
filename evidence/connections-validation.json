@@ -1,0 +1,85 @@
+{
+  "version": "0.12.0",
+  "ci_source_commit": "c0a713a8b71972557cfafa200bd94859caf309bd",
+  "ci_run_id": 40690021209,
+  "ci_url": "https://github.com/kumizeod/AgentForeman/actions/runs/40690021209",
+  "ci_results": {
+    "native_matrix": {
+      "passed": true,
+      "jobs": 9,
+      "os": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "python": [
+        "3.11",
+        "3.12",
+        "3.13"
+      ]
+    },
+    "browser": {
+      "passed": true,
+      "workflow_groups": 15
+    }
+  },
+  "local_python": {
+    "passed": true,
+    "tests": 200,
+    "seconds": 196.939
+  },
+  "local_browser": {
+    "source_commit": "646d8e7300defe9309c5d244acd757230b279c6d",
+    "passed": true,
+    "checks": [
+      "Empty state, capability handoff and authenticated local sync",
+      "Form submission drives real train/independent verify; untrusted goal is escaped",
+      "Automatic reviewer criticism, proposer revision and approval are visible in the panel",
+      "Actual controller/worker logs, report, events and verified archive download",
+      "Search/filter and quota/statistics/diagnostics pages use real APIs",
+      "Light/dark/mobile layout; killed-controller UI resume and durable quota-wait stop",
+      "Council form, three HTTP pull workers, native supervised fixtures, anonymous review, chair, audit and transcript export; missing sources remain needs_evidence",
+      "Codex and Claude CLI fixtures submit independent code candidates through HTTP; real training/verifier selects best; intact archive downloads",
+      "debates: form, concurrent HTTP/native workers, failed real Python check, criticism, revision and passing retest, escaped artifacts, transcript/report downloads and mobile layout",
+      "cooperations: form, concurrent HTTP/native workers, failed real Python check, criticism, revision and passing retest, escaped artifacts, transcript/report downloads and mobile layout",
+      "debates: chairman-human clarification, no execution before confirmation, human version editing, stale/duplicate confirmation protection, frozen contract and real check/revision/retest after launch",
+      "cooperations: chairman-human clarification, no execution before confirmation, human version editing, stale/duplicate confirmation protection, frozen contract and real check/revision/retest after launch",
+      "Connection form, actual HTTP smoke, automatic local coordinator/workers, escaped cards, password clearing and mobile layout",
+      "adversarial: quick task, chair-selected roles, explicit confirmation and automatic workers complete frozen independent checks",
+      "cooperative: quick task, chair-selected roles, explicit confirmation and automatic workers complete frozen independent checks"
+    ],
+    "page_errors": []
+  },
+  "ui_followup": {
+    "passed": true,
+    "checks": [
+      "Empty state, capability handoff and authenticated local sync",
+      "Connection form, actual HTTP smoke, automatic local coordinator/workers, escaped cards, password clearing and mobile layout",
+      "adversarial: quick task, chair-selected roles, explicit confirmation and automatic workers complete frozen independent checks",
+      "cooperative: quick task, chair-selected roles, explicit confirmation and automatic workers complete frozen independent checks"
+    ],
+    "changes": "Six-view navigation sizing, readable connection cards and collapsed API-key update controls.",
+    "file_sha256": {
+      "src/agentforeman/web/app.css": "657f5b919c22c50ca078d69d8a1ef8b92a40b181ea11b94544eb0c9da1ce81b1",
+      "src/agentforeman/web/app.js": "dd421aa3d1a9c710744f6dfa13f6ca31f039c6b4474acd9c52f4250970c5b938"
+    }
+  },
+  "core_sha256": {
+    "src/agentforeman/connections.py": "d54ab10e72c619496f9222affd2ab3973eaad905512c0ccd3192c9a5f3789917",
+    "src/agentforeman/agents.py": "21e75f218703352ff23b7f61733912ad75dfd154592de33c8e94a0222f124ca3",
+    "src/agentforeman/briefing.py": "17fc295002f8b894bc43958d50a94616804895237269634e5fd2e4c5e961c515",
+    "src/agentforeman/pool_worker.py": "21ab4fcc3a67ef6a1038d25bb681295f293c30b36202209f39ff91cd1bbac4ad",
+    "src/agentforeman/providers.py": "a553f7c42c282630561384f045cf24010337a8815af5a21fea1e737b34262875",
+    "src/agentforeman/smoke.py": "403c4d4ef3b178f7da7dc4175f56aee76d529823a4bd469066f88776b345c05c",
+    "src/agentforeman/webserver.py": "020db514e0d644cb447c88abf0639a948ecfd475dbc47c1ccd88c94b23c90d3e"
+  },
+  "disclosure": "Model replies are explicitly scripted in test fixtures/local API. HTTP transport, process supervision, leases, workers, restart, training, independent checks and archives are real. No live ChatGPT, Google, Claude, OpenCode Go, Cubence or other subscription/API account was validated in this release. Test each real connection on its deployment computer.",
+  "limits": [
+    "Official CLI installation/login required; subscription OAuth tokens are not imported.",
+    "Quick start uses local managed connections; remote invitation links are not implemented.",
+    "Adversarial requires 3 connections, cooperative requires 4 distinct role identities. Shared account/models do not imply independent models or quotas.",
+    "Keep console process/computer running; not an installed Windows background service.",
+    "New connections are available for subsequent planning; confirmed existing roles are not silently migrated.",
+    "Time and iteration budgets are not monetary API spending caps."
+  ]
+}

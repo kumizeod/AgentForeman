@@ -3,6 +3,12 @@
 **v0.12 · Quick start connection center:** add local Codex, Gemini, Claude Code, OpenCode or API/relay connections; test them, then let a chairman clarify the task and propose roles before your confirmation. Local coordinator/workers start automatically. Windows: double-click `start-windows.cmd` after installing Python 3.11+. [Setup, authentication and current limits](docs/CONNECTIONS.md).
 
 
+v0.12 validation: **200 Python tests**, **15 browser workflow groups**, and all
+**9 Windows/macOS/Linux × Python 3.11–3.13 matrix jobs** passed at
+[`c0a713a`](https://github.com/kumizeod/AgentForeman/actions/runs/40690021209).
+A subsequent presentation-only pass also completed both quick-task modes.
+[Evidence and scripted-provider disclosure](evidence/connections-validation.json).
+
 **Assign Codex an experiment tonight. Wait through quota resets without model calls. Review verified results tomorrow.**
 
 ## Clarify before execution (v0.11)
