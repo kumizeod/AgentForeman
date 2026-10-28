@@ -11,6 +11,7 @@ from .pool import validate
 CLIS = {'codex':('@openai/codex','codex'),
         'claude-code':('@anthropic-ai/claude-code','claude'),
         'gemini-cli':('@google/gemini-cli','gemini'),
+        'antigravity':(None,'agy'),
         'opencode':('opencode-ai','opencode')}
 
 
@@ -45,6 +46,13 @@ def make_spec(folder: Path, context: Path, request: dict, settings: dict):
     elif provider=='gemini-cli':
         argv=[*prefix,'--prompt','Return only the requested JSON object from the piped task.',
               '--output-format','json','--approval-mode','plan']
+    elif provider=='antigravity':
+        # Official stream-json input avoids Windows command-line prompt limits.
+        atomic_text(folder/'prompt.txt',json.dumps({'event':'user','message':{'content':prompt}})+'\n')
+        argv=[*prefix,'--input-format','stream-json','--output-format','stream-json',
+              '--json-schema',str(folder/'schema.json'),'--mode','plan',
+              '--disable-slash-commands','--sandbox',
+              '--print-timeout',str(int(settings['timeout_seconds']))+'s']
     elif provider=='opencode':
         argv=[*prefix,'run','--format','json','--agent','foreman']
     else:
@@ -56,9 +64,10 @@ def make_spec(folder: Path, context: Path, request: dict, settings: dict):
         env['OPENCODE_CONFIG_CONTENT']=json.dumps({'permission':{'*':'deny'},
             'agent':{'foreman':{'mode':'primary','description':'Bounded structured response without tools',
                                 'permission':{'*':'deny'}}}})
-    return {'argv':argv,'cwd':str(context),'stdin':str(folder/'prompt.txt'),
+    from .accounts import apply_profile
+    return apply_profile({'argv':argv,'cwd':str(context),'stdin':str(folder/'prompt.txt'),
             'timeout_seconds':settings['timeout_seconds'],
-            'env':env}
+            'env':env},settings)
 
 
 def read_answer(job: Path, folder: Path, request: dict, provider: str):
@@ -66,6 +75,20 @@ def read_answer(job: Path, folder: Path, request: dict, provider: str):
         raw=stream.read(1000001)
     if len(raw)>1000000:
         raise ValueError('Agent output exceeded bound')
+    if provider=='antigravity':
+        events=[json.loads(line) for line in raw.splitlines() if line.strip()]
+        if any(not isinstance(e,dict) for e in events):raise ValueError('Invalid Antigravity stream')
+        if any(e.get('event')=='step_update' and not isinstance(e.get('step_update',{}),dict) for e in events):
+            raise ValueError('Invalid Antigravity step')
+        # General council workers must return supplied-context artifacts only.
+        if any(e.get('event')=='step_update' and (e.get('step_update',{}).get('tool_info') or e.get('step_update',{}).get('subagent_info')) for e in events):
+            raise ValueError('Antigravity attempted tools or background agents')
+        results=[e['result'] for e in events if e.get('event')=='result']
+        if len(results)!=1 or not isinstance(results[0],dict) or results[0].get('status')!='SUCCESS' or results[0].get('error'):
+            raise ValueError('Antigravity did not finish one successful turn')
+        result=results[0];answer=result.get('structured_output')
+        if answer is None:answer=json.loads(result['response'])
+        answer=validate(answer,request['schema']);atomic_json(folder/'answer.json',answer);return answer
     if provider=='opencode':
         events=[json.loads(line) for line in raw.splitlines() if line.strip()]
         if any(not isinstance(e,dict) or not isinstance(e.get('part',{}),dict) for e in events):

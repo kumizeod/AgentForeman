@@ -12,7 +12,10 @@ for line in prompt.splitlines():
         answer={'summary':'TEST ONLY Claude code candidate','hypothesis':'TEST ONLY model config',
                 'base_sha256':context['base_sha256'],'files':[{'path':'config.json','content':json.dumps(config)}]}
         break
-if '--format' in sys.argv:
+if '--input-format' in sys.argv:
+    message=json.loads(prompt);assert message['event']=='user'
+    print(json.dumps({'event':'result','result':{'status':'SUCCESS','structured_output':answer,'response':json.dumps(answer)}}))
+elif '--format' in sys.argv:
     print(json.dumps({'type':'text','part':{'type':'text','text':json.dumps(answer)}}))
     print(json.dumps({'type':'step_finish','part':{'type':'step-finish','reason':'stop'}}))
 elif '--json-schema' in sys.argv:

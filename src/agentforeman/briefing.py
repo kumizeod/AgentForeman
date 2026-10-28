@@ -148,6 +148,7 @@ class Briefing:
     def message(self,bid,version,content):
         with file_lock(self.path(bid)/'controller.lock'):
             state=self.get(bid);assert_frozen(self.path(bid),state)
+            if (self.path(bid)/'terminate.request').exists():raise ValueError('This task was terminated; create a new task to restart')
             if version!=state['version'] or type(version) is not int:raise ValueError('Stale briefing version; reload before replying')
             if state['status'] not in {'waiting_human','ready'}:raise ValueError('Wait for the chairman; launched contracts cannot be edited')
             if not isinstance(content,str) or not content.strip() or len(content)>8000:raise ValueError('Reply must contain 1..8000 characters')
@@ -158,6 +159,7 @@ class Briefing:
     def edit(self,bid,version,contract,execution=None):
         with file_lock(self.path(bid)/'controller.lock'):
             state=self.get(bid);assert_frozen(self.path(bid),state)
+            if (self.path(bid)/'terminate.request').exists():raise ValueError('This task was terminated; create a new task to restart')
             if type(version) is not int or version!=state['version'] or state['status']!='ready':
                 raise ValueError('Only the current ready contract may be edited')
             if execution is not None:state['execution']=self.execution(execution)
@@ -169,6 +171,7 @@ class Briefing:
     def confirm(self,bid,version,sha256):
         with file_lock(self.path(bid)/'controller.lock'):
             state=self.get(bid);assert_frozen(self.path(bid),state)
+            if (self.path(bid)/'terminate.request').exists():raise ValueError('This task was terminated; create a new task to restart')
             if type(version) is not int or version!=state['version'] or sha256!=state['sha256']:
                 raise ValueError('Stale confirmation; review the latest version and fingerprint')
             if state['status']=='launched':return state
@@ -190,6 +193,8 @@ class Briefing:
             self.save(state);return state
 
     def launch(self,state):
+        if (self.path(state['id'])/'terminate.request').exists():
+            state.update(status='stopped',stage='done');self.pool.cancel_group(state['id']);self.save(state);return state
         bundle=self.current_bundle(state);root=self.path(state['id']);assert_frozen(root,state)
         from .debate import Debate
         from .cooperate import Cooperation
@@ -214,6 +219,8 @@ class Briefing:
         try:
             with file_lock(root/'controller.lock'):
                 state=self.get(bid);assert_frozen(root,state)
+                if (root/'terminate.request').exists() and state['status']=='running':
+                    state.update(status='stopped',stage='done');self.save(state);return state
                 if state['status']!='running':return state
                 if state['stage']=='launch':return self.launch(state)
                 spec=state['task_spec']

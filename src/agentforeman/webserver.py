@@ -195,10 +195,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, resource.read_bytes(), ASSETS[asset])
             if not self.authorized():
                 return self.send(403, {"error": "Open the complete console URL printed in your terminal."})
-            if path == "/api/connections":
+            if path == "/api/accounts":
+                from .accounts import Accounts
+                result={'accounts':Accounts(self.server.project).list()}
+            elif path == "/api/connections":
                 with self.server.actions:result = self.server.connections().listing()
             elif path == "/api/overview":
                 result = self.server.overview()
+            elif match := re.fullmatch(r"/api/(briefings|debates|cooperations|councils|coding|campaigns)/([0-9a-f]{12})/termination",path):
+                from .termination import status
+                result=status(self.server.project,match[1],match[2])
             elif path == "/api/pool":
                 if not (self.server.project / ".foreman" / "pool.sqlite3").exists():
                     result = {"members": [], "tasks": []}
@@ -308,9 +314,17 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Expected a JSON object")
             with self.server.actions:
                 path = urlsplit(self.path).path
+                if match := re.fullmatch(r"/api/(briefings|debates|cooperations|councils|coding|campaigns)/([0-9a-f]{12})/terminate",path):
+                    from .termination import request
+                    if body:raise ValueError('Terminate takes no options')
+                    return self.send(202,request(self.server.project,match[1],match[2]))
+                if path=='/api/accounts':
+                    from .accounts import Accounts
+                    if set(body)!={'provider','label'}:raise ValueError('Provide provider and account name; never submit passwords')
+                    return self.send(201,Accounts(self.server.project).create(**body))
                 if path=='/api/connections/login':
-                    if set(body)!={'provider'}:raise ValueError('Provide provider')
-                    return self.send(200,self.server.connections().login(body['provider']))
+                    if set(body)-{'provider','account_id'} or 'provider' not in body:raise ValueError('Provide provider and optional account profile')
+                    return self.send(200,self.server.connections().login(**body))
                 if path=='/api/connections':
                     return self.send(201,self.server.connections().create(**body))
                 if match := re.fullmatch(r"/api/connections/([0-9a-f]{12})/(test|enable|key)",path):
@@ -401,6 +415,7 @@ class Handler(BaseHTTPRequestHandler):
                         raise ValueError("Campaign already completed")
                     atomic_text(root / "stop.request", "stop\n")
                     return self.send(200, {"id": cid, "stop_requested": True})
+                if (root/"terminate.request").exists():raise ValueError("Terminated tasks cannot resume; create a new task")
                 retry = body.get("retry_failed", False)
                 if type(retry) is not bool:
                     raise ValueError("retry_failed must be boolean")

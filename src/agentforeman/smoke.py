@@ -31,12 +31,13 @@ def run_smoke(project,config,timeout_seconds=90,*,settings_override=None):
         report['ended_at']=time.time();atomic_json(root/'report.json',report)
         return report
     try:
-        if settings['provider'] in {'codex','claude-code','gemini-cli','opencode'}:
+        if settings['provider'] in {'codex','claude-code','gemini-cli','antigravity','opencode'}:
             provider=settings['provider']
             package,bin_name={'codex':('@openai/codex','codex'),
                               'claude-code':('@anthropic-ai/claude-code','claude'),
                               'gemini-cli':('@google/gemini-cli','gemini'),
-                              'opencode':('opencode-ai','opencode')}[provider]
+                              'opencode':('opencode-ai','opencode'),
+                              'antigravity':(None,'agy')}[provider]
             resolve_command(settings,npm_package=package,bin_name=bin_name)
         else:
             key_env=settings.get('key_env','ANTHROPIC_API_KEY' if settings['provider']=='anthropic' else 'OPENAI_API_KEY')

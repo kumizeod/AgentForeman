@@ -1,9 +1,11 @@
-# Quick start and local connections (v0.12)
+# Quick start and local connections
+
+**v0.13 update:** see [Antigravity, immediate termination and independent accounts](V0_13.md). Google AI Pro/Ultra uses Antigravity CLI, not the legacy Gemini CLI.
 
 ## 中文快速上手
 
 1. Windows 更新仓库后双击根目录的 `start-windows.cmd`；首次需要安装 Python 3.11+。后续不要关闭启动窗口。
-2. 浏览器默认进入「快速开始」。选择 Codex、Gemini、Claude Code、OpenCode 或 API。已有本机登录可以直接添加；未登录可点击「打开官方登录终端」。API 填服务商提供的真实地址、密钥和模型名。
+2. 浏览器默认进入「快速开始」。选择 Codex、Antigravity、Claude Code、OpenCode 或 API。已有本机登录可以直接添加；未登录可点击「打开官方登录终端」。API 填服务商提供的真实地址、密钥和模型名。
 3. 点击「添加并测试连接」，通过后自动加入本机调度。输入任务，与主席澄清需求，核对目标、角色和验收方法，再点击确认开工。
 
 对抗模式至少需要三个连接，合作模式至少需要四个。相同账号的不同模型可以分别添加，但会串行使用同一资源，不能算作多份额度或模型独立性的证据。暂时没有提供自动安装所有 CLI、跨电脑邀请链接、订阅令牌集中托管或运行中静默换人的功能。
@@ -33,13 +35,14 @@ The example project supplies the existing console configuration. General artifac
 | Connection | Authentication | Model setting |
 | --- | --- | --- |
 | Codex / ChatGPT | Official local Codex login (`codex login`) | Optional CLI model |
-| Gemini / Google AI Pro | Official Gemini CLI Google login (`gemini`) | Optional CLI model |
+| Antigravity / Google AI Pro | Official Antigravity login (`agy`) | Optional CLI model |
+| Gemini CLI (legacy enterprise/API) | Existing supported enterprise/API login (`gemini`) | Optional CLI model |
 | Claude Code | Official local Claude Code login (`claude auth login`) | Optional CLI model |
 | OpenCode / Go | OpenCode's own authentication (`opencode auth login`) | Optional `provider/model`; otherwise its local default |
 | OpenAI-compatible API / relay | API key or existing environment variable | Explicit service model; Chat Completions |
 | Anthropic-compatible API / relay | API key or existing environment variable | Explicit service model; Messages |
 
-The **打开官方登录终端** button launches only the selected installed official client's fixed login command. Windows uses a new native console and argv (including npm shim resolution), macOS opens Terminal, Linux uses an installed desktop terminal. No terminal available: the UI gives the command to run yourself. The UI never reads, uploads, or exchanges subscription OAuth tokens. Multiple model connections to the same CLI use the currently configured local login, not separate accounts; independent CLI profile management is not implemented here.
+The **打开官方登录终端** button launches only the selected installed official client's fixed login command. Windows uses a new native console and argv (including npm shim resolution), macOS opens Terminal, Linux uses an installed desktop terminal. No terminal available: the UI gives the command to run yourself. The UI never reads, uploads, or exchanges subscription OAuth tokens. By default, model connections to the same CLI use the current local login. v0.13 adds optional independent official-client profiles for Codex and Claude Code; see V0_13.md.
 
 OAuth UX belongs to each client. Do not treat subscription OAuth as an API key or promise all subscriptions work in third-party harnesses. Subscription entitlements and API billing are separate. Claude integration retains the original client and user authentication; API is the appropriate direct third-party integration path. Follow each provider's current terms and permissions.
 
@@ -72,7 +75,7 @@ The chairman can change the role proposal during clarification. The controller v
 
 Default execution limits are eight hours, three review rounds and ten minutes per stage. These are time/iteration limits, not a monetary API budget. Review/edit the execution settings before confirmation when needed.
 
-Connections can be added, tested and paused at any time for subsequent task planning. This version does **not** silently replace a frozen role with a newly added connection in an existing run. In-flight calls are not killed when a connection is paused. Automatic mid-run roster migration, remote member invitation links and native installed background service are future work. Existing multi-agent tasks preserve their strict contract/recovery semantics.
+Connections can be added, tested and paused at any time for subsequent task planning. This version does **not** silently replace a frozen role with a newly added connection in an existing run. In-flight calls are not killed when a connection is paused. Use v0.13’s explicit task-level immediate termination button to interrupt them. Automatic mid-run roster migration, remote member invitation links and native installed background service are future work. Existing multi-agent tasks preserve their strict contract/recovery semantics.
 
 ## Validation
 

@@ -97,6 +97,53 @@ class PanelTests(unittest.TestCase):
         self.assertEqual(self.request('/api/connections/login',{'provider':'openai-compatible'})[0],400)
         self.assertEqual(self.request('/api/connections/'+c['id']+'/test',{'command':'invalid'})[0],400)
 
+    def test_accounts_routes_reject_passwords_and_bind_only_matching_profiles(self):
+        self.assertEqual(self.request('/api/accounts',token=False)[0],403)
+        body={'provider':'codex','label':'Separate ChatGPT account'}
+        self.assertEqual(self.request('/api/accounts',body,origin=False)[0],403)
+        self.assertEqual(self.request('/api/accounts',{**body,'password':'DO NOT ACCEPT'})[0],400)
+        self.assertEqual(self.request('/api/accounts',{**body,'provider':'openai-compatible'})[0],400)
+        code,profile,_=self.request('/api/accounts',body);self.assertEqual(code,201)
+        self.assertNotIn('password',json.dumps(profile));self.assertFalse(profile['login_verified'])
+        self.assertEqual(len(self.request('/api/accounts')[1]['accounts']),1)
+        code,c,_=self.request('/api/connections',{'provider':'codex','label':'Alternate','account_id':profile['id']})
+        self.assertEqual(code,201);self.assertEqual(c['account_label'],body['label'])
+        self.assertEqual(self.request('/api/connections',{'provider':'claude-code','account_id':profile['id']})[0],400)
+        with patch('agentforeman.connections.Connections.login',return_value={'opened':True}) as login:
+            self.assertEqual(self.request('/api/connections/login',{'provider':'codex','account_id':profile['id']})[0],200)
+            login.assert_called_once_with(provider='codex',account_id=profile['id'])
+        self.assertEqual(self.request('/api/connections/login',{'provider':'codex','password':'DO NOT ACCEPT'})[0],400)
+
+    def test_immediate_termination_routes_are_authenticated_and_report_offline_pending(self):
+        from agentforeman.debate import Debate
+        from agentforeman.pool import Pool
+        pool=Pool(self.project)
+        for m in ('author','critic','chair'):pool.register(m,(m+'-')*10)
+        did=Debate(self.project).create('TEST ONLY stop offline worker',['author','critic'],'chair')
+        lease=pool.claim('author','offline')
+        self.assertIsNotNone(lease)
+        route='/api/debates/'+did
+        self.assertEqual(self.request(route+'/terminate',{},token=False)[0],403)
+        self.assertEqual(self.request(route+'/terminate',{},origin=False)[0],403)
+        self.assertEqual(self.request(route+'/terminate',{'command':'invalid'})[0],400)
+        code,result,_=self.request(route+'/terminate',{});self.assertEqual(code,202)
+        self.assertFalse(result['all_execution_acknowledged']);self.assertEqual(result['status'],'waiting_for_confirmation')
+        self.assertEqual(self.request(route+'/termination',token=False)[0],403)
+        self.assertEqual(self.request(route+'/terminate',{})[0],202)
+        pool.complete('author',lease['id'],lease['lease'],'cancelled')
+        self.assertTrue(self.request(route+'/termination')[1]['all_execution_acknowledged'])
+        self.assertEqual(pool.tasks(did)[0]['status'],'cancelled')
+
+    def test_immediate_campaign_termination_uses_durable_store_and_blocks_resume(self):
+        from agentforeman.campaign import create_campaign
+        cid=create_campaign(self.project,'TEST ONLY immediate campaign stop',1,120)
+        route='/api/campaigns/'+cid
+        code,result,_=self.request(route+'/terminate',{})
+        self.assertEqual(code,202);self.assertTrue(result['requested'])
+        self.assertTrue((self.project/'.foreman/campaigns'/cid/'terminate.request').exists())
+        with patch('agentforeman.webserver.launch') as launch:
+            self.assertEqual(self.request(route+'/resume',{})[0],400);launch.assert_not_called()
+
     def test_input_validation_and_quota_refresh_is_explicit(self):
         for body in ({}, {'goal':'x','max_rounds':True}, {'goal':'x','preflight':'yes'},
                      {'goal':'x','deadline':'yesterday'}, {'goal':'x','target':float('nan')}):

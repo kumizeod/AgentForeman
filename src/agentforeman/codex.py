@@ -28,10 +28,14 @@ def resolve_command(config: dict, *, npm_package="@openai/codex", bin_name="code
     # Preserve executable symlinks: resolving a venv's Python to the base binary
     # would silently discard that environment's installed dependencies.
     found = os.path.abspath(first) if first.is_file() and (first.is_absolute() or first.parent != Path(".")) else shutil.which(prefix[0])
+    if not found and bin_name=='agy' and not config.get('command'):
+        candidate=(Path(os.environ.get('LOCALAPPDATA',str(Path.home()/'AppData/Local')))/'agy/bin/agy.exe' if sys.platform=='win32' else Path.home()/'.local/bin/agy')
+        if candidate.is_file():found=str(candidate)
     if not found:
         raise ValueError("Codex CLI not found. Install @openai/codex, run codex login, then resume this run." if bin_name == "codex" else f"{bin_name} CLI not found. Install and authenticate the configured CLI before resuming.")
     path = Path(found)
     if sys.platform == "win32" and path.suffix.lower() in {".cmd", ".bat"}:
+        if npm_package is None:raise ValueError("Choose the native agy.exe binary, not a Windows batch shim")
         package = path.parent / "node_modules" / npm_package
         manifest = package / "package.json"
         if manifest.is_file():
@@ -90,9 +94,10 @@ def json_spec(control: Path, cwd: Path, prompt: str, schema: dict, settings: dic
     if settings.get("model"):
         argv.extend(["--model", settings["model"]])
     argv.append("-")
-    return {"argv": argv, "cwd": str(cwd), "stdin": str(control / "prompt.txt"),
+    from .accounts import apply_profile
+    return apply_profile({"argv": argv, "cwd": str(cwd), "stdin": str(control / "prompt.txt"),
             "timeout_seconds": settings["timeout_seconds"],
-            "env": {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONUTF8": "1"}}
+            "env": {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONUTF8": "1"}},settings)
 
 
 def check_answer(run: Path) -> dict:

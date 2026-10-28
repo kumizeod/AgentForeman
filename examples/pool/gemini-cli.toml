@@ -1,3 +1,4 @@
+# Legacy enterprise / paid API only. Google AI Pro / Ultra: use antigravity.toml.
 [worker]
 coordinator = "http://127.0.0.1:8770"
 state_dir = "gemini-cli-state"

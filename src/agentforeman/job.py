@@ -17,6 +17,10 @@ from .files import atomic_json, read_json
 from .platforms import alive, identity, detached_options, file_lock, stop_process
 
 
+def cancellation_requested(job_dir):
+    return (job_dir/'cancel.request').exists() or any((p/'terminate.request').exists() for p in job_dir.parents)
+
+
 def exec_child(job_dir: Path):
     """Self-report birth identity before exec; identity survives exec unchanged."""
     atomic_json(job_dir / "child.json", identity(os.getpid()))
@@ -48,11 +52,15 @@ def _supervise_locked(job_dir: Path) -> int:
     exit_code = None
     try:
         env = os.environ.copy()
+        for key in spec.get("unset_env", []):env.pop(key,None)
         env.update(spec.get("env", {}))
         with (job_dir / "stdout.log").open("wb") as out, (job_dir / "stderr.log").open("wb") as err:
             stdin_path = spec.get("stdin")
             source = open(stdin_path, "rb") if stdin_path else open(os.devnull, "rb")
             try:
+                if cancellation_requested(job_dir):
+                    cancelled = True
+                    raise RuntimeError("Cancelled before command launch")
                 if time.time() >= spec.get("deadline_at", float("inf")):
                     timed_out = True
                     raise RuntimeError("Absolute deadline expired before child launch")
@@ -73,7 +81,7 @@ def _supervise_locked(job_dir: Path) -> int:
                 if meta["child"] is None and (job_dir / "child.json").exists():
                     meta["child"] = read_json(job_dir / "child.json")
                     atomic_json(job_dir / "process.json", meta)
-                if (job_dir / "cancel.request").exists():
+                if cancellation_requested(job_dir):
                     cancelled = True
                     stop_process(child)
                     break
@@ -87,7 +95,7 @@ def _supervise_locked(job_dir: Path) -> int:
                 meta["child"] = read_json(job_dir / "child.json")
                 atomic_json(job_dir / "process.json", meta)
     except Exception as exc:
-        error = f"{type(exc).__name__}: {exc}"
+        error = None if cancelled and child is None else f"{type(exc).__name__}: {exc}"
         if child is not None and child.poll() is None:
             try:
                 stop_process(child)

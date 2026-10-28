@@ -1,0 +1,11 @@
+# Google AI Pro / Ultra: install the native Antigravity CLI and run `agy` to log in.
+# The Quick Start UI handles local registration and worker startup automatically.
+[worker]
+coordinator = "http://127.0.0.1:8770"
+state_dir = "antigravity-state"
+token_env = "FOREMAN_ANTIGRAVITY_WORKER_TOKEN"
+provider = "antigravity"
+timeout_seconds = 600
+# model = "model-slug-listed-by-agy-models"
+# active_hours = "22:00-08:00"
+# command = ["C:/Users/you/AppData/Local/agy/bin/agy.exe"]

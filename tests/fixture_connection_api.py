@@ -23,6 +23,12 @@ class Handler(BaseHTTPRequestHandler):
         if self.server.error_code:
             self.send_response(self.server.error_code);self.send_header('Content-Length','0');self.send_header('Retry-After','60');self.end_headers();return
         message=body['messages'][0]['content']
+        if 'TEST ONLY browser cancel live' in message:
+            print('TEST_SLOW_REQUEST_STARTED',flush=True)
+            self.connection.settimeout(30)
+            try:self.connection.recv(1)
+            except OSError:pass
+            return
         prompt,raw_schema=message.rsplit('\nReturn only valid JSON conforming to this schema:\n',1)
         schema=json.loads(raw_schema)
         if set(schema['properties'])=={'answer'}:

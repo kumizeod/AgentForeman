@@ -74,6 +74,11 @@ def sync(council,cid):
                     experiment.update(campaign_id=campaign_id,status='ready')
                     council.save(state)
                 child=store.get_campaign(experiment['campaign_id'])
+                if (folder/'terminate.request').exists():
+                    from .termination import request
+                    request(council.project,'campaigns',child['id'])
+                    experiment.update(status='stopped',reason='immediate_termination')
+                    council.save(state);return state
                 if child['status'] not in {'completed','failed'} and not experiment['launch_confirmed']:
                     from .overnight import launch
                     try:

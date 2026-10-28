@@ -19,7 +19,8 @@ from .pool_worker import Worker, hours, available
 PROVIDERS={*CLIS,'anthropic','openai-compatible'}
 GUIDES={
     'codex':{'label':'Codex / ChatGPT','login':'codex login','install':'npm install -g @openai/codex'},
-    'gemini-cli':{'label':'Gemini / Google AI Pro','login':'gemini','install':'npm install -g @google/gemini-cli'},
+    'antigravity':{'label':'Antigravity / Google AI Pro','login':'agy','install':'https://antigravity.google/download'},
+    'gemini-cli':{'label':'Gemini CLI（企业 / 旧 API）','login':'gemini','install':'npm install -g @google/gemini-cli'},
     'claude-code':{'label':'Claude Code','login':'claude auth login','install':'https://code.claude.com/docs/en/setup'},
     'opencode':{'label':'OpenCode / Go','login':'opencode auth login','install':'npm install -g opencode-ai'},
 }
@@ -77,31 +78,49 @@ class Connections:
                 if value:os.environ[c['key_env']]=value
             except Exception:pass  # List as needing a key; never expose credential backend errors.
 
-    def login(self,provider):
+    def login(self,provider,account_id=None):
         self.require_owner()
         if provider not in CLIS:raise ValueError('Login is only available for local clients')
         import shutil
         import subprocess
         import sys
         from .agents import command
-        argv=command({'provider':provider})+{'codex':['login'],'gemini-cli':[],
+        settings={'provider':provider}
+        if account_id:
+            from .accounts import Accounts
+            settings['account_dir']=str(Accounts(self.project).directory(account_id,provider))
+        from .accounts import profile_environment
+        profile_env,unset=profile_environment(settings)
+        environment=os.environ.copy()
+        for key in unset:environment.pop(key,None)
+        environment.update(profile_env)
+        login_key=provider+('_'+account_id if account_id else '')
+        import shlex
+        login_argv=None
+        argv=command(settings)+{'codex':['login'],'gemini-cli':[],'antigravity':[],
                     'claude-code':['auth','login'],'opencode':['auth','login']}[provider]
-        if time.time()-self.logins.get(provider,0)<15:raise ValueError('Login was just opened; complete it in that terminal')
+        if time.time()-self.logins.get(login_key,0)<15:raise ValueError('Login was just opened; complete it in that terminal')
+        login_argv=(['env',*[arg for key in unset for arg in ('-u',key)],*[k+'='+v for k,v in profile_env.items()],*argv] if profile_env else argv)
         if sys.platform=='win32':
-            subprocess.Popen(argv,cwd=self.root,creationflags=subprocess.CREATE_NEW_CONSOLE)
+            subprocess.Popen(argv,cwd=self.root,env=environment,creationflags=subprocess.CREATE_NEW_CONSOLE)
         elif sys.platform=='darwin':
-            import shlex
             from .files import atomic_text
-            script=self.root/(provider+'-login.command')
-            atomic_text(script,'#!/bin/sh\nexec '+shlex.join(argv)+'\n');script.chmod(0o700)
+            script=self.root/(login_key+'-login.command')
+            atomic_text(script,'#!/bin/sh\nexec '+shlex.join(login_argv)+'\n');script.chmod(0o700)
             subprocess.Popen(['open','-a','Terminal',str(script)])
         else:
             terminal=next((shutil.which(x) for x in ('x-terminal-emulator','gnome-terminal','konsole','xterm') if shutil.which(x)),None)
-            if not terminal:raise ValueError('No desktop terminal found. Run '+GUIDES[provider]['login']+' in your terminal.')
+            if not terminal:
+                if profile_env:
+                    from .files import atomic_text
+                    script=self.root/(login_key+'-login.command')
+                    atomic_text(script,'#!/bin/sh\nexec '+shlex.join(login_argv)+'\n');script.chmod(0o700)
+                    raise ValueError('No desktop terminal found. Run this independent-profile login script: '+shlex.quote(str(script)))
+                raise ValueError('No desktop terminal found. Run '+GUIDES[provider]['login']+' in your terminal.')
             separator='--' if Path(terminal).name=='gnome-terminal' else '-e'
-            subprocess.Popen([terminal,separator,*argv],cwd=self.root)
-        self.logins[provider]=time.time()
-        return {'opened':True,'provider':provider,'note':'Complete official login in the new terminal, then test the connection.'}
+            subprocess.Popen([terminal,separator,*login_argv],cwd=self.root,env=environment)
+        self.logins[login_key]=time.time()
+        return {'opened':True,'provider':provider,'account_id':account_id,'note':'Complete official login in the new terminal, then test the connection.'}
 
     def update_key(self,cid,api_key,remember=False):
         self.require_owner()
@@ -126,15 +145,19 @@ class Connections:
             return self.public(c)
 
     def settings(self,c):
-        return {k:v for k,v in c.items() if k in {'provider','model','key_env','base_url','active_hours','timeout_seconds'}}
+        settings={k:v for k,v in c.items() if k in {'provider','model','key_env','base_url','active_hours','timeout_seconds'}}
+        if c.get('account_id'):
+            from .accounts import Accounts
+            settings['account_dir']=str(Accounts(self.project).directory(c['account_id'],c['provider']))
+        return settings
 
     def group(self,c):
         # Same CLI login is one resource, regardless of model/connection count.
-        return c['provider'] if c['provider'] in CLIS else 'api-'+hashlib.sha256(c.get('base_url','anthropic').encode()).hexdigest()[:16]
+        return (c['provider']+('_'+c['account_id'] if c.get('account_id') else '')) if c['provider'] in CLIS else 'api-'+hashlib.sha256(c.get('base_url','anthropic').encode()).hexdigest()[:16]
 
     def create(self,**body):
         self.require_owner()
-        if set(body)-{'label','provider','model','base_url','api_key','key_env','remember','active_hours','chair_preferred'}:
+        if set(body)-{'label','provider','model','base_url','api_key','key_env','remember','active_hours','chair_preferred','account_id'}:
             raise ValueError('Unknown connection setting')
         provider=body.get('provider')
         if provider not in PROVIDERS:raise ValueError('Choose a supported connection type')
@@ -148,6 +171,10 @@ class Connections:
             if flag in body and type(body[flag]) is not bool:raise ValueError('Invalid option')
         c={'id':secrets.token_hex(6),'label':label.strip(),'provider':provider,'model':model.strip(),
            'timeout_seconds':600,'enabled':False,'chair_preferred':body.get('chair_preferred',False),'created_at':time.time()}
+        if body.get('account_id'):
+            from .accounts import Accounts
+            Accounts(self.project).directory(body['account_id'],provider)
+            c['account_id']=body['account_id']
         if body.get('active_hours'):
             hours(body['active_hours']);c['active_hours']=body['active_hours']
         if provider in {'openai-compatible','anthropic'}:
@@ -177,8 +204,13 @@ class Connections:
 
     def public(self,c):
         row={k:v for k,v in c.items() if k not in {'key_env'}}
+        if c['provider']=='gemini-cli':row['notice']='旧 Gemini CLI：Google AI Pro / Ultra 请改用 Antigravity；此入口仅保留企业 / 旧 API 兼容。'
         row['member']='local_'+c['id'];row['resource_group']=self.group(c)
         row['key_available']=c['provider'] in CLIS or bool(os.environ.get(c.get('key_env','')))
+        row['authentication']='independent_profile' if c.get('account_id') else ('local_client' if c['provider'] in CLIS else 'api_key')
+        if c.get('account_id'):
+            from .accounts import Accounts
+            row['account_label']=Accounts(self.project).get(c['account_id'])['label']
         row['active_now']=available(self.settings(c))
         row['testing']=c['id'] in self.testing
         row['worker_running']=c['id'] in self.threads and self.threads[c['id']].is_alive()

@@ -15,7 +15,7 @@ import urllib.parse
 import urllib.request
 
 from .codex import json_spec
-from .files import atomic_json, read_json
+from .files import atomic_json, atomic_text, read_json
 from .job import wait_for_job
 from .platforms import file_lock
 from .pool import name, validate
@@ -26,7 +26,7 @@ from .quota import classify
 def load_worker(path):
     path = Path(path).resolve()
     data = tomllib.loads(path.read_text(encoding='utf-8'))['worker']
-    allowed = {'coordinator','token_env','state_dir','provider','model','command','timeout_seconds','active_hours','key_env','base_url','max_output_tokens'}
+    allowed = {'coordinator','token_env','state_dir','provider','model','command','timeout_seconds','active_hours','key_env','base_url','max_output_tokens','account_dir'}
     if set(data)-allowed:
         raise ValueError('Unknown worker setting; secrets belong in environment variables')
     parsed = urllib.parse.urlsplit(data['coordinator'])
@@ -37,7 +37,7 @@ def load_worker(path):
     data['coordinator'] = data['coordinator'].rstrip('/')
     data.setdefault('provider','codex');data.setdefault('timeout_seconds',600)
     data.setdefault('token_env','FOREMAN_WORKER_TOKEN')
-    if data['provider'] not in {'codex','claude-code','gemini-cli','opencode','anthropic','openai-compatible'}:
+    if data['provider'] not in {'codex','claude-code','gemini-cli','antigravity','opencode','anthropic','openai-compatible'}:
         raise ValueError('Unknown worker provider')
     if type(data['timeout_seconds']) not in {int,float} or not math.isfinite(data['timeout_seconds']) or not 1<=data['timeout_seconds']<=7200:
         raise ValueError('Worker timeout must be between 1 and 7200 seconds')
@@ -52,6 +52,9 @@ def load_worker(path):
         raise ValueError('max_output_tokens must be 128..32000')
     if 'active_hours' in data:
         hours(data['active_hours'])
+    if 'account_dir' in data:
+        if data['provider'] not in {'codex','claude-code'} or not isinstance(data['account_dir'],str):raise ValueError('Invalid independent account directory')
+        data['account_dir']=str((path.parent/data['account_dir']).resolve())
     data['state_dir'] = str((path.parent / data.get('state_dir','worker-state')).resolve())
     return data
 
@@ -119,17 +122,43 @@ class Worker:
         if type(task['attempts']) is not int or not 1<=task['attempts']<=5 or type(task['deadline']) not in (int,float) or not math.isfinite(task['deadline']):
             raise ValueError('Invalid bounded task lease')
         stop = threading.Event()
+        cancellation=threading.Event()
+        job=self.root/'tasks'/task['id']/str(task['attempts'])/'job'
+        control={'task':task['id'],'lease':task['lease']}
+        def check_cancel():
+            if self.post('/control',control)['cancel_requested']:
+                cancellation.set();atomic_text(job/'cancel.request','cancel\n');return True
+            return False
+        # Check before launching as well as during the call; durable markers close
+        # cancellation races while the native supervisor is starting.
+        try:check_cancel()
+        except (OSError,ValueError,KeyError):pass
         def heartbeat():
-            while not stop.wait(15):
+            next_beat=0
+            while not stop.wait(1):
                 try:
-                    if not self.post('/heartbeat',{'task':task['id'],'lease':task['lease']})['accepted']:
-                        return
+                    if check_cancel():return
+                    if time.monotonic()>=next_beat:
+                        self.post('/heartbeat',control);next_beat=time.monotonic()+15
                 except Exception:
-                    pass  # Lease becomes uncertain; it is never handed to a different member.
+                    pass  # No network response is not a cancellation confirmation.
         thread = threading.Thread(target=heartbeat,daemon=True)
         thread.start()
         try:
-            value = self.execute(task)
+            value = ({'outcome':'cancelled','result':None,'retry_at':None} if cancellation.is_set() and not (job/'spec.json').exists() and not (job/'process.json').exists() else self.execute(task))
+            if cancellation.is_set() and value['outcome']!='uncertain':
+                # Do not acknowledge an old/uncertain supervisor as stopped just
+                # because a cancellation intent was received after restart.
+                uncertain=False
+                if (job/'spec.json').exists():
+                    try:
+                        from .platforms import alive
+                        receipt=read_json(job/'result.json')
+                        meta=read_json(job/'process.json') if (job/'process.json').exists() else {}
+                        child=meta.get('child') or (read_json(job/'child.json') if (job/'child.json').exists() else None)
+                        uncertain=bool(receipt.get('error') or alive(child))
+                    except (OSError,ValueError,KeyError):uncertain=True
+                value={'outcome':'uncertain' if uncertain else 'cancelled','result':None,'retry_at':None}
             self.last_attempt={'status':value['outcome'],'task_id':task['id'],
                                'model_called':None,'retry_at':value.get('retry_at'),
                                'completion_acknowledged':False}
@@ -165,7 +194,7 @@ class Worker:
                 if self.settings['provider']=='codex':
                     context = folder/'context';context.mkdir(exist_ok=True)
                     spec = json_spec(folder,context,task['request']['prompt'],task['request']['schema'],self.settings,sandbox='read-only')
-                elif self.settings['provider'] in {'claude-code','gemini-cli','opencode'}:
+                elif self.settings['provider'] in {'claude-code','gemini-cli','antigravity','opencode'}:
                     from .agents import make_spec
                     spec=make_spec(folder,folder/'context',task['request'],self.settings)
                 else:
@@ -176,12 +205,14 @@ class Worker:
                             'cwd':str(folder),'env':{},'timeout_seconds':timeout}
                 spec.update(timeout_seconds=timeout,deadline_at=task['deadline'])
             receipt = wait_for_job(job,spec)
-            if self.settings['provider'] in {'claude-code','gemini-cli','opencode'}:
+            if receipt['cancelled']:
+                return {'outcome':'uncertain' if receipt.get('error') else 'cancelled','result':None,'retry_at':None}
+            if self.settings['provider'] in {'claude-code','gemini-cli','antigravity','opencode'}:
                 from .agents import structured_quota
                 pause=structured_quota(job,receipt)
                 if pause:return {'outcome':'quota','result':None,'retry_at':pause['retry_at']}
             if receipt['exit_code']==0 and not any(receipt[k] for k in ('error','cancelled','timed_out')):
-                if self.settings['provider'] in {'claude-code','gemini-cli','opencode'}:
+                if self.settings['provider'] in {'claude-code','gemini-cli','antigravity','opencode'}:
                     from .agents import read_answer
                     answer=read_answer(job,folder,task['request'],self.settings['provider'])
                 else:
@@ -198,7 +229,7 @@ class Worker:
         except RuntimeError:
             # An uncertain native supervisor is never interpreted as safe to replay.
             return {'outcome':'uncertain','result':None,'retry_at':None}
-        except (ValueError,OSError,KeyError):
+        except (ValueError,OSError,KeyError,TypeError):
             return {'outcome':'failed','result':None,'retry_at':None}
 
     def run(self, once=False, poll_seconds=10):

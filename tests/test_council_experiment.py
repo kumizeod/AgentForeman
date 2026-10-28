@@ -56,6 +56,21 @@ class CouncilExperimentTests(unittest.TestCase):
         finally:store.close()
         self.assertEqual(recovered['experiment']['campaign_id'],repeated['experiment']['campaign_id'])
 
+    def test_immediate_stop_during_child_creation_never_launches_detached_campaign(self):
+        from agentforeman.campaign import create_campaign
+        from agentforeman.files import atomic_text
+        cid=self.completed()
+        def create_then_stop(*args,**kwargs):
+            child=create_campaign(*args,**kwargs)
+            atomic_text(self.council.path(cid)/'terminate.request','terminate\n')
+            return child
+        with patch('agentforeman.campaign.create_campaign',side_effect=create_then_stop), \
+             patch('agentforeman.overnight.launch') as launch:
+            state=sync(self.council,cid)
+            launch.assert_not_called()
+        self.assertEqual(state['experiment']['status'],'stopped')
+        self.assertTrue((self.project/'.foreman/campaigns'/state['experiment']['campaign_id']/'terminate.request').exists())
+
     def test_changed_project_blocks_automatic_experiment(self):
         cid=self.completed()
         path=self.project/'workspace'/'config.json';path.write_text(path.read_text()+'\n')

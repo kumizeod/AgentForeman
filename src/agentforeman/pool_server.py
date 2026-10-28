@@ -73,7 +73,7 @@ class Handler(BaseHTTPRequestHandler):
         self.connection.settimeout(15)
         try:
             token = self.headers.get('Authorization','')
-            member = self.server.pool.authenticate(token[7:] if token.startswith('Bearer ') else None)
+            member = self.server.pool.authenticate(token[7:] if token.startswith('Bearer ') else None,include_disabled=self.path in {'/control','/complete','/heartbeat'})
             if not member:
                 return self.reply(401, {'error':'Unauthorized'})
             if self.headers.get('Origin') or self.headers.get('Transfer-Encoding'):
@@ -89,6 +89,8 @@ class Handler(BaseHTTPRequestHandler):
                 result = {'task':pool.claim(member,data['session'])}
             elif self.path == '/heartbeat' and set(data)=={'task','lease'}:
                 result = {'accepted':pool.heartbeat(member,data['task'],data['lease'])}
+            elif self.path == '/control' and set(data)=={'task','lease'}:
+                result=pool.control(member,data['task'],data['lease'])
             elif self.path == '/complete' and set(data)=={'task','lease','outcome','result','retry_at'}:
                 result = {'accepted':pool.complete(member,**data)}
             else:

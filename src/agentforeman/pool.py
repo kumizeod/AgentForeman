@@ -71,9 +71,14 @@ class Pool:
               status TEXT NOT NULL DEFAULT 'queued', member TEXT, session TEXT, lease TEXT,
               lease_until REAL, attempts INTEGER NOT NULL DEFAULT 0, result TEXT,
               created REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS group_cancellations (group_id TEXT PRIMARY KEY, requested_at REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS settlements (lease TEXT PRIMARY KEY, member TEXT NOT NULL, task TEXT NOT NULL, payload TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS pool_ready ON tasks(status, created);
             ''')
+            c.execute('BEGIN IMMEDIATE')
+            columns={r[1] for r in c.execute('PRAGMA table_info(tasks)')}
+            for column,kind in (('cancel_requested','INTEGER NOT NULL DEFAULT 0'),('cancel_ack_at','REAL')):
+                if column not in columns:c.execute(f'ALTER TABLE tasks ADD COLUMN {column} {kind}')
 
     @contextmanager
     def connect(self):
@@ -98,11 +103,11 @@ class Pool:
                       'ON CONFLICT(id) DO UPDATE SET token_hash=excluded.token_hash, description=excluded.description',
                       (member, digest, description))
 
-    def authenticate(self, token):
+    def authenticate(self, token, *, include_disabled=False):
         if not isinstance(token, str):
             return None
         with self.connect() as c:
-            row = c.execute('SELECT id FROM members WHERE token_hash=? AND enabled=1',
+            row = c.execute('SELECT id FROM members WHERE token_hash=?'+('' if include_disabled else ' AND enabled=1'),
                             (hashlib.sha256(token.encode()).hexdigest(),)).fetchone()
         return row['id'] if row else None
 
@@ -122,6 +127,8 @@ class Pool:
             raise ValueError('Invalid bounded request')
         tid = name(task_id or secrets.token_hex(12))
         with self.connect() as c:
+            c.execute('BEGIN IMMEDIATE')
+            cancelled=c.execute('SELECT 1 FROM group_cancellations WHERE group_id=?',(group,)).fetchone() is not None
             known = {r[0] for r in c.execute('SELECT id FROM members WHERE enabled=1')}
             if set(eligible) - known:
                 raise ValueError('Unknown/disabled member')
@@ -130,8 +137,9 @@ class Pool:
                 if (old['group_id'], old['stage'], old['eligible'], old['request'], old['deadline']) != (group, stage, dumps(eligible), dumps(request), deadline):
                     raise ValueError('Task id already has a different immutable request')
                 return tid
-            c.execute('INSERT INTO tasks(id,group_id,stage,eligible,request,deadline,created) VALUES(?,?,?,?,?,?,?)',
-                      (tid, group, stage, dumps(eligible), dumps(request), deadline, time.time()))
+            now=time.time()
+            c.execute('INSERT INTO tasks(id,group_id,stage,eligible,request,deadline,created,status,cancel_requested,cancel_ack_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                      (tid, group, stage, dumps(eligible), dumps(request), deadline, now,'cancelled' if cancelled else 'queued',int(cancelled),now if cancelled else None))
         return tid
 
     def claim(self, member, session, lease_seconds=90):
@@ -177,7 +185,7 @@ class Pool:
         return bool(changed)
 
     def complete(self, member, task, lease, outcome, result=None, retry_at=None):
-        if outcome not in {'success','quota','failed','uncertain'}:
+        if outcome not in {'success','quota','failed','uncertain','cancelled'}:
             raise ValueError('Unknown completion outcome')
         with self.connect() as c:
             c.execute('BEGIN IMMEDIATE')
@@ -194,6 +202,13 @@ class Pool:
                 raise ValueError('Completion does not own the lease')
             if row['status'] == 'completed' and outcome == 'success' and row['result'] == dumps(result):
                 return True  # An interrupted HTTP acknowledgment is safe to resend.
+            if row['cancel_requested']:
+                if outcome=='uncertain':
+                    if row['cancel_ack_at'] is None:c.execute("UPDATE tasks SET status='uncertain' WHERE id=?",(task,))
+                    return True
+                c.execute("UPDATE tasks SET status='cancelled',cancel_ack_at=?,result=NULL WHERE id=?",(time.time(),task))
+                c.execute('INSERT INTO settlements VALUES(?,?,?,?)',(lease,member,task,payload))
+                return True
             if row['status']=='expired':
                 c.execute('INSERT INTO settlements VALUES(?,?,?,?)', (lease,member,task,payload))
                 return True  # Acknowledge late delivery without accepting its output.
@@ -208,11 +223,37 @@ class Pool:
                 c.execute("UPDATE tasks SET status=?,member=NULL,session=NULL,lease=NULL,lease_until=NULL WHERE id=?",
                           ('queued' if row['attempts'] < 5 else 'failed', task))
             else:
-                status = {'success':'completed','failed':'failed','uncertain':'uncertain'}[outcome]
+                status = {'success':'completed','failed':'failed','uncertain':'uncertain','cancelled':'cancelled'}[outcome]
                 c.execute('UPDATE tasks SET status=?,result=? WHERE id=?', (status, dumps(result) if outcome=='success' else None, task))
             if outcome != 'uncertain':
                 c.execute('INSERT INTO settlements VALUES(?,?,?,?)', (lease,member,task,payload))
         return True
+
+    def cancel_group(self,group):
+        name(group);now=time.time()
+        with self.connect() as c:
+            c.execute('BEGIN IMMEDIATE')
+            c.execute('INSERT OR IGNORE INTO group_cancellations VALUES(?,?)',(group,now))
+            c.execute("UPDATE tasks SET cancel_requested=1,cancel_ack_at=?,status='cancelled' WHERE group_id=? AND status='queued'",(now,group))
+            c.execute("UPDATE tasks SET cancel_requested=1 WHERE group_id=? AND status IN ('leased','uncertain')",(group,))
+        return self.cancellation(group)
+
+    def control(self,member,task,lease):
+        with self.connect() as c:
+            row=c.execute('SELECT * FROM tasks WHERE id=? AND member=?',(task,member)).fetchone()
+        if row is None or not hmac.compare_digest(row['lease'] or '',lease):raise ValueError('Control does not own lease')
+        return {'cancel_requested':bool(row['cancel_requested'])}
+
+    def cancellation(self,group):
+        name(group)
+        with self.connect() as c:
+            intent=c.execute('SELECT requested_at FROM group_cancellations WHERE group_id=?',(group,)).fetchone()
+            rows=c.execute('SELECT id,member,status,cancel_ack_at FROM tasks WHERE group_id=? AND cancel_requested=1',(group,)).fetchall()
+        return {'requested':intent is not None,'requested_at':intent[0] if intent else None,
+                'all_workers_acknowledged':intent is not None and all(r['cancel_ack_at'] is not None for r in rows),
+                'tasks':[{'id':r['id'],'member':r['member'],'status':r['status'],
+                          'acknowledged':r['cancel_ack_at'] is not None,'acknowledged_at':r['cancel_ack_at']} for r in rows],
+                'provider_generation_stopped':'unknown'}
 
     def tasks(self, group=None):
         with self.connect() as c:

@@ -39,3 +39,5 @@ body{margin:0;font:14px/1.55 var(--font-ui);color:var(--ink);background:var(--bo
 #connection-form .formGrid,#quick-task-form .formGrid{margin:14px 0}
 @media(max-width:1100px){.classicApp .topSegmentedNav{grid-template-columns:repeat(3,minmax(0,1fr))}.classicApp .topbar{grid-template-columns:minmax(150px,1fr) minmax(300px,420px) auto}}
 @media(max-width:800px){.classicApp .topbar{grid-template-columns:1fr auto}#connection-form .formGrid,#quick-task-form .formGrid{grid-template-columns:1fr}}
+
+.terminationStatus{flex-basis:100%;padding:12px;border:1px solid var(--line);border-radius:8px;overflow-wrap:anywhere}.terminationStatus p{margin:6px 0}#connection-account-field{margin:14px 0}

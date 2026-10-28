@@ -239,6 +239,7 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
   // New onboarding uses actual HTTP API transport and managed native workers.
   // Only provider replies are scripted; no external account is accessed.
   connectionAPI=spawn(python,['-m','tests.fixture_connection_api'],{cwd:root,stdio:['ignore','pipe','pipe']});
+  let slowRequests=0;connectionAPI.stdout.on('data',chunk=>{slowRequests+=(chunk.toString().match(/TEST_SLOW_REQUEST_STARTED/g)||[]).length;});
   const apiURL=await new Promise((resolve,reject)=>{
     let text='';const timer=setTimeout(()=>reject(new Error('Fixture API did not start')),10000);
     connectionAPI.stdout.on('data',chunk=>{text+=chunk;const match=text.match(/http:\/\/127\.0\.0\.1:\d+\/v1/);if(match){clearTimeout(timer);resolve(match[0]);}});
@@ -291,6 +292,60 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
     assert.equal(result.quality.factual_correctness_verified,false);
     completed.push(mode+': quick task, chair-selected roles, explicit confirmation and automatic workers complete frozen independent checks');
   }
+  // Independent-account UX uses real profile persistence; only opening the
+  // external login terminal is mocked here. Native argv/env isolation has its
+  // own subprocess tests. No actual external credentials are used.
+  await page.locator('[data-view=connections]').click();
+  await page.locator('#connection-provider').selectOption('antigravity');
+  assert((await page.locator('#connection-guide').innerText()).includes('agy'));
+  assert.equal(await page.locator('#connection-account-field').isVisible(),false);
+  await page.locator('#connection-provider').selectOption('gemini-cli');
+  assert((await page.locator('#connection-guide').innerText()).includes('gemini'));
+  await page.route('**/api/connections/login',async route=>{
+    const body=route.request().postDataJSON();assert(body.account_id);assert(['codex','claude-code'].includes(body.provider));
+    await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({opened:true,account_id:body.account_id})});
+  });
+  for(const provider of ['codex','claude-code']){
+    await page.locator('#connection-provider').selectOption(provider);
+    await page.locator('#connection-form [name=label]').fill('TEST isolated '+provider+' <img src=x onerror="window.accountInjected=true">');
+    await page.locator('#connection-new-account').click();
+    await until(async()=>!!await page.locator('#connection-account').inputValue(),'isolated account selected');
+    const selected=await page.locator('#connection-account').inputValue();
+    const accounts=(await request('/api/accounts')).accounts;
+    assert(accounts.some(a=>a.id===selected&&a.provider===provider));
+    assert.equal(await page.locator('#connection-form input[type=password]:visible').count(),0);
+    assert.equal(await page.evaluate(()=>window.accountInjected),undefined);
+    const profileConnection=await request('/api/connections',{provider,label:'TEST separate login '+provider,account_id:selected});
+    assert.equal(profileConnection.account_id,selected);assert.equal(profileConnection.enabled,false);
+    assert.equal(profileConnection.authentication,'independent_profile');
+    assert(!JSON.stringify(profileConnection).includes('client/'));
+  }
+  await page.unroute('**/api/connections/login');
+  completed.push('Antigravity/legacy Google options and independent Codex/Claude profile creation, selected official-login routing, escaped labels and no password ingestion');
+  const usable=(await request('/api/connections')).connections.filter(c=>c.enabled&&c.test?.passed);
+  const cancelTask=await request('/api/debates',{question:'TEST ONLY browser cancel live',members:[usable[1].member,usable[2].member],chair:usable[0].member});
+  await until(async()=>slowRequests>0,'actual model API request started',30000);
+  await page.locator('[data-view=council]').click();await page.locator('#refresh').click();
+  await page.locator(`[data-mode-id="${cancelTask.id}"]`).click();
+  await page.locator(`[data-terminate-kind="debates"][data-terminate-id="${cancelTask.id}"]`).click();
+  await until(async()=>(await request('/api/debates/'+cancelTask.id+'/termination')).all_execution_acknowledged,'live request stopped and worker acknowledged',20000);
+  await page.locator('#refresh').click();
+  await until(async()=>(await page.locator('#mode-detail').innerText()).includes('执行节点已确认退出'),'termination confirmation shown');
+  const cancelled=(await request('/api/pool')).tasks.filter(t=>t.group_id===cancelTask.id);
+  assert(cancelled.every(t=>t.status==='cancelled'));
+  completed.push('Immediate terminate button closes a live API request, cancels queued work and shows actual worker exit acknowledgement');
+  const offline=await request('/api/debates',{question:'TEST ONLY offline cancellation',members:['member-a','member-b'],chair:'claude-chair'});
+  await until(async()=>(await request('/api/pool')).tasks.some(t=>t.group_id===offline.id),'offline task queued');
+  execFileSync(python,['-c',"from agentforeman.pool import Pool;from pathlib import Path;import sys;assert Pool(Path(sys.argv[1])).claim('member-a','TEST_offline')",project],{cwd:root});
+  await page.locator('#refresh').click();await page.locator(`[data-mode-id="${offline.id}"]`).click();
+  await page.locator(`[data-terminate-kind="debates"][data-terminate-id="${offline.id}"]`).click();
+  await until(async()=>(await request('/api/debates/'+offline.id+'/termination')).requested,'offline cancellation intent persisted');
+  const pending=await request('/api/debates/'+offline.id+'/termination');
+  assert.equal(pending.all_execution_acknowledged,false);assert.equal(pending.status,'waiting_for_confirmation');
+  await page.locator('#refresh').click();
+  assert((await page.locator('#mode-detail').innerText()).includes('等待执行节点确认'));
+  assert((await page.locator('#mode-detail').innerText()).includes('服务商端是否停止生成和计费未知'));
+  completed.push('Offline worker cancellation stays unconfirmed; the UI does not claim all tokens or provider-side generation stopped');
   assert.deepEqual(failures,[]);
   fs.writeFileSync(path.join(output,'browser-summary.json'),JSON.stringify({passed:true,checks:completed,page_errors:failures,disclosure:'TEST-ONLY scripted CLI and local API model replies. HTTP, native workers, training, verification, restart and archive replay are real; no external account or model quality verified.'},null,2));
   console.log(JSON.stringify({passed:true,checks:completed,output},null,2));

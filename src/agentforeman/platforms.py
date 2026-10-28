@@ -12,6 +12,7 @@ from pathlib import Path
 import signal
 import subprocess
 import sys
+import time
 
 import psutil
 
@@ -140,11 +141,14 @@ def stop_process(child: subprocess.Popen):
         os.killpg(child.pid, signal.SIGTERM)
     except ProcessLookupError:
         return
-    try:
-        child.wait(timeout=3)
-    except subprocess.TimeoutExpired:
+    # Keep the root PID reserved until the whole group has been killed. Reaping
+    # a fast-exiting parent first can leave a SIGTERM-ignoring grandchild alive.
+    deadline=time.monotonic()+3
+    while time.monotonic()<deadline:
         try:
-            os.killpg(child.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        child.wait()
+            if psutil.Process(child.pid).status()==psutil.STATUS_ZOMBIE:break
+        except psutil.NoSuchProcess:break
+        time.sleep(.05)
+    try:os.killpg(child.pid,signal.SIGKILL)
+    except ProcessLookupError:pass
+    child.wait(timeout=5)

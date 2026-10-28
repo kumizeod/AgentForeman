@@ -18,7 +18,7 @@ class AgentAdapterTests(unittest.TestCase):
         self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name)
     def tearDown(self):self.tmp.cleanup()
     def test_both_cli_workers_execute_native_supervision_and_reuse_receipts(self):
-        for provider in ('claude-code','gemini-cli','opencode'):
+        for provider in ('claude-code','gemini-cli','antigravity','opencode'):
             settings={'state_dir':str(self.root/provider),'token_env':'FOREMAN_TEST_TOKEN','provider':provider,
                       'timeout_seconds':10,'command':[str(Path(__file__).with_name('fixture_agent_cli.py').resolve())]}
             with patch.dict(os.environ,{'FOREMAN_TEST_TOKEN':'t'*40}):worker=Worker(settings)
@@ -30,13 +30,13 @@ class AgentAdapterTests(unittest.TestCase):
             self.assertEqual(worker.execute(task),result)
             self.assertEqual(saved,receipt.read_bytes())
     def test_read_only_cli_flags_and_schema_envelopes_fail_closed(self):
-        for provider in ('claude-code','gemini-cli','opencode'):
+        for provider in ('claude-code','gemini-cli','antigravity','opencode'):
             settings={'provider':provider,'timeout_seconds':10,'command':[str(Path(__file__).with_name('fixture_agent_cli.py').resolve())]}
             spec=make_spec(self.root,self.root/'context',{'prompt':'do work','schema':SCHEMA},settings)
             self.assertNotIn('--dangerously-skip-permissions',spec['argv'])
             if provider=='claude-code':
                 self.assertEqual(spec['argv'][spec['argv'].index('--tools')+1],'')
-            elif provider=='gemini-cli':self.assertIn('plan',spec['argv'])
+            elif provider in {'gemini-cli','antigravity'}:self.assertIn('plan',spec['argv'])
             else:self.assertEqual(json.loads(spec['env']['OPENCODE_CONFIG_CONTENT'])['permission'],{'*':'deny'})
         job=self.root/'job';job.mkdir();(job/'stdout.log').write_text('{"is_error":true,"result":"fake"}')
         with self.assertRaises(ValueError):read_answer(job,self.root,{'schema':SCHEMA},'claude-code')
@@ -52,7 +52,7 @@ class AgentAdapterTests(unittest.TestCase):
                 argv=codex.resolve_command({'command':[str(shim)]},npm_package=package,bin_name=binary)
             self.assertEqual(argv,['node.exe',str((directory/'entry.js').resolve())])
     def test_config_accepts_cli_without_api_model_and_detection_never_launches(self):
-        for provider in ('claude-code','gemini-cli','opencode'):
+        for provider in ('claude-code','gemini-cli','antigravity','opencode'):
             path=self.root/'worker.toml';path.write_text('[worker]\ncoordinator="http://127.0.0.1:8770"\nprovider="'+provider+'"')
             self.assertEqual(load_worker(path)['provider'],provider)
         with patch('agentforeman.agents.command',side_effect=ValueError('absent')):
@@ -74,6 +74,16 @@ class AgentAdapterTests(unittest.TestCase):
         (job/'stdout.log').write_text(json.dumps({'type':'error','error':{'code':429}}))
         self.assertGreater(structured_quota(job,receipt)['retry_at'],time.time())
         self.assertIsNone(structured_quota(job,{'exit_code':1,'timed_out':True}))
+
+    def test_antigravity_fail_closed_on_terminal_status_or_tool_steps(self):
+        job=self.root/'job';job.mkdir()
+        for status in ('ERROR','CANCELED','INTERRUPTED','INVALID','WAITING','RUNNING'):
+            (job/'stdout.log').write_text(json.dumps({'event':'result','result':{'status':status,'structured_output':{'answer':'fake'}}}))
+            with self.assertRaises(ValueError):read_answer(job,self.root,{'schema':SCHEMA},'antigravity')
+        events=[{'event':'step_update','step_update':{'tool_info':{'name':'run_command'}}},
+                {'event':'result','result':{'status':'SUCCESS','structured_output':{'answer':'fake'}}}]
+        (job/'stdout.log').write_text('\n'.join(json.dumps(e) for e in events))
+        with self.assertRaises(ValueError):read_answer(job,self.root,{'schema':SCHEMA},'antigravity')
 
     def test_local_proxy_uses_local_key_and_remote_cleartext_is_rejected(self):
         from agentforeman.providers import request_json
