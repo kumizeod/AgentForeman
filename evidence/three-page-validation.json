@@ -1,0 +1,159 @@
+{
+  "version": "0.14.0",
+  "ci_results": {
+    "recorded_at": "2026-10-29T12:37:48.788Z",
+    "native_jobs": [
+      {
+        "id": 123445552261,
+        "name": "test (windows-latest, 3.11)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 123445552300,
+        "name": "test (windows-latest, 3.12)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 123445552376,
+        "name": "test (windows-latest, 3.13)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 123445552389,
+        "name": "test (macos-latest, 3.12)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 123445552395,
+        "name": "test (ubuntu-latest, 3.11)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 123445552418,
+        "name": "test (ubuntu-latest, 3.12)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 123445552581,
+        "name": "test (ubuntu-latest, 3.13)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 123445552584,
+        "name": "test (macos-latest, 3.13)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 123445552659,
+        "name": "test (macos-latest, 3.11)",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "browser": {
+      "passed": true,
+      "workflow_groups": 22
+    },
+    "all_completed": true,
+    "all_passed": true
+  },
+  "source_commit": "b3fd2cb20f05d16738b1ca97a27f5d7d2953bf60",
+  "source_tree": "bdda5320ea16c6438351acd461322a9a94d4876f",
+  "local_python": {
+    "full_suite": {
+      "source_commit": "cdcc8bc82734df7436565bded98987bcdd86422a",
+      "tests": 229,
+      "seconds": 214.403,
+      "passed": true,
+      "skipped": 1
+    },
+    "final_accounting_regressions": {
+      "source_commit": "b3fd2cb20f05d16738b1ca97a27f5d7d2953bf60",
+      "tests": 8,
+      "seconds": 0.953,
+      "passed": true
+    }
+  },
+  "local_browser": {
+    "full_suite": {
+      "source_commit": "cdcc8bc82734df7436565bded98987bcdd86422a",
+      "passed": true,
+      "checks": [
+        "Three-page shell opens on tasks and conversation, with advanced tools kept out of main navigation",
+        "Empty state, capability handoff and authenticated local sync",
+        "Form submission drives real train/independent verify; untrusted goal is escaped",
+        "Automatic reviewer criticism, proposer revision and approval are visible in the panel",
+        "Actual controller/worker logs, report, events and verified archive download",
+        "Search/filter and quota/statistics/diagnostics pages use real APIs",
+        "Light/dark/mobile layout; killed-controller UI resume and durable quota-wait stop",
+        "Council form, three HTTP pull workers, native supervised fixtures, anonymous review, chair, audit and transcript export; missing sources remain needs_evidence",
+        "Codex and Claude CLI fixtures submit independent code candidates through HTTP; real training/verifier selects best; intact archive downloads",
+        "debates: form, concurrent HTTP/native workers, failed real Python check, criticism, revision and passing retest, escaped artifacts, transcript/report downloads and mobile layout",
+        "cooperations: form, concurrent HTTP/native workers, failed real Python check, criticism, revision and passing retest, escaped artifacts, transcript/report downloads and mobile layout",
+        "debates: chairman-human clarification, no execution before confirmation, human version editing, stale/duplicate confirmation protection, frozen contract and real check/revision/retest after launch",
+        "cooperations: chairman-human clarification, no execution before confirmation, human version editing, stale/duplicate confirmation protection, frozen contract and real check/revision/retest after launch",
+        "Connection form, actual HTTP smoke, automatic local coordinator/workers, escaped cards, password clearing and mobile layout",
+        "Per-connection target shares validate to 100%, persist through real API, and remain distinct from observed token use",
+        "adversarial: quick task, chair-selected roles, explicit confirmation and automatic workers complete frozen independent checks",
+        "cooperative: quick task, chair-selected roles, explicit confirmation and automatic workers complete frozen independent checks",
+        "Task inbox combines briefing and execution, real API token receipts drive connection/task shares, rolling period selector, light/dark/mobile layouts",
+        "Antigravity/legacy Google options and independent Codex/Claude profile creation, selected official-login routing, escaped labels and no password ingestion",
+        "Immediate terminate button closes a live API request, cancels queued work and shows actual worker exit acknowledgement",
+        "Offline worker cancellation stays unconfirmed; the UI does not claim all tokens or provider-side generation stopped"
+      ],
+      "page_errors": [],
+      "disclosure": "TEST-ONLY scripted CLI and local API model replies. HTTP, native workers, training, verification, restart and archive replay are real; no external account or model quality verified."
+    },
+    "final_targeted": {
+      "source_commit": "b3fd2cb20f05d16738b1ca97a27f5d7d2953bf60",
+      "passed": true,
+      "checks": [
+        "Three-page shell opens on tasks and conversation, with advanced tools kept out of main navigation",
+        "Empty state, capability handoff and authenticated local sync",
+        "Connection form, actual HTTP smoke, automatic local coordinator/workers, escaped cards, password clearing and mobile layout",
+        "Per-connection target shares validate to 100%, persist through real API, and remain distinct from observed token use",
+        "adversarial: quick task, chair-selected roles, explicit confirmation and automatic workers complete frozen independent checks",
+        "cooperative: quick task, chair-selected roles, explicit confirmation and automatic workers complete frozen independent checks",
+        "Task inbox combines briefing and execution, real API token receipts drive connection/task shares, rolling period selector, light/dark/mobile layouts",
+        "Antigravity/legacy Google options and independent Codex/Claude profile creation, selected official-login routing, escaped labels and no password ingestion",
+        "Immediate terminate button closes a live API request, cancels queued work and shows actual worker exit acknowledgement",
+        "Offline worker cancellation stays unconfirmed; the UI does not claim all tokens or provider-side generation stopped",
+        "Unknown-only usage remains unknown in both the authenticated aggregate and the visible percentage"
+      ],
+      "page_errors": [],
+      "disclosure": "TEST-ONLY scripted CLI and local API model replies. HTTP, native workers, training, verification, restart and archive replay are real; no external account or model quality verified."
+    }
+  },
+  "ci_run_id": 40873285124,
+  "ci_url": "https://github.com/kumizeod/AgentForeman/actions/runs/40873285124",
+  "file_sha256": {
+    "src/agentforeman/web/index.html": "627fef3b817fd58686585af241bee10882cdd2bc8018fc61a8db9d01a7047896",
+    "src/agentforeman/web/app.js": "e018929214770772a4cbe264eb73a188bcc9b31e1911f6938fa96bd4ebc8553b",
+    "src/agentforeman/web/workspace.js": "eeae5635a7ae6924b5d60e77f9b552ad2b21d1258746128a918d51594c65dd68",
+    "src/agentforeman/web/workspace.css": "3525deecb843567e9bd63c3b8fd114193ce185caf422c765526dee39c01bac2d",
+    "src/agentforeman/accounting.py": "df311d90834ff4fe8d49641a77f6f13a470655dd18e3e33b576ae61dceaf4c2b",
+    "src/agentforeman/workspace.py": "5a233c8e129242b48935591e0ae9904cf47e54dd755cfb39045be2187b9495a7"
+  },
+  "limitations": [
+    "All provider model replies in automated tests are scripted; no real subscription authentication, provider quota, billing or general model quality has been verified.",
+    "Target shares are persisted soft role-selection preferences for new quick tasks, not token caps or guaranteed consumption ratios.",
+    "Observed shares exclude unknown usage; unknown-only connections have a null share rather than zero. Antigravity/Gemini usage formats are not yet parsed.",
+    "Client/API usage is self-reported; local cancellation cannot prove upstream generation or billing stopped."
+  ],
+  "previous_source_ci": {
+    "source_commit": "cdcc8bc82734df7436565bded98987bcdd86422a",
+    "url": "https://github.com/kumizeod/AgentForeman/actions/runs/40872784482",
+    "native_jobs_passed": 9,
+    "native_tests_per_job": 229,
+    "browser_workflow_groups": 21,
+    "all_passed": true
+  }
+}

@@ -2,6 +2,8 @@
 
 **v0.14 · 三页工作台：** 首页查看任务状态与主席对话；第二页接入订阅 / API、设置分配偏好；第三页查看各连接及任务的真实已上报 token 占比。未知用量单独标注，分配偏好与实际消耗分开。夜间实验、委员会与诊断保留在「高级工具」。[中文操作与统计边界](docs/V0_14.md)。
 
+v0.14 validation at [`b3fd2cb`](https://github.com/kumizeod/AgentForeman/actions/runs/40873285124): **229 Python tests per native job**, all **9 Windows/macOS/Linux × Python 3.11–3.13 jobs**, and **22 browser workflow groups** passed. [Pinned evidence and scripted-provider disclosure](evidence/three-page-validation.json).
+
 **v0.13 · Three connection/control fixes:** Google AI Pro/Ultra now uses **Antigravity CLI (`agy`)**; **立即终止整个任务** interrupts active supervised calls and reports actual cancellation acknowledgements; Codex and Claude Code can **log in with another account using separate official-client profiles**, without replacing the default local login. Passwords stay on the official login page. [中文说明与边界](docs/V0_13.md).
 
 
