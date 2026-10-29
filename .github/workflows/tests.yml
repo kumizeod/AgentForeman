@@ -47,3 +47,19 @@ jobs:
         with:
           name: web-ui-browser-evidence
           path: /tmp/foreman-ui-evidence
+
+  opencode2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m pip install -e .
+      - run: npm install --prefix "$RUNNER_TEMP/foreman-opencode" @opencode/cli-linux-x64@2.2.1 --ignore-scripts
+      - run: python -m unittest tests.test_opencode_native -v
+        env:
+          FOREMAN_OPENCODE_BINARY: ${{ runner.temp }}/foreman-opencode/node_modules/@opencode/cli-linux-x64/bin/opencode

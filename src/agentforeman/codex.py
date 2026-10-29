@@ -8,6 +8,7 @@ import shutil
 import sys
 
 from .files import atomic_json, atomic_text, read_json
+from .cli_discovery import find_client, windows_path
 
 
 SCHEMA = {
@@ -27,7 +28,7 @@ def resolve_command(config: dict, *, npm_package="@openai/codex", bin_name="code
     first = Path(prefix[0]).expanduser()
     # Preserve executable symlinks: resolving a venv's Python to the base binary
     # would silently discard that environment's installed dependencies.
-    found = os.path.abspath(first) if first.is_file() and (first.is_absolute() or first.parent != Path(".")) else shutil.which(prefix[0])
+    found = os.path.abspath(first) if first.is_file() and (first.is_absolute() or first.parent != Path(".")) else find_client(prefix[0])
     if not found and bin_name=='agy' and not config.get('command'):
         candidate=(Path(os.environ.get('LOCALAPPDATA',str(Path.home()/'AppData/Local')))/'agy/bin/agy.exe' if sys.platform=='win32' else Path.home()/'.local/bin/agy')
         if candidate.is_file():found=str(candidate)
@@ -36,15 +37,24 @@ def resolve_command(config: dict, *, npm_package="@openai/codex", bin_name="code
     path = Path(found)
     if sys.platform == "win32" and path.suffix.lower() in {".cmd", ".bat"}:
         if npm_package is None:raise ValueError("Choose the native agy.exe binary, not a Windows batch shim")
-        package = path.parent / "node_modules" / npm_package
-        manifest = package / "package.json"
-        if manifest.is_file():
+        packages = [npm_package]
+        if bin_name == 'opencode':
+            packages = ['@opencode/cli', 'opencode-ai']
+        for package_name in packages:
+            package = path.parent / "node_modules" / package_name
+            manifest = package / "package.json"
+            if not manifest.is_file():
+                continue
             metadata = json.loads(manifest.read_text(encoding="utf-8"))
             entry = metadata.get("bin", {})
             entry = entry.get(bin_name) if isinstance(entry, dict) else entry
             script = (package / entry).resolve() if isinstance(entry, str) else None
-            if script and script.is_file() and script.is_relative_to(package.resolve()):
-                node = shutil.which("node")
+            if not script or not script.is_file() or not script.is_relative_to(package.resolve()):
+                continue
+            if script.suffix.lower() == '.exe':
+                return [str(script), *prefix[1:]]
+            if script.suffix.lower() in {'.js', '.mjs', '.cjs'} or not script.suffix:
+                node = shutil.which("node") or shutil.which("node", path=windows_path())
                 if node:
                     return [node, str(script), *prefix[1:]]
         raise ValueError("Found a Windows batch shim but cannot resolve its npm Codex entry. "

@@ -1,5 +1,7 @@
 # AgentForeman
 
+**v0.14.1 · OpenCode 接入修复：** 支持 Windows 新版原生 CLI 入口与手动指定路径，补齐 OpenCode 2 的工作目录、独立服务、权限配置和结束回执兼容。现有 Codex 认证配置保持原样。[接入排查与原生 CLI 测试](docs/OPENCODE_CONNECTIONS.md)。
+
 **v0.14 · 三页工作台：** 首页查看任务状态与主席对话；第二页接入订阅 / API、设置分配偏好；第三页查看各连接及任务的真实已上报 token 占比。未知用量单独标注，分配偏好与实际消耗分开。夜间实验、委员会与诊断保留在「高级工具」。[中文操作与统计边界](docs/V0_14.md)。
 
 v0.14 validation at [`b3fd2cb`](https://github.com/kumizeod/AgentForeman/actions/runs/40873285124): **229 Python tests per native job**, all **9 Windows/macOS/Linux × Python 3.11–3.13 jobs**, and **22 browser workflow groups** passed. [Pinned evidence and scripted-provider disclosure](evidence/three-page-validation.json).

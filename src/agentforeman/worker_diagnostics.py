@@ -1,4 +1,6 @@
 """Fixed diagnostic codes without exposing provider error bodies or credentials."""
+import json
+
 from .files import read_json
 
 
@@ -15,9 +17,22 @@ def diagnose(root):
                 texts.append(stream.read(65536).decode('utf-8',errors='replace').lower())
         except OSError:pass
     text='\n'.join(texts)
-    if any(s in text for s in ('401','unauthorized','authentication failed','invalid api key','token expired')):
+    # Bare 401/403 substrings also occur in timestamps, IDs and model answers.
+    # Only explicit errors/status fields may classify authentication failures.
+    statuses=[]
+    for path in root.glob('**/api-status.json'):
+        try:statuses.append(read_json(path).get('code'))
+        except (OSError,ValueError,AttributeError):pass
+    for line in text.splitlines():
+        try:event=json.loads(line)
+        except ValueError:continue
+        if not isinstance(event,dict):continue
+        error=event.get('error')
+        if isinstance(error,dict):statuses.append(error.get('status',error.get('code')))
+    if 401 in statuses or any(s in text for s in ('unauthorized','authentication failed','invalid api key','token expired','provider.auth')):
+
         return 'authentication_failed'
-    if any(s in text for s in ('403','permission denied','access denied','model_not_found','model not found')):
+    if 403 in statuses or any(s in text for s in ('permission denied','access denied','model_not_found','model not found','provider.no-route','model unavailable')):
         return 'permission_or_model_access'
     if timed_out:return 'provider_timeout'
     if any(s in text for s in ('connecterror','connection refused','network is unreachable','failed to connect','dns')):

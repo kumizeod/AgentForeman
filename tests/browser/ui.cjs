@@ -335,6 +335,15 @@ async function go(view){
   assert.equal(await page.locator('#connection-account-field').isVisible(),false);
   await page.locator('#connection-provider').selectOption('gemini-cli');
   assert((await page.locator('#connection-guide').innerText()).includes('gemini'));
+  await page.locator('#connection-provider').selectOption('opencode');
+  assert((await page.locator('#connection-guide').innerText()).includes('OpenCode 1 / 2'));
+  if(await page.locator('#show-client-path').count())await page.locator('#show-client-path').click();
+  await page.locator('#connection-executable').fill('C:/TEST ONLY/opencode.exe');
+  assert((await page.locator('#connection-guide').innerText()).includes('手动指定'));
+  assert.equal(await page.locator('[data-connection-login=opencode]').isEnabled(),true);
+  await page.locator('#connection-executable').fill('');
+  await page.locator('#connection-provider').selectOption('codex');
+  completed.push('Installed CLI path fallback and OpenCode 2 guidance');
   await page.route('**/api/connections/login',async route=>{
     const body=route.request().postDataJSON();assert(body.account_id);assert(['codex','claude-code'].includes(body.provider));
     await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({opened:true,account_id:body.account_id})});

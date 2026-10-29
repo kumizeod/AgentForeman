@@ -1,7 +1,11 @@
 """TEST ONLY Claude/Gemini envelopes; not a live model."""
 import json
 import sys
+import os
 
+if '--version' in sys.argv:
+    import os
+    print('opencode v'+os.environ.get('FOREMAN_TEST_OPENCODE_MAJOR','1')+'.0.0');raise SystemExit(0)
 prompt=sys.stdin.read()
 answer={'answer':'TEST ONLY multi CLI result'}
 for line in prompt.splitlines():
@@ -17,7 +21,8 @@ if '--input-format' in sys.argv:
     print(json.dumps({'event':'result','result':{'status':'SUCCESS','structured_output':answer,'response':json.dumps(answer)}}))
 elif '--format' in sys.argv:
     print(json.dumps({'type':'text','part':{'type':'text','text':json.dumps(answer)}}))
-    print(json.dumps({'type':'step_finish','part':{'type':'step-finish','reason':'stop'}}))
+    if os.environ.get('FOREMAN_TEST_OPENCODE_MAJOR')!='2':
+        print(json.dumps({'type':'step_finish','part':{'type':'step-finish','reason':'stop'}}))
 elif '--json-schema' in sys.argv:
     print(json.dumps({'type':'result','subtype':'success','is_error':False,'structured_output':answer}))
 else:

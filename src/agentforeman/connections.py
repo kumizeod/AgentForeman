@@ -22,7 +22,7 @@ GUIDES={
     'antigravity':{'label':'Antigravity / Google AI Pro','login':'agy','install':'https://antigravity.google/download'},
     'gemini-cli':{'label':'Gemini CLI（企业 / 旧 API）','login':'gemini','install':'npm install -g @google/gemini-cli'},
     'claude-code':{'label':'Claude Code','login':'claude auth login','install':'https://code.claude.com/docs/en/setup'},
-    'opencode':{'label':'OpenCode / Go','login':'opencode auth login','install':'npm install -g opencode-ai'},
+    'opencode':{'label':'OpenCode / Go','login':'opencode auth login','install':'https://opencode.ai/v2/docs/ （Windows 下载独立 CLI；v1 保留兼容）'},
 }
 
 
@@ -78,7 +78,7 @@ class Connections:
                 if value:os.environ[c['key_env']]=value
             except Exception:pass  # List as needing a key; never expose credential backend errors.
 
-    def login(self,provider,account_id=None):
+    def login(self,provider,account_id=None,executable_path=None):
         self.require_owner()
         if provider not in CLIS:raise ValueError('Login is only available for local clients')
         import shutil
@@ -86,6 +86,7 @@ class Connections:
         import sys
         from .agents import command
         settings={'provider':provider}
+        if executable_path:settings['command']=[self.executable_path(executable_path)]
         if account_id:
             from .accounts import Accounts
             settings['account_dir']=str(Accounts(self.project).directory(account_id,provider))
@@ -147,8 +148,18 @@ class Connections:
             with self.pool.connect() as db:db.execute('UPDATE members SET enabled=0 WHERE id=?',('local_'+cid,))
             return self.public(c)
 
+    @staticmethod
+    def executable_path(value):
+        if not isinstance(value,str) or not value or len(value)>4096 or any(ord(x)<32 for x in value):
+            raise ValueError('Choose the full path to an installed CLI executable')
+        path=Path(value).expanduser()
+        if not path.is_absolute() or not path.is_file() or path.suffix.lower() not in {'.exe','.cmd','.js','.mjs',''}:
+            raise ValueError('CLI path must be an existing absolute executable path; do not include command arguments')
+        return str(path)
+
     def settings(self,c):
         settings={k:v for k,v in c.items() if k in {'provider','model','key_env','base_url','active_hours','timeout_seconds'}}
+        if c.get('executable_path'):settings['command']=[c['executable_path']]
         if c.get('account_id'):
             from .accounts import Accounts
             settings['account_dir']=str(Accounts(self.project).directory(c['account_id'],c['provider']))
@@ -160,7 +171,7 @@ class Connections:
 
     def create(self,**body):
         self.require_owner()
-        if set(body)-{'label','provider','model','base_url','api_key','key_env','remember','active_hours','chair_preferred','account_id'}:
+        if set(body)-{'label','provider','model','base_url','api_key','key_env','remember','active_hours','chair_preferred','account_id','executable_path'}:
             raise ValueError('Unknown connection setting')
         provider=body.get('provider')
         if provider not in PROVIDERS:raise ValueError('Choose a supported connection type')
@@ -174,6 +185,9 @@ class Connections:
             if flag in body and type(body[flag]) is not bool:raise ValueError('Invalid option')
         c={'id':secrets.token_hex(6),'label':label.strip(),'provider':provider,'model':model.strip(),
            'timeout_seconds':600,'enabled':False,'chair_preferred':body.get('chair_preferred',False),'created_at':time.time()}
+        if body.get('executable_path'):
+            if provider not in CLIS:raise ValueError('API connections do not use a local executable')
+            c['executable_path']=self.executable_path(body['executable_path'])
         if body.get('account_id'):
             from .accounts import Accounts
             Accounts(self.project).directory(body['account_id'],provider)

@@ -339,7 +339,7 @@ class Handler(BaseHTTPRequestHandler):
                     if set(body)!={'version','weights'}:raise ValueError('Provide preference version and weights')
                     return self.send(200,save_preferences(self.server.project,**body))
                 if path=='/api/connections/login':
-                    if set(body)-{'provider','account_id'} or 'provider' not in body:raise ValueError('Provide provider and optional account profile')
+                    if set(body)-{'provider','account_id','executable_path'} or 'provider' not in body:raise ValueError('Provide provider and optional account profile')
                     return self.send(200,self.server.connections().login(**body))
                 if path=='/api/connections':
                     return self.send(201,self.server.connections().create(**body))

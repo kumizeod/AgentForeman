@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import json
+import functools
+import re
+import subprocess
 from pathlib import Path
 
 from .codex import resolve_command
@@ -18,6 +21,24 @@ CLIS = {'codex':('@openai/codex','codex'),
 def command(settings):
     package,binary=CLIS[settings['provider']]
     return resolve_command({**settings,'executable':binary},npm_package=package,bin_name=binary)
+
+
+@functools.lru_cache(maxsize=32)
+def _opencode_version(prefix, stamp):
+    try:
+        result = subprocess.run([*prefix, '--version'], stdin=subprocess.DEVNULL,
+                                capture_output=True, timeout=5, check=False)
+        match = re.fullmatch(rb'(?:opencode\s+)?v?(\d+)\.\d+\.\d+(?:[-+][^\s]+)?', result.stdout.strip())
+        if result.returncode == 0 and match and int(match[1]) in {1, 2}:
+            return int(match[1])
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    raise ValueError('Cannot identify OpenCode version. Run opencode --version and select the actual CLI executable.')
+
+
+def opencode_version(prefix):
+    stamps = tuple((str(p), p.stat().st_mtime_ns) for v in prefix for p in [Path(v)] if p.is_file())
+    return _opencode_version(tuple(prefix), stamps)
 
 
 def detect():
@@ -54,16 +75,32 @@ def make_spec(folder: Path, context: Path, request: dict, settings: dict):
               '--disable-slash-commands','--sandbox',
               '--print-timeout',str(int(settings['timeout_seconds']))+'s']
     elif provider=='opencode':
-        argv=[*prefix,'run','--format','json','--agent','foreman']
+        major=opencode_version(prefix)
+        argv=[*prefix,'run',*(['--standalone','--title','AgentForeman task'] if major==2 else []),'--format','json','--agent','foreman']
+        atomic_json(folder/'opencode-protocol.json',{'major':major})
     else:
         raise ValueError('Use native codex.json_spec for Codex')
     if settings.get('model'):
         argv+=['--model',settings['model']]
     env={'PYTHONUTF8':'1','PYTHONDONTWRITEBYTECODE':'1'}
     if provider=='opencode':
-        env['OPENCODE_CONFIG_CONTENT']=json.dumps({'permission':{'*':'deny'},
-            'agent':{'foreman':{'mode':'primary','description':'Bounded structured response without tools',
-                                'permission':{'*':'deny'}}}})
+        # OpenCode 2 selects its project from PWD before process.cwd(). Keep the
+        # child-only logical directory aligned with the supervised cwd.
+        env['PWD']=str(context)
+        if major == 2:
+            rules=[{'action':'*','resource':'*','effect':'deny'}]
+            config={'permissions':rules,'policies':[{'action':'tool.use','resource':'*','effect':'deny'}],
+                    'warming':False,'snapshots':False,
+                    'agents':{'foreman':{'mode':'primary','description':'Bounded structured response without tools',
+                                          'permissions':rules,'steps':1}}}
+        else:
+            config={'permission':{'*':'deny'},'agent':{'foreman':{'mode':'primary',
+                    'description':'Bounded structured response without tools','permission':{'*':'deny'}}}}
+        env['OPENCODE_CONFIG_CONTENT']=json.dumps(config)
+        if major == 2:
+            # V2 documents project configuration rather than the legacy inline
+            # environment override. Own context only; never overwrite user config.
+            atomic_json(context/'.opencode/opencode.json',config)
     from .accounts import apply_profile
     return apply_profile({'argv':argv,'cwd':str(context),'stdin':str(folder/'prompt.txt'),
             'timeout_seconds':settings['timeout_seconds'],
@@ -95,7 +132,15 @@ def read_answer(job: Path, folder: Path, request: dict, provider: str):
             raise ValueError('Invalid OpenCode event')
         if any(e.get('type') in {'error','tool_use'} or e.get('part',{}).get('type')=='tool' for e in events):
             raise ValueError('OpenCode failed or attempted a tool call')
-        if not any(e.get('type')=='step_finish' and e.get('part',{}).get('reason')=='stop' for e in events):
+        from .files import read_json
+        major=read_json(folder/'opencode-protocol.json').get('major') if (folder/'opencode-protocol.json').exists() else 1
+        if major == 2:
+            # OpenCode 2.2.1 emits text/tool/error records but no step_finish.
+            # Only the native supervisor's successful receipt can close the turn.
+            receipt=read_json(job/'result.json')
+            if receipt.get('exit_code') != 0 or any(receipt.get(k) for k in ('error','cancelled','timed_out')):
+                raise ValueError('OpenCode 2 has no successful process receipt')
+        elif not any(e.get('type')=='step_finish' and e.get('part',{}).get('reason')=='stop' for e in events):
             raise ValueError('OpenCode did not finish its response')
         content=''.join(e.get('part',{}).get('text','') for e in events if e.get('type')=='text')
         answer=validate(json.loads(content),request['schema'])
@@ -139,5 +184,8 @@ def structured_quota(job,receipt):
         if (not isinstance(code,(str,int)) or code not in {429,'429','rate_limit_error','quota_exceeded','RESOURCE_EXHAUSTED'}) and error.get('status')!=429 and data.get('statusCode')!=429:
             continue
         reset=timestamp(error.get('resets_at',error.get('reset_at')))
+        milliseconds=error.get('retryAfterMs')
+        if type(milliseconds) in {int,float} and 0<=milliseconds<=7*86400*1000:
+            reset=time.time()+milliseconds/1000
         return {'retry_at':max(time.time()+60,reset or time.time()+1800)}
     return None
