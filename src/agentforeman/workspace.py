@@ -14,19 +14,19 @@ KINDS = ('briefings', 'debates', 'cooperations', 'councils', 'coding', 'campaign
 ID = re.compile(r'^[0-9a-f]{12}$')
 
 
-def connections(project):
+def connections(project, *, include_deleted=False):
     return [{**{k: s.get(k) for k in ('id', 'label', 'provider', 'model')}, 'member': s.get('member') or 'local_'+s['id']}
             for p in (Path(project)/'.foreman/connections').glob('*/connection.json')
-            if not p.is_symlink() for s in [optional_json(p)] if ID.fullmatch(str(s.get('id', '')))]
+            if not p.is_symlink() for s in [optional_json(p)] if ID.fullmatch(str(s.get('id', ''))) and (include_deleted or not s.get('deleted_at'))]
 
 
 def preferences(project):
     saved = optional_json(Path(project)/'.foreman/dispatch-preferences.json')
     rows = connections(project)
-    weights = saved.get('weights', {})
+    weights = saved.get('weights', {}); configured = bool(weights)
     for i, row in enumerate(rows):
-        row['target_share'] = weights.get(row['id'], 0) if saved else (100//len(rows) + int(i < 100 % len(rows)))
-    return {'version': saved.get('version', 0), 'connections': rows, 'configured': bool(saved)}
+        row['target_share'] = weights.get(row['id'], 0) if configured else (100//len(rows) + int(i < 100 % len(rows)))
+    return {'version': saved.get('version', 0), 'connections': rows, 'configured': configured}
 
 
 def save_preferences(project, *, version, weights):
@@ -44,6 +44,23 @@ def save_preferences(project, *, version, weights):
             raise ValueError('Connections changed; refresh before saving preferences')
         atomic_json(path, {'version': version+1, 'weights': weights})
     return preferences(project)
+
+
+def remove_connection_preference(project, cid):
+    path=Path(project)/'.foreman/dispatch-preferences.json'
+    with file_lock(path.with_suffix('.lock')):
+        saved=optional_json(path)
+        if not saved:return
+        weights={k:v for k,v in saved.get('weights',{}).items() if k!=cid}
+        total=sum(weights.values())
+        if total:
+            # Preserve explicit zeroes. Largest remainders make integer shares
+            # sum to 100 without turning a disabled model into an active one.
+            normalized={k:v*100//total for k,v in weights.items()}
+            remaining=100-sum(normalized.values())
+            for key in sorted(weights,key=lambda k:-(weights[k]*100 % total))[:remaining]:normalized[key]+=1
+            weights=normalized
+        atomic_json(path,{'version':saved.get('version',0)+1,'weights':weights})
 
 
 def inbox(project):
@@ -80,7 +97,7 @@ def usage(project, days=7, *, now=None):
     import json
     project = Path(project); now = time.time() if now is None else now; since = now-days*86400
     box = inbox(project); task_names = {r['key']: r['title'] for r in box['tasks']}
-    conns = connections(project); by_member = {r['member']: r for r in conns}
+    conns = connections(project, include_deleted=True); by_member = {r['member']: r for r in conns}
     records = []; db = project/'.foreman/pool.sqlite3'
     if db.exists():
         conn = sqlite3.connect(db.as_uri()+'?mode=ro', uri=True, timeout=5)

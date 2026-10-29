@@ -113,6 +113,19 @@ class PanelTests(unittest.TestCase):
         self.assertEqual(self.request('/api/connections/login',{'provider':'openai-compatible'})[0],400)
         self.assertEqual(self.request('/api/connections/'+c['id']+'/test',{'command':'invalid'})[0],400)
 
+    def test_connection_deletion_keeps_capability_origin_and_profile_boundaries(self):
+        profile=self.request('/api/accounts',{'provider':'codex','label':'Keep account'})[1]
+        c=self.request('/api/connections',{'provider':'codex','label':'Delete model','account_id':profile['id']})[1]
+        route='/api/connections/'+c['id']+'/delete'
+        self.assertEqual(self.request(route,{},token=False)[0],403)
+        self.assertEqual(self.request(route,{},origin=False)[0],403)
+        self.assertEqual(self.request(route,{'force':True})[0],400)
+        self.assertEqual(self.request(route,{})[0],200)
+        self.assertEqual(self.request(route,{})[0],200)
+        self.assertNotIn(c['id'],{c['id'] for c in self.request('/api/connections')[1]['connections']})
+        self.assertIn(profile['id'],{a['id'] for a in self.request('/api/accounts')[1]['accounts']})
+        self.assertEqual(self.request('/api/connections/'+c['id']+'/enable',{'enabled':True})[0],400)
+
     def test_accounts_routes_reject_passwords_and_bind_only_matching_profiles(self):
         self.assertEqual(self.request('/api/accounts',token=False)[0],403)
         body={'provider':'codex','label':'Separate ChatGPT account'}

@@ -118,7 +118,7 @@ function connectionDiagnostic(c){
 function renderConnectionCard(c,statuses){
   const local=['codex','claude-code','gemini-cli','antigravity','opencode'].includes(c.provider);
   const status=c.testing?'测试中…':!c.key_available?'需要 API 密钥':c.retry_at>Date.now()/1000?'额度等待至 '+date(c.retry_at):!c.enabled?(statuses[c.test?.status]||'尚未测试')+' · 未启用':!c.active_now?'等待可用时段':c.worker_running?'已连接':'后台节点未运行';
-  return `<article class="statCard"><strong>${esc(c.label)}</strong><span>${esc(providerName(c.provider))}${c.model?' · '+esc(c.model):' · 默认模型'} · ${esc(status)}</span><small>账号：${esc(c.account_label||(local?'本机当前登录':'API 连接'))}</small><div class="detailActions"><button data-connection-test="${c.id}" ${c.testing?'disabled':''}>${c.test?'重新测试':'测试并启用'}</button><button data-connection-enable="${c.id}" data-enabled="${!c.enabled}" ${!c.test?.passed?'disabled':''}>${c.enabled?'暂停':'启用'}</button></div><details><summary>连接详情${!local?' / 更新密钥':''}</summary><p>共享资源：${esc(c.resource_group)}${c.secret_storage?' · 密钥：'+esc(c.secret_storage==='os'?'系统凭据库':c.secret_storage==='session'?'仅本次进程':'环境变量'):''}</p>${c.notice?'<p>'+esc(c.notice)+'</p>':''}${c.test?'<p>'+esc(connectionDiagnostic(c))+'</p>':''}${!local?`<form class="connectionKeyForm" data-connection-key="${c.id}"><label class="field">更新密钥（仅本次进程）<input type="password" name="api_key" required autocomplete="new-password" maxlength="8192"></label><button type="submit">更新后重新测试</button></form>`:''}</details></article>`;
+  return `<article class="statCard"><strong>${esc(c.label)}</strong><span>${esc(providerName(c.provider))}${c.model?' · '+esc(c.model):' · 默认模型'} · ${esc(status)}</span><small>账号：${esc(c.account_label||(local?'本机当前登录':'API 连接'))}</small><div class="detailActions"><button data-connection-test="${c.id}" ${c.testing?'disabled':''}>${c.test?'重新测试':'测试并启用'}</button><button data-connection-enable="${c.id}" data-enabled="${!c.enabled}" ${!c.test?.passed?'disabled':''}>${c.enabled?'暂停':'启用'}</button><button class="dangerButton" data-connection-delete="${c.id}">删除</button></div><details><summary>连接详情${!local?' / 更新密钥':''}</summary><p>共享资源：${esc(c.resource_group)}${c.secret_storage?' · 密钥：'+esc(c.secret_storage==='os'?'系统凭据库':c.secret_storage==='session'?'仅本次进程':'环境变量'):''}</p>${c.notice?'<p>'+esc(c.notice)+'</p>':''}${c.test?'<p>'+esc(connectionDiagnostic(c))+'</p>':''}${!local?`<form class="connectionKeyForm" data-connection-key="${c.id}"><label class="field">更新密钥（仅本次进程）<input type="password" name="api_key" required autocomplete="new-password" maxlength="8192"></label><button type="submit">更新后重新测试</button></form>`:''}</details></article>`;
 }
 async function refreshAllocation(){
   if(allocationDirty)return;
@@ -151,3 +151,20 @@ async function renderTokenUsage(){
 }
 $('#usage-period').onchange=()=>renderTokenUsage().catch(e=>showError(e.message));
 document.addEventListener('click',async e=>{const b=e.target.closest('[data-usage-task]');if(!b)return;inboxSelected=b.dataset.usageTask;inboxRenderKey='';await navigate('workspace');});
+
+let deletingConnection=null;
+document.addEventListener('click',event=>{
+  const button=event.target.closest('[data-connection-delete]');if(!button)return;
+  const c=connectionData?.connections.find(c=>c.id===button.dataset.connectionDelete);if(!c)return;
+  deletingConnection=c.id;$('#delete-connection-label').textContent='删除“'+c.label+'”？';
+  $('#delete-connection-error').hidden=true;$('#delete-connection-dialog').showModal();
+});
+$('#delete-connection-form').onsubmit=async event=>{
+  event.preventDefault();const b=$('#delete-connection-submit');if(b.disabled||!deletingConnection)return;b.disabled=true;
+  try{
+    await api('/api/connections/'+deletingConnection+'/delete',{});
+    $('#delete-connection-dialog').close();deletingConnection=null;allocationDirty=false;
+    await refreshConnections();notice('连接已删除，历史任务与用量已保留。请核对剩余模型的分配占比。');
+  }catch(error){$('#delete-connection-error').textContent=error.message;$('#delete-connection-error').hidden=false;await refreshConnections();}
+  finally{b.disabled=false;}
+};

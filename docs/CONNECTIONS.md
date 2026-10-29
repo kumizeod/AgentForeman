@@ -82,3 +82,15 @@ Connections can be added, tested and paused at any time for subsequent task plan
 `tests/test_connections.py` exercises actual localhost API requests, subprocess supervision, onboarding, key redaction/storage failure, restart, quota sharing, connection pause and both complete execution modes with frozen independent checks. `tests/browser/ui.cjs` exercises the forms and confirmation journey. Provider replies in these tests are explicitly scripted. They do not certify a real ChatGPT, Google, OpenCode Go or relay subscription. Authenticate and test each real connection on the deployment computer.
 
 References: [OpenCode CLI](https://opencode.ai/docs/cli/), [OpenCode permissions](https://opencode.ai/docs/permissions/), [Gemini authentication](https://geminicli.com/docs/get-started/authentication/), [Claude Code integration conditions](https://code.claude.com/docs/en/legal-and-compliance), [Claude account authentication](https://support.claude.com/en/articles/13189465-log-in-to-your-claude-account).
+
+## 删除模型连接（v0.14.2）
+
+在「订阅与模型」每条连接右侧点击「删除」，核对名称后确认。删除的是 AgentForeman 的接入连接，不是取消订阅、卸载客户端或退出官方账号。独立账号配置仍可在以后添加连接时复用。
+
+- 空闲连接立即移出列表和自动分工；本应用专门保存的此连接 API 密钥会从本次进程或系统凭据库移除。用户自己的环境变量、其他连接引用的变量及官方客户端登录目录保持原样。
+- 连接正在测试，或仍有运行中 / 不确定的 lease 时，先暂停新任务领取并阻止删除。请在任务页终止相关任务，等待退出确认，再删除。没有本机可靠退出回执时不能用删除操作宣布调用已停。
+- 已有任务、原生回执、产物、日志与 token 用量不删除。保留不含密钥的连接墓碑，用于历史用量中的名称和账号连接关联；删除不会把旧 token 归到新模型。
+- 已确认的任务不会自动改用其他模型，未完成的任务可能需要终止后重新安排。不会因删除一个模型而静默放宽独立角色要求。
+- 已保存的分配偏好会移除该连接，并按比例归一化其余非零份额，保留显式 0%。如果剩余模型原本全是 0%，请重新设置偏好；删除最后一个连接后，新加连接恢复默认占比。
+
+删除接口继续使用本机 capability、Host 和 Origin 保护，无强制绕过退出确认的选项。重复删除同一连接不重复删除历史或改变其他账号。

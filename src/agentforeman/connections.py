@@ -47,14 +47,17 @@ class Connections:
             except Exception:
                 self.close();raise
 
-    def records(self):return [read_json(p) for p in sorted(self.root.glob('*/connection.json'))]
+    def records(self):return [s for p in sorted(self.root.glob('*/connection.json')) for s in [read_json(p)] if not s.get('deleted_at')]
 
     def path(self,cid):
         if not isinstance(cid,str) or len(cid)!=12 or any(x not in '0123456789abcdef' for x in cid):
             raise ValueError('Invalid connection ID')
         return self.root/cid
 
-    def get(self,cid):return read_json(self.path(cid)/'connection.json')
+    def get(self,cid):
+        c=read_json(self.path(cid)/'connection.json')
+        if c.get('deleted_at'):raise ValueError('Connection has been deleted')
+        return c
     def save(self,c):atomic_json(self.path(c['id'])/'connection.json',c)
 
     def require_owner(self):
@@ -288,6 +291,52 @@ class Connections:
             with self.pool.connect() as db:db.execute('UPDATE members SET enabled=? WHERE id=?',(int(enabled),'local_'+cid))
             if enabled:self.start(c)
             return self.public(c)
+
+    def delete(self,cid):
+        self.require_owner()
+        with self.lock:
+            current=read_json(self.path(cid)/'connection.json')
+            if current.get('deleted_at'):return {'deleted':True,'id':cid}
+            # Persist the pause before checking leases. A claim that races with
+            # this operation is serialized by the same SQLite write transaction.
+            current['enabled']=False
+            current['test_generation']=current.get('test_generation',0)+1
+            self.save(current)
+            with self.pool.connect() as db:
+                db.execute('BEGIN IMMEDIATE')
+                db.execute('UPDATE members SET enabled=0 WHERE id=?',('local_'+cid,))
+                active=db.execute("SELECT id FROM tasks WHERE member=? AND status IN ('leased','uncertain')",('local_'+cid,)).fetchone()
+            if cid in self.testing:
+                raise ValueError('连接已暂停。连接测试仍在运行，请等待测试结束后再删除。')
+            if active:
+                raise ValueError('连接已暂停领取新任务。仍有运行中或状态不明的调用，请先在任务页终止相关任务并等待退出确认，再删除。')
+            from .platforms import alive
+            for job in (self.path(cid)/'worker/tasks').glob('*/*/job'):
+                if not (job/'spec.json').exists():continue
+                try:
+                    receipt=read_json(job/'result.json')
+                    process=read_json(job/'process.json') if (job/'process.json').exists() else {}
+                    child=process.get('child') or (read_json(job/'child.json') if (job/'child.json').exists() else None)
+                    stopped=not receipt.get('error') and not alive(child)
+                except (OSError,ValueError):stopped=False
+                if not stopped:
+                    raise ValueError('连接已暂停，但尚未取得本机调用的可靠退出回执。请先终止并确认退出，不能把删除当作已经停止。')
+            if current.get('secret_storage')=='os':
+                try:
+                    backend=self.keyring();entry=str(self.project)+':'+cid
+                    if backend.get_password('AgentForeman',entry) is not None:backend.delete_password('AgentForeman',entry)
+                except Exception:raise ValueError('系统凭据库中的连接密钥未能移除；连接已暂停，请检查后重试。') from None
+            # Only our per-connection key may be forgotten. User environment
+            # variables and shared official-client logins belong to the user.
+            if current.get('key_env')=='FOREMAN_API_'+cid.upper() and not any(r['id']!=cid and r.get('key_env')==current['key_env'] for r in self.records()):
+                os.environ.pop(current['key_env'],None)
+            os.environ.pop('FOREMAN_LOCAL_'+cid.upper(),None)
+            tombstone={k:current.get(k) for k in ('id','label','provider','model')}
+            tombstone.update(enabled=False,deleted_at=time.time())
+            self.save(tombstone)
+            from .workspace import remove_connection_preference
+            remove_connection_preference(self.project,cid)
+            return {'deleted':True,'id':cid,'history_preserved':True}
 
     def sync_cooldown(self,current):
         shared=['local_'+r['id'] for r in self.records() if self.group(r)==self.group(current)]

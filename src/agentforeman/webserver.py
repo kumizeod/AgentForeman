@@ -343,8 +343,11 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(200,self.server.connections().login(**body))
                 if path=='/api/connections':
                     return self.send(201,self.server.connections().create(**body))
-                if match := re.fullmatch(r"/api/connections/([0-9a-f]{12})/(test|enable|key)",path):
+                if match := re.fullmatch(r"/api/connections/([0-9a-f]{12})/(test|enable|key|delete)",path):
                     c=self.server.connections()
+                    if match[2]=='delete':
+                        if body:raise ValueError('Delete takes no options')
+                        return self.send(200,c.delete(match[1]))
                     if match[2]=='key':
                         if set(body)-{'api_key','remember'}:raise ValueError('Unknown credential option')
                         return self.send(200,c.update_key(match[1],**body))

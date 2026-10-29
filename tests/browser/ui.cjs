@@ -348,6 +348,7 @@ async function go(view){
     const body=route.request().postDataJSON();assert(body.account_id);assert(['codex','claude-code'].includes(body.provider));
     await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({opened:true,account_id:body.account_id})});
   });
+  const isolatedConnections=[];
   for(const provider of ['codex','claude-code']){
     await page.locator('#connection-provider').selectOption(provider);
     await page.locator('#connection-form [name=label]').fill('TEST isolated '+provider+' <img src=x onerror="window.accountInjected=true">');
@@ -360,6 +361,7 @@ async function go(view){
     assert.equal(await page.locator('#connection-form input[type=password]:visible').count(),0);
     assert.equal(await page.evaluate(()=>window.accountInjected),undefined);
     const profileConnection=await request('/api/connections',{provider,label:'TEST separate login '+provider,account_id:selected});
+    isolatedConnections.push(profileConnection);
     assert.equal(profileConnection.account_id,selected);assert.equal(profileConnection.enabled,false);
     assert.equal(profileConnection.authentication,'independent_profile');
     assert(!JSON.stringify(profileConnection).includes('client/'));
@@ -367,6 +369,19 @@ async function go(view){
   await page.unroute('**/api/connections/login');
   await page.locator('[data-close-dialog=connection-dialog]').click();
   completed.push('Antigravity/legacy Google options and independent Codex/Claude profile creation, selected official-login routing, escaped labels and no password ingestion');
+  await page.locator('#refresh').click();
+  const removeId=isolatedConnections[0].id;
+  await until(async()=>await page.locator(`[data-connection-delete="${removeId}"]`).count()===1,'deletable connection visible');
+  await page.locator(`[data-connection-delete="${removeId}"]`).click();
+  await page.locator('#delete-connection-dialog').waitFor();
+  assert((await page.locator('#delete-connection-dialog').innerText()).includes('保留历史任务'));
+  await page.locator('#delete-connection-submit').click();
+  await page.locator('#delete-connection-dialog').waitFor({state:'hidden'});
+  await until(async()=>!(await request('/api/connections')).connections.some(c=>c.id===removeId),'connection removed from real listing');
+  assert((await request('/api/accounts')).accounts.some(a=>a.id===isolatedConnections[0].account_id));
+  assert.equal(await page.locator(`[data-connection-delete="${removeId}"]`).count(),0);
+  completed.push('Delete connection through confirmation dialog and authenticated API; shared official login remains available');
+
   const usable=(await request('/api/connections')).connections.filter(c=>c.enabled&&c.test?.passed);
   const cancelTask=await request('/api/debates',{question:'TEST ONLY browser cancel live',members:[usable[1].member,usable[2].member],chair:usable[0].member});
   await until(async()=>slowRequests>0,'actual model API request started',30000);
