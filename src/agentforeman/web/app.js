@@ -27,7 +27,7 @@ const tag = status => `<span class="tag ${esc(status)}">${esc(labels[status] || 
 let token = location.hash.slice(1);
 try { if (token) sessionStorage.setItem('foreman-token', token); else token = sessionStorage.getItem('foreman-token') || ''; } catch {}
 if (location.hash) history.replaceState(null, '', location.pathname);
-const state = {view:'connections', overview:null, selected:null, detail:null, tab:'summary', logKind:'controller', retry:false, stats:null, diagnostics:null, loading:false};
+const state = {view:'workspace', overview:null, selected:null, detail:null, tab:'summary', logKind:'controller', retry:false, stats:null, diagnostics:null, loading:false};
 function showError(message) { $('#error').textContent = message; $('#error').hidden = false; }
 function notice(message) { $('#notice').textContent = message; $('#notice').hidden = false; }
 async function api(path, body) {
@@ -109,7 +109,8 @@ function quotaCards() {
   $('#quota-cards').innerHTML=(state.overview?.quota || []).map(q=>`<section class="quotaCard"><div class="quotaHead"><div><h3>${q.role==='manager'?'Manager · 实验规划':q.role==='reviewer'?'Reviewer · 独立审查':'Worker · 代码修改'}</h3><small>${q.plan_type?esc(q.plan_type.toUpperCase()):'PLAN UNKNOWN'}</small></div><span class="tag ${q.stale?'waiting_quota':'completed'}">${!q.available?'暂无数据':q.stale?'缓存已过期':'缓存有效'}</span></div>${['primary','secondary'].map(name=>usageMeter((q.windows||[]).find(w=>w.name===name),name)).join('')}${q.error?`<p class="errorText">刷新未成功：${esc(q.error)}，旧数据保持不变。</p>`:''}<div class="quotaFoot"><span>上次成功读取 ${date(q.fetched_at)}</span><button data-refresh-role="${q.role}">读取最新额度</button></div></section>`).join('');
 }
 async function analytics() {
-  const result=await api('/api/stats'); state.stats=result;
+  await renderTokenUsage();
+  const result=await api('/api/stats');
   const u=result.reported_usage, has=(u.jobs_with_usage||0)>0;
   const cards=[['已报告 Token',has?u.total_tokens:null],['输入 Token',has?u.input_tokens:null],['输出 Token',has?u.output_tokens:null],['模型作业数',result.model_jobs]];
   $('#stats-cards').innerHTML=cards.map(([label,value])=>`<div class="statCard"><span>${label}</span><strong>${num(value)}</strong></div>`).join('');
@@ -124,8 +125,9 @@ async function settings() {
 async function navigate(view) {
   state.view=view;
   document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('isActive',b.dataset.view===view);b.setAttribute('aria-pressed',String(b.dataset.view===view));});
-  ['connections','tasks','council','usage','analytics','settings'].forEach(v=>$('#view-'+v).hidden=v!==view);
-  try { if (view==='connections') await refreshConnections(); if (view==='council') await refreshCouncil(); if (view==='analytics') await analytics(); if (view==='settings') await settings(); await refreshTerminations(); } catch(e) {showError(e.message);}
+  ['workspace','connections','tasks','council','usage','analytics','settings'].forEach(v=>$('#view-'+v).hidden=v!==view);
+  if (['tasks','council','usage','settings'].includes(view)) $('#advanced-tools').open=true;
+  try { if (view==='workspace') await refreshWorkspace(); if (view==='connections') await refreshConnections(); if (view==='council') await refreshCouncil(); if (view==='analytics') await analytics(); if (view==='settings') await settings(); await refreshTerminations(); } catch(e) {showError(e.message);}
 }
 async function refresh() {
   if (state.loading) return;
@@ -136,6 +138,7 @@ async function refresh() {
     document.title=`AgentForeman · ${state.overview.project_name}`;
     if (!state.selected && state.overview.campaigns.length) state.selected=state.overview.campaigns[0].id;
     if (state.selected) {rows(); await refreshDetail();}
+    if (state.view==='workspace') await refreshWorkspace();
     if (state.view==='connections') await refreshConnections();
     if (state.view==='analytics') await analytics();
     if (state.view==='council') await refreshCouncil();
@@ -166,7 +169,7 @@ async function refreshQuota(role) {
 }
 $('#refresh-quota').onclick=()=>refreshQuota();
 $('#refresh').onclick=refresh; $('#search').oninput=rows; $('#filter').onchange=rows;
-$('#home').onclick=()=>navigate('tasks');
+$('#home').onclick=()=>navigate('workspace');
 async function download(path, filename, jsonData) {
   let blob;
   if (jsonData) blob=new Blob([JSON.stringify(jsonData,null,2)],{type:'application/json'});
@@ -193,7 +196,7 @@ document.addEventListener('click',async event=>{
   } catch(e){showError(e.message);} finally{if(b && b.dataset.action){state.actionPending=false;renderDetail();}}
 });
 async function poll(){if(!document.hidden)await refresh();setTimeout(poll,5000);}
-poll();
+document.addEventListener('DOMContentLoaded',poll);
 
 const councilStatus={running:'运行中',completed_candidate:'候选答案已完成',needs_evidence:'待补证据',rejected:'审查否决',incomplete:'未完成',stopped:'已停止'};
 const councilStage={explore:'独立探索',peer_review:'匿名互评',synthesize:'主席综合',audit:'独立审查'};
@@ -383,11 +386,12 @@ async function refreshConnections(){
   const [connections,accounts]=await Promise.all([api('/api/connections'),api('/api/accounts')]);connectionData=connections;accountData=accounts.accounts;
   $('#connection-service').textContent=connectionData.error||'本机协调服务已启动。测试通过后自动运行节点，无需手动配置 worker。';
   const statuses={passed:'测试通过',failed:'测试失败',busy:'资源忙，请稍后重试',waiting_quota:'等待额度',blocked:'尚未连接'};
-  if(!document.activeElement?.closest('.connectionKeyForm'))$('#connection-cards').innerHTML=connectionData.connections.map(c=>`<article class="statCard"><strong>${esc(c.label)}</strong><span>${esc(c.provider)} · ${esc(c.model||'默认模型')}</span><small>${c.testing?'测试中…':!c.key_available?'需要重新提供 API 密钥':c.retry_at>Date.now()/1000?'额度等待至 '+date(c.retry_at):!c.enabled?(statuses[c.test?.status]||'尚未测试')+' · 未启用':!c.active_now?'等待可用时段':c.worker_running?'已启用 · 后台等待任务':'后台节点未运行'}</small><small>账号：${esc(c.account_label||(['codex','claude-code','gemini-cli','antigravity','opencode'].includes(c.provider)?'本机当前登录':'API 密钥'))}</small><small>共享资源：${esc(c.resource_group)}${c.secret_storage?' · 密钥：'+esc(c.secret_storage==='os'?'系统凭据库':c.secret_storage==='session'?'仅本次进程':'环境变量'):''}</small>${c.notice?'<small>'+esc(c.notice)+'</small>':''}${c.test?'<small>'+esc(c.test.diagnostic)+'</small>':''}${!['codex','claude-code','gemini-cli','antigravity','opencode'].includes(c.provider)?`<details><summary>更新 API 密钥</summary><form class="connectionKeyForm" data-connection-key="${c.id}"><label class="field">更新密钥（仅本次进程）<input type="password" name="api_key" required autocomplete="new-password" maxlength="8192"></label><button type="submit">更新后重新测试</button></form></details>`:''}<div class="detailActions"><button data-connection-test="${c.id}" ${c.testing?'disabled':''}>${c.test?'重新测试':'测试并启用'}</button><button data-connection-enable="${c.id}" data-enabled="${!c.enabled}" ${!c.test?.passed?'disabled':''}>${c.enabled?'暂停领取新任务':'启用'}</button></div></article>`).join('')||'<p class="muted">添加你的第一个本机账号或 API 连接。</p>';
+  if(!document.activeElement?.closest('.connectionKeyForm'))$('#connection-cards').innerHTML=connectionData.connections.map(c=>renderConnectionCard(c,statuses)).join('')||'<p class="muted">添加你的第一个本机账号或 API 连接。</p>';
   const choices=connectionData.connections.filter(c=>c.enabled&&c.test?.passed&&c.key_available&&c.worker_running);
   const key=JSON.stringify(choices.map(c=>[c.member,c.label]));
   if(key!==connectionChoiceKey){const selected=$('#quick-chair').value;connectionChoiceKey=key;$('#quick-chair').innerHTML='<option value="">自动选择（优先使用你标记的主席）</option>'+choices.map(c=>`<option value="${esc(c.member)}">${esc(c.label)} · ${esc(c.model||c.provider)}</option>`).join('');if(choices.some(c=>c.member===selected))$('#quick-chair').value=selected;}
   connectionGuide();
+  await refreshAllocation();
 }
 $('#connection-form').onsubmit=async event=>{
   event.preventDefault();const form=event.currentTarget,b=$('#connection-add');if(b.disabled)return;b.disabled=true;
@@ -399,6 +403,7 @@ $('#connection-form').onsubmit=async event=>{
     const c=await api('/api/connections',body);
     form.elements.api_key.value='';
     await api(`/api/connections/${c.id}/test`,{});
+    $('#connection-dialog').close();
     notice('连接已保存，正在执行真实连接测试；通过后自动加入调度。');await refreshConnections();
   }catch(e){showError(e.message);}finally{b.disabled=false;}
 };
@@ -417,7 +422,8 @@ $('#quick-task-form').onsubmit=async event=>{
     if(f.get('chair'))body.chair=f.get('chair');
     const result=await api('/api/quick-tasks',body);briefingSelected=result.id;briefingRenderKey='';
     notice('已交给主席澄清需求并分配角色。确认任务约定前不会正式开工。');
-    await navigate('council');$('#briefing-workspace').scrollIntoView({block:'start'});
+    $('#quick-dialog').close();
+    inboxSelected='briefings:'+result.id;inboxRenderKey='';await navigate('workspace');
   }catch(e){showError(e.message+'。网络中断时请先查看澄清任务列表，避免重复提交。');}finally{b.disabled=false;}
 };
 

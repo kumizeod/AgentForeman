@@ -73,6 +73,9 @@ class Pool:
               created REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS group_cancellations (group_id TEXT PRIMARY KEY, requested_at REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS settlements (lease TEXT PRIMARY KEY, member TEXT NOT NULL, task TEXT NOT NULL, payload TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS token_usage (
+              lease TEXT PRIMARY KEY, task TEXT NOT NULL, group_id TEXT NOT NULL,
+              member TEXT NOT NULL, recorded_at REAL NOT NULL, receipt TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS pool_ready ON tasks(status, created);
             ''')
             c.execute('BEGIN IMMEDIATE')
@@ -184,9 +187,12 @@ class Pool:
                 c.execute('UPDATE members SET last_seen=? WHERE id=?', (time.time(),member))
         return bool(changed)
 
-    def complete(self, member, task, lease, outcome, result=None, retry_at=None):
+    def complete(self, member, task, lease, outcome, result=None, retry_at=None, usage=None):
         if outcome not in {'success','quota','failed','uncertain','cancelled'}:
             raise ValueError('Unknown completion outcome')
+        if usage is not None:
+            from .accounting import validate_usage
+            validate_usage(usage)
         with self.connect() as c:
             c.execute('BEGIN IMMEDIATE')
             payload = dumps({'outcome':outcome,'result':result,'retry_at':retry_at})
@@ -200,6 +206,14 @@ class Pool:
             row = c.execute('SELECT * FROM tasks WHERE id=?', (task,)).fetchone()
             if not row or row['member'] != member or not hmac.compare_digest(row['lease'] or '', lease):
                 raise ValueError('Completion does not own the lease')
+            if usage is not None:
+                # One attempt/lease, including quota retries, has one receipt. Recovered
+                # uncertain attempts replace partial metadata, never add it twice.
+                old = c.execute('SELECT receipt FROM token_usage WHERE lease=?', (lease,)).fetchone()
+                previous = json.loads(old[0]) if old else None
+                if previous is None or (not previous['complete'] and usage['input_tokens'] is not None):
+                    c.execute('INSERT INTO token_usage VALUES(?,?,?,?,?,?) ON CONFLICT(lease) DO UPDATE SET receipt=excluded.receipt',
+                              (lease, task, row['group_id'], member, time.time(), dumps(usage)))
             if row['status'] == 'completed' and outcome == 'success' and row['result'] == dumps(result):
                 return True  # An interrupted HTTP acknowledgment is safe to resend.
             if row['cancel_requested']:

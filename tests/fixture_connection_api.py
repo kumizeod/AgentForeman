@@ -46,6 +46,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.endswith('/messages'):
             result={'stop_reason':'end_turn','content':[{'type':'text','text':json.dumps(answer)}]}
         else:result={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(answer)}}]}
+        result['usage'] = {'input_tokens': 100, 'output_tokens': 50} if self.path.endswith('/messages') else {'prompt_tokens': 100, 'completion_tokens': 50}
         raw=json.dumps(result).encode();self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
 
 

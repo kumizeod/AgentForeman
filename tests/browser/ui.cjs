@@ -25,14 +25,23 @@ const failures=[];
 const completed=[];
 const until=async (predicate, label, timeout=30000)=>{const end=Date.now()+timeout;while(Date.now()<end){if(await predicate())return;await new Promise(r=>setTimeout(r,150));}throw new Error('Timed out: '+label);};
 const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':capability}};if(body!==undefined){options.method='POST';options.headers.Origin=origin;options.headers['Content-Type']='application/json';options.body=JSON.stringify(body);}const r=await fetch(origin+route,options);const d=await r.json();assert(r.ok,JSON.stringify(d));return d;};
+async function go(view){
+  if(['tasks','council','usage','settings'].includes(view))await page.locator('#advanced-tools').evaluate(e=>e.open=true);
+  await page.locator('[data-view='+view+']').first().click();
+  if(view==='analytics')await page.locator('#view-analytics > details').evaluate(e=>e.open=true);
+}
 (async()=>{
   const url=await new Promise((resolve,reject)=>{let s='';const t=setTimeout(()=>reject(new Error('Panel startup timed out')),10000);child.stdout.on('data',d=>{s+=d.toString();const m=s.match(/console: (http:\/\/127\.0\.0\.1:\d+\/#[\w-]+)/);if(m){clearTimeout(t);resolve(m[1]);}});child.on('exit',code=>{clearTimeout(t);reject(new Error('Panel exited '+code));});});
   origin=new URL(url).origin; capability=url.split('#')[1];
   browser=await chromium.launch({headless:true,...(process.env.FOREMAN_BROWSER_EXECUTABLE?{executablePath:process.env.FOREMAN_BROWSER_EXECUTABLE,args:['--no-sandbox','--disable-gpu','--disable-dev-shm-usage']}: {})});
   page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});
   page.on('pageerror',e=>failures.push(e.message));
-  await page.goto(url); await page.locator('[data-view=tasks]').click(); await page.locator('#sync').filter({hasText:'已同步'}).waitFor();
-  await page.locator('[data-view=tasks]').click();
+  await page.goto(url);
+  assert.equal(await page.locator('.topSegmentedNav [data-view]').count(),3);
+  await page.locator('#view-workspace').waitFor();
+  completed.push('Three-page shell opens on tasks and conversation, with advanced tools kept out of main navigation');
+  await go('tasks'); await page.locator('#sync').filter({hasText:'已同步'}).waitFor();
+  await go('tasks');
   assert.equal(await page.locator('#empty').isVisible(),true);
   assert.equal(await page.locator('#error').isVisible(),false);
   assert.equal(await page.evaluate(()=>location.hash),'');
@@ -71,13 +80,13 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
   execFileSync(python,['-m','agentforeman','verify-archive',zip],{cwd:root});
   completed.push('Actual controller/worker logs, report, events and verified archive download');
   await page.locator('#search').fill('no-such-goal');assert.equal(await page.locator('#empty').isVisible(),true);await page.locator('#search').fill('');
-  await page.locator('[data-view=usage]').click();assert.equal(await page.locator('.quotaCard').count(),3);
+  await go('usage');assert.equal(await page.locator('.quotaCard').count(),3);
   await page.locator('[data-refresh-role=worker]').click();await until(async()=>!(await page.locator('[data-refresh-role=worker]').isDisabled()),'quota refresh');
   assert((await page.locator('#quota-cards').innerText()).includes('100% 已用'));
-  await page.locator('[data-view=analytics]').click();await page.locator('#stats-cards .statCard').first().waitFor();assert((await page.locator('#role-stats').innerText()).includes('数据不完整'));
-  await page.locator('[data-view=settings]').click();await page.locator('#checks .checkRow').first().waitFor();assert.equal(await page.locator('#checks .checkRow').count(),5);
+  await go('analytics');await page.locator('#stats-cards .statCard').first().waitFor();assert((await page.locator('#role-stats').innerText()).includes('数据不完整'));
+  await go('settings');await page.locator('#checks .checkRow').first().waitFor();assert.equal(await page.locator('#checks .checkRow').count(),5);
   completed.push('Search/filter and quota/statistics/diagnostics pages use real APIs');
-  await page.locator('[data-view=tasks]').click();
+  await go('tasks');
   await page.locator('#new-task').click();await page.locator('[name=goal]').fill('夜间继续探索：额度恢复后开始下一轮 · TEST ONLY');await page.locator('[name=target]').fill('');await page.locator('[name=preflight]').check();await page.locator('#submit-task').click();await page.locator('#create-dialog').waitFor({state:'hidden'});
   await until(async()=>{const o=await request('/api/overview');const row=o.campaigns.find(r=>r.id!==cid);waitingCid=row?.id;return row?.status==='waiting_quota';},'durable quota wait');
   await page.locator('#refresh').click();await until(async()=>(await page.locator('#detail').innerText()).includes('预计恢复'),'wait card');
@@ -99,7 +108,7 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
   await Promise.all([page.waitForResponse(r=>r.url().endsWith('/'+waitingCid+'/stop') && r.request().method()==='POST'),page.locator('[data-action=stop]').click()]);await until(async()=>(await request('/api/campaigns/'+waitingCid)).status==='completed','UI stop');
   completed.push('Light/dark/mobile layout; killed-controller UI resume and durable quota-wait stop');
   assert.deepEqual(failures,[]);
-  await page.locator('[data-view=council]').click();
+  await go('council');
   await until(async()=>(await page.locator('#pool-members').innerText()).includes('member-a'),'shared members loaded');
   await page.locator('#council-form [name=question]').fill('TEST ONLY council <img src=x onerror="window.councilInjected=true">');
   await page.locator('#council-members').selectOption(['member-a','member-b']);
@@ -244,10 +253,11 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
     let text='';const timer=setTimeout(()=>reject(new Error('Fixture API did not start')),10000);
     connectionAPI.stdout.on('data',chunk=>{text+=chunk;const match=text.match(/http:\/\/127\.0\.0\.1:\d+\/v1/);if(match){clearTimeout(timer);resolve(match[0]);}});
   });
-  await page.locator('[data-view=connections]').click();
+  await go('connections');
   await page.locator('#connection-service').filter({hasText:'本机协调服务已启动'}).waitFor();
-  await page.locator('#connection-form > details > summary').click();
   for(let i=0;i<4;i++){
+    await page.locator('#open-connection').click();
+    if(i===0)await page.locator('#connection-form > details > summary').click();
     await page.locator('#connection-provider').selectOption('openai-compatible');
     await page.locator('#connection-form [name=label]').fill('TEST connection '+i+' <img src=x onerror="window.connectionInjected=true">');
     await page.locator('#connection-form [name=model]').fill('test/model');
@@ -268,8 +278,16 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
   await page.screenshot({path:path.join(output,'connections-mobile.png'),fullPage:true});
   await page.setViewportSize({width:1440,height:1000});
   completed.push('Connection form, actual HTTP smoke, automatic local coordinator/workers, escaped cards, password clearing and mobile layout');
+  const preferenceRows=page.locator('[data-allocation-id]');
+  await until(async()=>await preferenceRows.count()===4,'connection preference fields');
+  for(let i=0;i<4;i++)await preferenceRows.nth(i).fill(String([20,50,20,10][i]));
+  await page.locator('#allocation-save').click();
+  await until(async()=>(await request('/api/preferences')).version===1,'dispatch preference persisted');
+  assert.deepEqual(Object.values((await request('/api/preferences')).connections.reduce((a,c)=>(a[c.id]=c.target_share,a),{})).sort((a,b)=>a-b),[10,20,20,50]);
+  completed.push('Per-connection target shares validate to 100%, persist through real API, and remain distinct from observed token use');
   for(const [mode,route] of [['adversarial','debates'],['cooperative','cooperations']]){
-    await page.locator('[data-view=connections]').click();
+    await go('workspace');
+    await page.locator('#inbox-new').click();
     const before=(await request('/api/'+route)).tasks.length;
     await page.locator('#quick-task-form [name=idea]').fill('TEST ONLY sum supplied rows');
     await page.locator('#quick-task-form [name=mode]').selectOption(mode);
@@ -280,11 +298,11 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
     let quickId;
     await until(async()=>{const r=await request('/api/briefings');quickId=r.briefings.find(b=>b.idea==='TEST ONLY sum supplied rows'&&b.status==='ready')?.id;return !!quickId;},'managed chair clarification and role assignment',60000);
     await page.locator('#refresh').click();
-    await until(async()=>await page.locator('#brief-confirm').count()===1,'quick task contract ready');
+    await until(async()=>await page.locator('[data-inbox-confirm]').count()===1,'quick task contract ready');
     const brief=await request('/api/briefings/'+quickId);
     assert(brief.draft.role_plan.rationale.includes('TEST ONLY'));
     assert.equal((await request('/api/'+route)).tasks.length,before);
-    await page.locator('#brief-confirm').click();
+    await page.locator('[data-inbox-confirm]').click();
     let result;
     await until(async()=>{const b=await request('/api/briefings/'+quickId);if(b.status!=='launched')return false;result=await request('/api/'+route+'/'+b.launch.id);return result.status!=='running';},'automatic managed execution through independent verification',90000);
     assert.equal(result.status,'completed_scoped');
@@ -292,10 +310,26 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
     assert.equal(result.quality.factual_correctness_verified,false);
     completed.push(mode+': quick task, chair-selected roles, explicit confirmation and automatic workers complete frozen independent checks');
   }
+  await go('workspace');await page.locator('#refresh').click();
+  await until(async()=>await page.locator('.inboxItem').count()>=2,'confirmed tasks in inbox');
+  const merged=await request('/api/workspace');
+  for(const t of merged.tasks.filter(t=>t.kind==='briefings'&&t.execution))assert(!merged.tasks.some(x=>x.key===t.execution.key));
+  await page.screenshot({path:path.join(output,'workspace-desktop.png'),fullPage:true});
+  await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.screenshot({path:path.join(output,'workspace-mobile.png'),fullPage:true});
+  await page.setViewportSize({width:1440,height:1000});await go('analytics');
+  const usage=await request('/api/token-usage?days=7');assert(usage.totals.total_tokens>0);assert(usage.connections.length>=3);
+  await until(async()=>(await page.locator('#usage-summary').innerText()).includes(usage.totals.total_tokens.toLocaleString('zh-CN')),'real API usage on screen');
+  await page.screenshot({path:path.join(output,'usage-desktop.png'),fullPage:true});
+  await page.locator('#usage-period').selectOption('1');await until(async()=>(await request('/api/token-usage?days=1')).totals.total_tokens>0,'24-hour usage');
+  await page.locator('#theme').click();await page.screenshot({path:path.join(output,'usage-dark.png'),fullPage:true});await page.locator('#theme').click();
+  await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:path.join(output,'usage-mobile.png'),fullPage:true});await page.setViewportSize({width:1440,height:1000});
+  completed.push('Task inbox combines briefing and execution, real API token receipts drive connection/task shares, rolling period selector, light/dark/mobile layouts');
   // Independent-account UX uses real profile persistence; only opening the
   // external login terminal is mocked here. Native argv/env isolation has its
   // own subprocess tests. No actual external credentials are used.
-  await page.locator('[data-view=connections]').click();
+  await go('connections');
+  await page.locator('#open-connection').click();
   await page.locator('#connection-provider').selectOption('antigravity');
   assert((await page.locator('#connection-guide').innerText()).includes('agy'));
   assert.equal(await page.locator('#connection-account-field').isVisible(),false);
@@ -322,11 +356,12 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
     assert(!JSON.stringify(profileConnection).includes('client/'));
   }
   await page.unroute('**/api/connections/login');
+  await page.locator('[data-close-dialog=connection-dialog]').click();
   completed.push('Antigravity/legacy Google options and independent Codex/Claude profile creation, selected official-login routing, escaped labels and no password ingestion');
   const usable=(await request('/api/connections')).connections.filter(c=>c.enabled&&c.test?.passed);
   const cancelTask=await request('/api/debates',{question:'TEST ONLY browser cancel live',members:[usable[1].member,usable[2].member],chair:usable[0].member});
   await until(async()=>slowRequests>0,'actual model API request started',30000);
-  await page.locator('[data-view=council]').click();await page.locator('#refresh').click();
+  await go('council');await page.locator('#refresh').click();
   await page.locator(`[data-mode-id="${cancelTask.id}"]`).click();
   await page.locator(`[data-terminate-kind="debates"][data-terminate-id="${cancelTask.id}"]`).click();
   await until(async()=>(await request('/api/debates/'+cancelTask.id+'/termination')).all_execution_acknowledged,'live request stopped and worker acknowledged',20000);
@@ -344,7 +379,7 @@ const request=async (route,body)=>{const options={headers:{'X-Foreman-Token':cap
   const pending=await request('/api/debates/'+offline.id+'/termination');
   assert.equal(pending.all_execution_acknowledged,false);assert.equal(pending.status,'waiting_for_confirmation');
   await page.locator('#refresh').click();
-  assert((await page.locator('#mode-detail').innerText()).includes('等待执行节点确认'));
+  await until(async()=>(await page.locator('#mode-detail').innerText()).includes('等待执行节点确认'),'offline acknowledgement status rendered');
   assert((await page.locator('#mode-detail').innerText()).includes('服务商端是否停止生成和计费未知'));
   completed.push('Offline worker cancellation stays unconfirmed; the UI does not claim all tokens or provider-side generation stopped');
   assert.deepEqual(failures,[]);

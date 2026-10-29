@@ -165,7 +165,9 @@ class Worker:
             if value['outcome'] in {'failed','uncertain'}:
                 from .worker_diagnostics import diagnose
                 self.last_attempt['diagnostic']=diagnose(self.root/'tasks'/task['id']/str(task['attempts']))
-            body = {'task':task['id'],'lease':task['lease'],**value}
+            from .accounting import receipt
+            usage = receipt(job.parent, self.settings['provider'], self.settings.get('model', ''))
+            body = {'task':task['id'],'lease':task['lease'],**value,'usage':usage}
             atomic_json(outbox,body)
             atomic_json(self.root/'last-attempt.json',self.last_attempt)
             self.post('/complete',body)

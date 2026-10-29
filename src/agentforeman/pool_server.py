@@ -91,7 +91,7 @@ class Handler(BaseHTTPRequestHandler):
                 result = {'accepted':pool.heartbeat(member,data['task'],data['lease'])}
             elif self.path == '/control' and set(data)=={'task','lease'}:
                 result=pool.control(member,data['task'],data['lease'])
-            elif self.path == '/complete' and set(data)=={'task','lease','outcome','result','retry_at'}:
+            elif self.path == '/complete' and set(data) in ({'task','lease','outcome','result','retry_at'}, {'task','lease','outcome','result','retry_at','usage'}):
                 result = {'accepted':pool.complete(member,**data)}
             else:
                 return self.reply(400, {'error':'Unknown worker request'})

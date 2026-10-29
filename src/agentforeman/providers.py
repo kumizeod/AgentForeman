@@ -35,7 +35,7 @@ def retry_time(value):
         return time.time()+1800
 
 
-def request_json(settings, request):
+def request_json(settings, request, *, usage_path=None):
     provider = settings['provider']
     key = os.environ.get(settings.get('key_env', 'ANTHROPIC_API_KEY' if provider=='anthropic' else 'OPENAI_API_KEY'))
     if not key:
@@ -68,6 +68,10 @@ def request_json(settings, request):
         if len(raw)>2000000:
             raise ValueError('API response too large')
         data = json.loads(raw)
+    if usage_path is not None:
+        usage = data.get('usage', {})
+        usage = {k: v for k, v in usage.items() if k in {'input_tokens', 'output_tokens', 'prompt_tokens', 'completion_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens'} and type(v) is int and v >= 0} if isinstance(usage, dict) else {}
+        atomic_json(usage_path, {'usage': usage})
     if provider == 'anthropic':
         if data.get('stop_reason') != 'end_turn':
             raise ValueError('API response was incomplete or refused')
@@ -85,7 +89,7 @@ def main():
     settings, request = read_json(Path(sys.argv[1])), read_json(Path(sys.argv[2]))
     output = Path(sys.argv[3])
     try:
-        value = request_json(settings, request)
+        value = request_json(settings, request, usage_path=output.with_name('api-usage.json'))
         atomic_json(output, value['answer'])
         # Usage is diagnostic, not a money-budget estimate.
         usage = {k:v for k,v in value['usage'].items() if k in {'input_tokens','output_tokens','prompt_tokens','completion_tokens'} and type(v) is int and v>=0}

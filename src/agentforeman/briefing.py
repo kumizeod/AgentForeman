@@ -130,6 +130,8 @@ class Briefing:
                      'Use distinct connection identities. Choose adversarial for critique/revision, cooperative '
                      'for separable contributions (requires at least 4 connections). Explain role choices. '
                      'Shared resource_group means shared login/serial capacity, not independent quota. '
+                     'Respect target_share as a soft token-allocation preference when choosing roles. It is not an exact cap; '
+                     'quality, role independence and available capacity still apply. Explain deviations in your rationale. '
                      'You cannot change budgets, add resources, run tools, or claim unconfigured verification.\n')
             schema=self.reply_schema(state)
         request={'prompt':prompt+dumps(context),'schema':schema}

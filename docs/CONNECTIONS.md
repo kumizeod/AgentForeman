@@ -5,15 +5,15 @@
 ## 中文快速上手
 
 1. Windows 更新仓库后双击根目录的 `start-windows.cmd`；首次需要安装 Python 3.11+。后续不要关闭启动窗口。
-2. 浏览器默认进入「快速开始」。选择 Codex、Antigravity、Claude Code、OpenCode 或 API。已有本机登录可以直接添加；未登录可点击「打开官方登录终端」。API 填服务商提供的真实地址、密钥和模型名。
-3. 点击「添加并测试连接」，通过后自动加入本机调度。输入任务，与主席澄清需求，核对目标、角色和验收方法，再点击确认开工。
+2. 浏览器默认进入「任务」。切换「订阅与模型」→「添加连接」，选择 Codex、Antigravity、Claude Code、OpenCode 或 API。已有本机登录可以直接添加；未登录可点击「打开官方登录终端」。API 填服务商提供的真实地址、密钥和模型名。
+3. 点击「添加并测试连接」，通过后自动加入本机调度。回首页点击「新建任务」，输入任务，与主席澄清需求，核对目标、角色和验收方法，再点击确认开工。
 
 对抗模式至少需要三个连接，合作模式至少需要四个。相同账号的不同模型可以分别添加，但会串行使用同一资源，不能算作多份额度或模型独立性的证据。暂时没有提供自动安装所有 CLI、跨电脑邀请链接、订阅令牌集中托管或运行中静默换人的功能。
 
 关闭浏览器不影响执行；电脑和启动窗口需要保持运行。默认 API 密钥只在本次进程内有效，可选择系统凭据库保存。中转站是否可用以真实测试为准。下文给出了认证、恢复和验证的完整边界。
 
 
-Open **快速开始** in the local console. Add a connection, wait for its real test to pass, describe a task, review the chairman's contract and role allocation, then confirm that exact version. No manual worker registration, token creation, coordinator command, or TOML editing is needed for these local connections.
+Open **订阅与模型** in the local console and click **添加连接**. Add a connection, wait for its real test to pass, describe a task, review the chairman's contract and role allocation, then confirm that exact version. No manual worker registration, token creation, coordinator command, or TOML editing is needed for these local connections.
 
 ## Windows
 

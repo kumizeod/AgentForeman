@@ -243,6 +243,8 @@ class Connections:
                         except BlockingIOError:
                             if time.monotonic()>=until or self.stop.wait(.1):raise
                     result=run_smoke(self.project,None,30,settings_override=self.settings(c))
+                    result.update(connection_id=cid,connection_label=c['label'])
+                    atomic_json(Path(result['report_path']),result)
                 receipt={k:result[k] for k in ('passed','status','diagnostic')}
             except BlockingIOError:receipt={'passed':False,'status':'busy','diagnostic':'Resource busy; retry after the current task.'}
             except Exception:receipt={'passed':False,'status':'failed','diagnostic':'Connection test failed; check local login and configuration.'}
@@ -314,7 +316,12 @@ class Connections:
         # Otherwise a chairman can observe a different roster between planning
         # and receiving the candidate set, especially during account onboarding.
         with self.lock:
-            now=time.time();rows=[self.public(c) for c in self.records()]
+            from .workspace import preferences
+            prefs = preferences(self.project)
+            shares = {r['id']: r['target_share'] for r in prefs['connections']}
+            now=time.time();rows=[{**self.public(c), 'target_share': shares.get(c['id'], 0)} for c in self.records()]
+            if prefs['configured']:
+                rows = sorted([r for r in rows if r['target_share'] > 0], key=lambda r: -r['target_share'])
             return [r for r in rows if r.get('enabled') and r.get('test',{}).get('passed')
                     and not r['testing'] and r['active_now'] and r['worker_running']
                     and r['key_available'] and r['retry_at']<=now]
@@ -323,7 +330,7 @@ class Connections:
         self.require_owner()
         if mode not in {'adversarial','cooperative'}:raise ValueError('Unknown mode')
         rows=self.candidates();minimum=4 if mode=='cooperative' else 3
-        if len(rows)<minimum:raise ValueError(f'This mode requires {minimum} tested, enabled connections with distinct role identities. Add connections first.')
+        if len(rows)<minimum:raise ValueError(f'This mode requires {minimum} tested, enabled connections with distinct role identities. Add connections or adjust nonzero dispatch shares first.')
         if chair is None:chair=next((c['member'] for c in rows if c['chair_preferred']),rows[0]['member'])
         if chair not in {c['member'] for c in rows}:raise ValueError('Chair connection is unavailable')
         others=[c['member'] for c in rows if c['member']!=chair]

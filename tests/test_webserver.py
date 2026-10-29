@@ -78,6 +78,22 @@ class PanelTests(unittest.TestCase):
             self.assertEqual(self.request(path)[0], 200)
         self.assertFalse((self.project / '.foreman').exists())
 
+    def test_workspace_usage_and_preferences_are_local_read_only_and_versioned(self):
+        for route in ('/api/workspace', '/api/token-usage', '/api/preferences'):
+            self.assertEqual(self.request(route,token=False)[0],403)
+            self.assertEqual(self.request(route)[0],200)
+        self.assertFalse((self.project/'.foreman').exists())
+        self.assertEqual(self.request('/api/token-usage?days=2')[0],400)
+        self.assertEqual(self.request('/api/token-usage?days=7&days=30')[0],400)
+        body={'provider':'codex','label':'GPT test'}
+        cid=self.request('/api/connections',body)[1]['id']
+        prefs={'version':0,'weights':{cid:100}}
+        self.assertEqual(self.request('/api/preferences',prefs,origin=False)[0],403)
+        self.assertEqual(self.request('/api/preferences',{**prefs,'password':'NO'})[0],400)
+        self.assertEqual(self.request('/api/preferences',prefs)[0],200)
+        self.assertEqual(self.request('/api/preferences',prefs)[0],400)
+        self.assertEqual(self.request('/api/preferences')[1]['version'],1)
+
     def test_connection_routes_keep_capability_origin_and_secret_boundaries(self):
         self.assertEqual(self.request('/api/connections',token=False)[0],403)
         body={'provider':'openai-compatible','label':'Test','model':'test',

@@ -25,6 +25,7 @@ from .usage import usage_snapshot
 
 ASSETS = {
     "index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8",
+    "workspace.js": "text/javascript; charset=utf-8", "workspace.css": "text/css; charset=utf-8",
     "app.css": "text/css; charset=utf-8", "upstream/LICENSE": "text/plain; charset=utf-8",
     **{"upstream/" + name + ".css": "text/css; charset=utf-8" for name in
        ("light", "dark", "base", "layout", "summary", "accounts", "account-details")},
@@ -195,7 +196,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, resource.read_bytes(), ASSETS[asset])
             if not self.authorized():
                 return self.send(403, {"error": "Open the complete console URL printed in your terminal."})
-            if path == "/api/accounts":
+            if path == "/api/workspace":
+                from .workspace import inbox
+                result = inbox(self.server.project)
+            elif path == "/api/token-usage":
+                from .workspace import usage
+                query = parse_qs(parsed.query)
+                if set(query)-{'days'} or len(query.get('days', ['7'])) != 1:raise ValueError('Invalid usage period')
+                result = usage(self.server.project, int(query.get('days', ['7'])[0]))
+            elif path == "/api/preferences":
+                from .workspace import preferences
+                result = preferences(self.server.project)
+            elif path == "/api/accounts":
                 from .accounts import Accounts
                 result={'accounts':Accounts(self.server.project).list()}
             elif path == "/api/connections":
@@ -322,6 +334,10 @@ class Handler(BaseHTTPRequestHandler):
                     from .accounts import Accounts
                     if set(body)!={'provider','label'}:raise ValueError('Provide provider and account name; never submit passwords')
                     return self.send(201,Accounts(self.server.project).create(**body))
+                if path=='/api/preferences':
+                    from .workspace import save_preferences
+                    if set(body)!={'version','weights'}:raise ValueError('Provide preference version and weights')
+                    return self.send(200,save_preferences(self.server.project,**body))
                 if path=='/api/connections/login':
                     if set(body)-{'provider','account_id'} or 'provider' not in body:raise ValueError('Provide provider and optional account profile')
                     return self.send(200,self.server.connections().login(**body))
@@ -341,7 +357,7 @@ class Handler(BaseHTTPRequestHandler):
                     from .briefing import Briefing
                     if set(body)-{'idea','chair','mode','evidence','checks'}:raise ValueError('Unknown task option')
                     c=self.server.connections();execution=c.plan(body.get('chair'),body.get('mode','adversarial'))
-                    candidates=[{k:v for k,v in row.items() if k in {'member','label','provider','model','resource_group'}} for row in c.candidates()][:12]
+                    candidates=[{k:v for k,v in row.items() if k in {'member','label','provider','model','resource_group','target_share'}} for row in c.candidates()][:12]
                     if execution['chair'] not in {r['member'] for r in candidates}:raise ValueError('Choose a chairman within the first 12 available connections')
                     bid=Briefing(self.server.project).create(body['idea'],execution,evidence=body.get('evidence'),
                           checks=body.get('checks'),auto_candidates=candidates)

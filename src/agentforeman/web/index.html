@@ -2,51 +2,40 @@
 <html lang="zh-CN" data-theme="light">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="color-scheme" content="light dark"><title>AgentForeman · 实验调度</title>
+  <meta name="color-scheme" content="light dark"><title>AgentForeman</title>
   <link rel="stylesheet" href="/static/upstream/light.css"><link rel="stylesheet" href="/static/upstream/dark.css">
   <link rel="stylesheet" href="/static/upstream/base.css"><link rel="stylesheet" href="/static/upstream/accounts.css">
   <link rel="stylesheet" href="/static/upstream/layout.css"><link rel="stylesheet" href="/static/upstream/summary.css">
   <link rel="stylesheet" href="/static/upstream/account-details.css"><link rel="stylesheet" href="/static/app.css">
-  <script src="/static/app.js" defer></script>
+  <link rel="stylesheet" href="/static/workspace.css">
+  <script src="/static/app.js" defer></script><script src="/static/workspace.js" defer></script>
 </head>
 <body>
 <div class="shell classicApp"><main class="panel"><div class="workspaceMain">
   <!-- Ported from codex-tools ClassicTopBar; Tauri calls replaced with local web actions. -->
   <header class="topbar">
-    <button class="brandLine homeLink" type="button" id="home"><span class="appLogo mark">AF</span><span><h1>AgentForeman</h1><small>OVERNIGHT EXPERIMENTS</small></span></button>
+    <button class="brandLine homeLink" type="button" id="home"><span class="appLogo mark">AF</span><span><h1>AgentForeman</h1><small>任务交给模型，结果留给你。</small></span></button>
     <nav class="topSegmentedNav" aria-label="主导航">
-      <button class="topSegmentedButton isActive" data-view="connections" aria-pressed="true">快速开始</button>
-      <button class="topSegmentedButton" data-view="tasks" aria-pressed="false">实验调度</button>
-      <button class="topSegmentedButton" data-view="council" aria-pressed="false">共享委员会</button>
-      <button class="topSegmentedButton" data-view="usage" aria-pressed="false">额度管理</button>
-      <button class="topSegmentedButton" data-view="analytics" aria-pressed="false">用量统计</button>
-      <button class="topSegmentedButton" data-view="settings" aria-pressed="false">环境设置</button>
+      <button class="topSegmentedButton isActive" data-view="workspace" aria-pressed="true">任务</button>
+      <button class="topSegmentedButton" data-view="connections" aria-pressed="false">订阅与模型</button>
+      <button class="topSegmentedButton" data-view="analytics" aria-pressed="false">用量</button>
     </nav>
     <div class="topActions"><span class="localBadge"><i></i> 本地控制台</span><button class="iconButton" id="theme" title="切换明暗主题" aria-label="切换明暗主题"></button><button class="iconButton" id="refresh" title="刷新本地状态" aria-label="刷新本地状态"></button></div>
   </header>
   <div id="error" class="errorBanner" role="alert" hidden></div>
   <div id="notice" class="noticeBanner" role="status" hidden></div>
   <section class="viewStage">
-    <div id="view-connections" class="page">
-      <div class="pageHeading"><div><div class="eyebrow">QUICK START</div><h2>接入模型，把任务交给主席。</h2><p>① 添加连接　② 测试通过　③ 说明任务、确认开工</p></div></div>
+    <div id="view-workspace" class="page">
+      <div class="pageHeading"><div><h2>任务与对话</h2><p>说明目标，确认后交给模型执行。</p></div><button class="primary" id="inbox-new">＋ 新建任务</button></div>
+      <div class="inboxLayout"><aside id="inbox-list" class="inboxList" aria-label="近期任务"></aside><section id="inbox-detail" class="inboxDetail"><div class="inboxEmpty"><h3>从一个目标开始</h3><p>先接入模型，再和主席说清楚任务。</p><button data-view="connections">添加订阅或 API</button></div></section></div>
+    </div>
+
+    <div id="view-connections" class="page" hidden>
+      <div class="pageHeading"><div><h2>订阅与模型</h2><p>添加账号或 API，主席从可用连接中分配任务。</p></div><button class="primary" id="open-connection">＋ 添加连接</button></div>
       <div class="infoBox" id="connection-service">正在检查本机服务…</div>
-      <section class="surface"><h3>我的连接</h3><div id="connection-cards" class="statsGrid"></div></section>
-      <section class="surface"><h3>添加连接</h3><form id="connection-form">
-        <div class="formGrid"><label class="field">连接方式<select id="connection-provider" name="provider"><option value="codex">Codex / ChatGPT Plus</option><option value="antigravity">Antigravity / Google AI Pro</option><option value="gemini-cli">Gemini CLI（企业 / 旧 API）</option><option value="claude-code">Claude Code</option><option value="opencode">OpenCode / Go</option><option value="openai-compatible">API / 中转站（OpenAI Chat Completions）</option><option value="anthropic">API / 中转站（Anthropic Messages）</option></select></label><label class="field">名称<input name="label" maxlength="100" placeholder="例如：我的 Codex"></label></div>
-        <div id="connection-account-field"><label class="field">账号来源<select id="connection-account" name="account_id"><option value="">复用本机当前账号</option></select></label><button type="button" id="connection-new-account">登录另一个账号（独立配置）</button><p class="muted">新账号在官方登录页面输入账号密码或完成 SSO。AgentForeman 不接收密码，不复制本机默认登录；账号是否可用以实际连接测试为准。</p></div>
-        <div id="connection-guide" class="infoBox"></div>
-        <label class="field">模型<input name="model" maxlength="200" placeholder="CLI 可留空使用默认；OpenCode 可填 provider/model；API 必填"></label>
-        <div id="connection-api-fields" hidden><label class="field" id="connection-url-field">API 基础地址<input name="base_url" placeholder="https://你的服务商地址/v1"></label><label class="field">API 密钥<input name="api_key" type="password" autocomplete="new-password" maxlength="8192" placeholder="只发送到此本机控制台，不回显"></label><label class="checkLabel"><input name="remember" type="checkbox"> 保存到系统凭据库（需安装 desktop 依赖）；否则仅本次进程有效</label><details><summary>高级：使用已有环境变量</summary><label class="field">密钥环境变量名（与密钥二选一）<input name="key_env" placeholder="例如 OPENAI_API_KEY"></label></details><p class="muted">订阅与 API 分别计费。支持 Chat Completions 的中转站可在这里接入；服务商兼容性以实际测试为准。</p></div>
-        <details><summary>更多选项</summary><label class="field">可用时段（留空全天）<input name="active_hours" placeholder="22:00-08:00"></label><label class="checkLabel"><input name="chair_preferred" type="checkbox"> 优先作为 chairman</label></details>
-        <button class="primary" id="connection-add" type="submit">添加并测试连接</button>
-      </form></section>
-      <section class="surface"><h3>布置任务</h3><p>主席会澄清需求并选择执行者、贡献者和批评者。你确认任务约定后才正式开工。</p><form id="quick-task-form">
-        <label class="field">你想完成什么？<textarea name="idea" required maxlength="8000" rows="4" placeholder="说明目标、已有资料、期望的交付物…"></textarea></label>
-        <div class="formGrid"><label class="field">主席<select name="chair" id="quick-chair"><option value="">自动选择（优先使用你标记的主席）</option></select></label><label class="field">执行方式<select name="mode"><option value="adversarial">自动：主席选择合作 / 对抗与角色</option><option value="cooperative">优先合作（至少 4 个连接）</option></select></label></div>
-        <details><summary>资料与独立检查（高级）</summary><label class="field">资料 JSON<textarea name="evidence" rows="3" placeholder='[{"id":"data","title":"数据","content":"..."}]'></textarea></label><label class="field">检查 JSON<textarea name="checks" rows="3" placeholder='[{"id":"total","kind":"json_value","artifact_id":"answer","pointer":"/total","expected":60}]'></textarea></label></details>
-        <p class="muted">默认执行时限 8 小时，最多 3 轮审查；可在确认前修改。至少需要 3 个通过测试的连接；相同账号的不同模型共享串行资源，不代表独立额度。未配置自动检查的标准会保留为待验证。当前通用任务通过受限文本 / 产物协议执行。</p>
-        <button class="primary" id="quick-task-submit" type="submit">先和 chairman 说清楚</button>
-      </form></section>
+      <div id="connection-cards" class="connectionRows"></div><section class="allocationSection"><h3>任务用量偏好</h3><p class="muted">新任务的目标占比。0% 不参与自动分工；已确认的任务保持原配置。</p><form id="allocation-form"><div id="allocation-fields"></div><div class="allocationFooter"><span id="allocation-status" class="muted" aria-live="polite"></span><button type="button" id="allocation-reload" hidden>放弃修改并重载</button><button type="submit" id="allocation-save">保存偏好</button></div></form><p class="muted">这是分工偏好，不是精确 token 上限。主席需兼顾角色独立、能力和可用连接，分工将在开工前供你确认。</p></section>
+
+
       <p class="bottomNote">可以关闭浏览器，请保持此控制台进程和电脑运行。重启后自动恢复已保存且启用的连接；仅本次有效的 API 密钥需要重新提供。</p>
     </div>
     <div id="view-tasks" class="page" hidden>
@@ -89,9 +78,31 @@
       <section class="surface"><h3>多 agent 代码候选</h3><p>让当前选中的委员会成员分别实现同一实验，由本机控制器独立训练、验证和选择最佳归档。默认额外预算 1 小时；不会覆盖项目源码。</p><button id="start-coding" class="primary" disabled>让多个 agent 实现当前委员会的方案</button><div id="coding-list"></div><div id="coding-detail"></div></section>
     </div>
     <div id="view-usage" class="page" hidden><div class="pageHeading"><div><div class="eyebrow">CODEX QUOTA</div><h2>额度管理</h2><p>分别查看 manager 和 worker 的额度窗口与重置时间。</p></div><button id="refresh-quota" class="primary"><span data-icon="refresh"></span> 读取最新额度</button></div><div id="quota-cards" class="quotaGrid"></div><div class="infoBox">日常刷新只读取缓存。点击“读取最新额度”才会请求官方只读元数据，不启动模型任务。过期缓存和未知余量会明确标注。</div></div>
-    <div id="view-analytics" class="page" hidden><div class="pageHeading"><div><div class="eyebrow">OBSERVED USAGE</div><h2>用量统计</h2><p>基于本项目真实 CLI 日志；没有上报的数据保持未知。</p></div><button id="export-stats">下载统计 JSON</button></div><div id="stats-cards" class="statsGrid"></div><section class="surface"><h3>按职责统计</h3><div id="role-stats"></div></section><div class="infoBox">缓存输入属于输入 Token 的一部分，不重复相加。Token 数不能换算成订阅额度百分比或 API 账单。</div></div>
+    <div id="view-analytics" class="page" hidden>
+      <div class="pageHeading"><div><h2>近期用量</h2><p>按连接和任务查看已记录的 token，不推算套餐余额。</p></div><select id="usage-period" aria-label="统计时段"><option value="7">最近 7 天</option><option value="1">最近 24 小时</option><option value="30">最近 30 天</option></select></div>
+      <div id="usage-summary" class="usageSummary"></div><section><h3>各连接用量占比</h3><div id="usage-split"></div><div id="usage-connections" class="usageConnections"></div></section>
+      <section><h3>按任务查看</h3><div id="usage-task-table" class="simpleTableWrap"></div></section><p class="muted" id="usage-coverage"></p>
+      <details><summary>统计口径与历史诊断</summary><p class="muted">占比仅基于已上报的输入 + 输出 tokens，未知调用排除在分母外。缓存输入不重复累计；不同模型 token 不等于同等费用或订阅额度。失败与重试有上报则计入，上传重放不重复计算；不估算未上报的数据。时间按调用回执记录，跨时段的长调用不拆分。</p><button id="export-stats">下载统计 JSON</button><div id="stats-cards" class="statsGrid"></div><div id="role-stats"></div></details>
+    </div>
     <div id="view-settings" class="page" hidden><div class="pageHeading"><div><div class="eyebrow">LOCAL ENVIRONMENT</div><h2>环境与诊断</h2><p>检查本机运行环境与项目配置。</p></div><button id="export-diagnostics">下载诊断 JSON</button></div><section class="surface"><h3>环境检查</h3><div id="checks"></div><p id="environment" class="muted"></p></section><section class="surface"><h3>运行说明</h3><p>任务使用当前 Python 环境和 foreman.toml 中配置的 Codex。命令是否存在不等于登录、模型权限和沙箱已可用。</p><p>需要修改模型、训练或验证命令时，编辑项目中的 foreman.toml；已提交任务使用各自冻结的配置。</p><p>停止会完成或协调当前轮，不再启动下一轮。失败重试需要在任务详情中明确勾选。</p></section><section class="surface attribution"><h3>开源致谢</h3><p>界面复用并改编自 <a href="https://github.com/170-carry/codex-tools/tree/b8f2dbb829288ce7b1c978925062bef58fd3291e" target="_blank" rel="noreferrer">170-carry/codex-tools</a> 的主题、经典布局、导航和额度组件。</p><p>Copyright © 2026 170-carry · <a href="/static/upstream/LICENSE" target="_blank" rel="noreferrer">MIT License</a>。AgentForeman 提供实验调度后端。</p></section></div>
   </section>
+  <details id="advanced-tools" class="advancedTools"><summary>高级工具</summary><div class="detailActions"><button data-view="tasks">夜间实验</button><button data-view="council">委员会与手动分工</button><button data-view="usage">Codex 额度窗口</button><button data-view="settings">环境与诊断</button></div></details>
 </div></main></div>
+<dialog id="connection-dialog" aria-labelledby="connection-dialog-title"><div class="dialogHead"><h2 id="connection-dialog-title">添加连接</h2><button type="button" data-close-dialog="connection-dialog" aria-label="关闭添加连接">✕</button></div>      <form id="connection-form">
+        <div class="formGrid"><label class="field">连接方式<select id="connection-provider" name="provider"><option value="codex">Codex / ChatGPT Plus</option><option value="antigravity">Antigravity / Google AI Pro</option><option value="gemini-cli">Gemini CLI（企业 / 旧 API）</option><option value="claude-code">Claude Code</option><option value="opencode">OpenCode / Go</option><option value="openai-compatible">API / 中转站（OpenAI Chat Completions）</option><option value="anthropic">API / 中转站（Anthropic Messages）</option></select></label><label class="field">名称<input name="label" maxlength="100" placeholder="例如：我的 Codex"></label></div>
+        <div id="connection-account-field"><label class="field">账号来源<select id="connection-account" name="account_id"><option value="">复用本机当前账号</option></select></label><button type="button" id="connection-new-account">登录另一个账号（独立配置）</button><p class="muted">新账号在官方登录页面输入账号密码或完成 SSO。AgentForeman 不接收密码，不复制本机默认登录；账号是否可用以实际连接测试为准。</p></div>
+        <div id="connection-guide" class="infoBox"></div>
+        <label class="field">模型<input name="model" maxlength="200" placeholder="CLI 可留空使用默认；OpenCode 可填 provider/model；API 必填"></label>
+        <div id="connection-api-fields" hidden><label class="field" id="connection-url-field">API 基础地址<input name="base_url" placeholder="https://你的服务商地址/v1"></label><label class="field">API 密钥<input name="api_key" type="password" autocomplete="new-password" maxlength="8192" placeholder="只发送到此本机控制台，不回显"></label><label class="checkLabel"><input name="remember" type="checkbox"> 保存到系统凭据库（需安装 desktop 依赖）；否则仅本次进程有效</label><details><summary>高级：使用已有环境变量</summary><label class="field">密钥环境变量名（与密钥二选一）<input name="key_env" placeholder="例如 OPENAI_API_KEY"></label></details><p class="muted">订阅与 API 分别计费。支持 Chat Completions 的中转站可在这里接入；服务商兼容性以实际测试为准。</p></div>
+        <details><summary>更多选项</summary><label class="field">可用时段（留空全天）<input name="active_hours" placeholder="22:00-08:00"></label><label class="checkLabel"><input name="chair_preferred" type="checkbox"> 优先作为 chairman</label></details>
+        <button class="primary" id="connection-add" type="submit">添加并测试连接</button>
+      </form></dialog>
+<dialog id="quick-dialog" aria-labelledby="quick-dialog-title"><div class="dialogHead"><h2 id="quick-dialog-title">新建任务</h2><button type="button" data-close-dialog="quick-dialog" aria-label="关闭新建任务">✕</button></div>      <p>主席会澄清需求并选择执行者、贡献者和批评者。你确认任务约定后才正式开工。</p><form id="quick-task-form">
+        <label class="field">你想完成什么？<textarea name="idea" required maxlength="8000" rows="4" placeholder="说明目标、已有资料、期望的交付物…"></textarea></label>
+        <div class="formGrid"><label class="field">主席<select name="chair" id="quick-chair"><option value="">自动选择（优先使用你标记的主席）</option></select></label><label class="field">执行方式<select name="mode"><option value="adversarial">自动：主席选择合作 / 对抗与角色</option><option value="cooperative">优先合作（至少 4 个连接）</option></select></label></div>
+        <details><summary>资料与独立检查（高级）</summary><label class="field">资料 JSON<textarea name="evidence" rows="3" placeholder='[{"id":"data","title":"数据","content":"..."}]'></textarea></label><label class="field">检查 JSON<textarea name="checks" rows="3" placeholder='[{"id":"total","kind":"json_value","artifact_id":"answer","pointer":"/total","expected":60}]'></textarea></label></details>
+        <p class="muted">默认执行时限 8 小时，最多 3 轮审查；可在确认前修改。至少需要 3 个通过测试的连接；相同账号的不同模型共享串行资源，不代表独立额度。未配置自动检查的标准会保留为待验证。当前通用任务通过受限文本 / 产物协议执行。</p>
+        <button class="primary" id="quick-task-submit" type="submit">先和 chairman 说清楚</button>
+      </form></dialog>
 <dialog id="create-dialog" aria-labelledby="create-title"><form id="create-form"><div class="dialogHead"><div><div class="eyebrow">NEW ASSIGNMENT</div><h2 id="create-title">布置一个夜间实验</h2></div><button class="iconButton" type="button" id="close-dialog" aria-label="关闭"><span data-icon="close"></span></button></div><p class="muted">目标会交给 Codex manager，系统负责执行、验证和归档。</p><label class="field">实验目标<textarea name="goal" required maxlength="8000" rows="4" placeholder="例如：在现有模型和验证协议下，提高验证集准确率，并保留可复现的最佳结果。"></textarea></label><div class="formGrid"><label class="field">明早截止时间（本机时间）<input name="deadline" type="time" value="08:00" required></label><label class="field">最多实验轮数<input name="max_rounds" type="number" min="1" max="100" value="5" required></label></div><label class="field">目标指标（可选）<input name="target" type="number" step="any" placeholder="例如 0.95；留空按改善幅度判断"></label><div class="formGrid"><label class="checkLabel"><input name="review" type="checkbox" checked> 自动双角色审查</label><label class="field">每个方案最多审查<select name="max_reviews"><option value="1">1 次</option><option value="2" selected>2 次</option><option value="3">3 次</option><option value="5">5 次</option></select></label></div><p class="muted">提案 → 独立审查 → 自动修改。未获批准且达到上限时自动结束，保留最佳结果。</p><label class="checkLabel"><input name="preflight" type="checkbox"> 在新模型任务启动前检查额度</label><div class="infoBox">额度耗尽后保存状态，等待恢复，不消耗模型调用；无法获取重置时间时按保守回退策略等待。电脑休眠期间无法继续训练。</div><p id="form-error" class="errorText" role="alert" hidden></p><div class="dialogFooter"><button type="button" id="cancel-create">取消</button><button type="submit" class="primary" id="submit-task">提交并后台运行</button></div></form></dialog>
 </body></html>
