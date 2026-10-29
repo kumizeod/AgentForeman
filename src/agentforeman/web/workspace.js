@@ -1,7 +1,7 @@
 'use strict';
 // The three everyday screens share the existing authenticated local API.
 let inboxSelected=null, inboxRenderKey='', inboxBusy=false, allocationData=null, allocationDirty=false;
-const simpleStatus={...labels,...councilStatus,...modeStatus,...briefingStatus,completed_scoped:'检查范围内通过',completed_candidate:'候选答案已完成',launched:'已启动',uncertain:'执行状态待确认'};
+const simpleStatus={...labels,...councilStatus,...modeStatus,...briefingStatus,completed_scoped:'检查范围内通过',completed_candidate:'候选答案已完成',running:'执行中',launched:'已启动',uncertain:'执行状态待确认'};
 const simpleStage={...phases,...modeStage,...councilStage,clarify:'需求澄清',launch:'正在启动'};
 const providerName=p=>({'codex':'GPT / Codex','claude-code':'Claude','opencode':'OpenCode','antigravity':'Antigravity','gemini-cli':'Gemini CLI','anthropic':'Claude API','openai-compatible':'API / 中转站'}[p]||p);
 const tokenText=r=>r&&r.attempts>r.unknown_attempts?num(r.total_tokens):r?.attempts?'未知':'尚无调用';
@@ -53,7 +53,7 @@ async function refreshWorkspace(){
     content+=`<div class="inboxEvent">已记录 ${c.rounds.length} / ${c.max_rounds} 轮 · 最佳独立验证指标 ${metric(c.best_metric)}</div>`;
     content+=c.rounds.map(r=>chatMessage('第 '+r.number+' 轮',simpleStatus[r.status]||r.status,r.decision?.rationale||r.error||'已保存实验记录')).join('');
   }else content=chatMessage('代码候选',c.status,`基线 ${metric(c.baseline?.metric)} · 最佳 ${metric(c.best?.metric)}。各成员独立实现，由本机训练与验证选取结果。`);
-  $('#inbox-detail').innerHTML=`<header class="inboxHead"><div><h3>${esc(row.title)}</h3><small>${esc(simpleStatus[execution.status]||execution.status)} · ${esc(simpleStage[execution.stage||execution.phase]||execution.stage||execution.phase||'')} · ${esc(row.id)}</small></div><div>${canStop?terminationControls(row.kind,row.id):terminationControls(row.kind,row.id).replace(/<button[^>]*>[\s\S]*?<\/button>/,'')}</div></header><div class="inboxBody">${content}</div>${taskUsage(accounting,key)}<div class="inboxFoot"><button data-inbox-export>导出记录</button><button data-inbox-advanced>详细结果与日志</button></div>`;
+  $('#inbox-detail').innerHTML=`<header class="inboxHead"><div><h3>${esc(row.title)}</h3><small>${esc(!child&&row.kind==='briefings'&&execution.status==='running'?'主席整理中':simpleStatus[execution.status]||execution.status)} · ${esc(simpleStage[execution.stage||execution.phase]||execution.stage||execution.phase||'')} · ${esc(row.id)}</small></div><div>${canStop?terminationControls(row.kind,row.id):terminationControls(row.kind,row.id).replace(/<button[^>]*>[\s\S]*?<\/button>/,'')}</div></header><div class="inboxBody">${content}</div>${taskUsage(accounting,key)}<div class="inboxFoot"><button data-inbox-export>导出记录</button><button data-inbox-advanced>详细结果与日志</button></div>`;
   if(same){
     if($('#inbox-reply')&&draft)$('#inbox-reply').value=draft;
     if(focused&&$('#inbox-reply')&&!$('#inbox-reply').disabled){$('#inbox-reply').focus({preventScroll:true});$('#inbox-reply').setSelectionRange(...selection);}

@@ -43,7 +43,7 @@ class WorkspaceTests(unittest.TestCase):
 
     def test_retry_replay_failure_and_unknown_do_not_inflate_or_disappear(self):
         pool = Pool(self.project)
-        for m in ('a', 'b'): pool.register(m, m*40)
+        for m in ('a', 'b', 'c'): pool.register(m, m*40)
         self.profile('1'*12, 'a'); self.profile('2'*12, 'b')
         pool.enqueue('a'*12, 'explore', ['a', 'b'], {'prompt': 'answer', 'schema': SCHEMA}, time.time()+120)
         a = pool.claim('a', 'session'); reset = time.time()+3600
@@ -53,11 +53,13 @@ class WorkspaceTests(unittest.TestCase):
         for _ in range(2): pool.complete('b', b['id'], b['lease'], 'failed', usage=self.telemetry(20))
         # Another call is in flight: its consumption is unknown, never zero.
         self.task(pool, 'b'*12, 'b')
+        self.profile('3'*12, 'c'); self.task(pool, 'c'*12, 'c')
         result = usage(self.project)
         self.assertEqual(result['totals']['total_tokens'], 40)
-        self.assertEqual(result['totals']['attempts'], 3)
-        self.assertEqual(result['totals']['unknown_attempts'], 1)
-        self.assertEqual(sum(r['share_percent'] for r in result['connections']), 100)
+        self.assertEqual(result['totals']['attempts'], 4)
+        self.assertEqual(result['totals']['unknown_attempts'], 2)
+        self.assertEqual(sum(r['share_percent'] for r in result['connections'] if r['share_percent'] is not None), 100)
+        self.assertIsNone(next(r for r in result['connections'] if r['id']=='3'*12)['share_percent'])
         self.assertNotIn('DO_NOT_EXPOSE', json.dumps(result))
         with pool.connect() as c: c.execute('UPDATE token_usage SET recorded_at=?', (time.time()-8*86400,))
         self.assertEqual(usage(self.project)['totals']['total_tokens'], 0)

@@ -382,6 +382,12 @@ async function go(view){
   await until(async()=>(await page.locator('#mode-detail').innerText()).includes('等待执行节点确认'),'offline acknowledgement status rendered');
   assert((await page.locator('#mode-detail').innerText()).includes('服务商端是否停止生成和计费未知'));
   completed.push('Offline worker cancellation stays unconfirmed; the UI does not claim all tokens or provider-side generation stopped');
+  await go('analytics');
+  const unknownUsage=await request('/api/token-usage?days=7');
+  const unknownMember=unknownUsage.connections.find(c=>c.id==='member:member-a');
+  assert(unknownMember);assert.equal(unknownMember.share_percent,null);
+  await until(async()=>await page.locator('#usage-connections').innerText().then(s=>s.includes('member-a 未知')),'unknown-only connection has unknown share, not zero');
+  completed.push('Unknown-only usage remains unknown in both the authenticated aggregate and the visible percentage');
   assert.deepEqual(failures,[]);
   fs.writeFileSync(path.join(output,'browser-summary.json'),JSON.stringify({passed:true,checks:completed,page_errors:failures,disclosure:'TEST-ONLY scripted CLI and local API model replies. HTTP, native workers, training, verification, restart and archive replay are real; no external account or model quality verified.'},null,2));
   console.log(JSON.stringify({passed:true,checks:completed,output},null,2));

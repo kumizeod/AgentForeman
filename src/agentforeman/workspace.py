@@ -150,10 +150,10 @@ def usage(project, days=7, *, now=None):
             add(target, r)
     denominator = total['total_tokens']
     for c in per_connection.values():
-        c['share_percent'] = c['total_tokens']/denominator*100 if denominator else None
+        c['share_percent'] = c['total_tokens']/denominator*100 if denominator and c['attempts'] > c['unknown_attempts'] else None
     for t in per_task.values():
         for c in t['connections'].values():
-            c['share_percent'] = c['total_tokens']/t['total_tokens']*100 if t['total_tokens'] else None
+            c['share_percent'] = c['total_tokens']/t['total_tokens']*100 if t['total_tokens'] and c['attempts'] > c['unknown_attempts'] else None
         t['connections'] = list(t['connections'].values())
     return {'generated_at': now, 'since': since, 'days': days, 'totals': total,
             'connections': sorted(per_connection.values(), key=lambda r: r['total_tokens'], reverse=True),
