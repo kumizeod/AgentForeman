@@ -1,0 +1,6 @@
+{
+  "hidden": 8,
+  "learning_rate": 0.01,
+  "epochs": 30,
+  "seed": 42
+}

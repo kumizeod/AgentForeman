@@ -1,0 +1,3 @@
+.foreman/
+__pycache__/
+.venv/

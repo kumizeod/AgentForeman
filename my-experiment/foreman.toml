@@ -1,0 +1,24 @@
+version = 1
+source = "workspace"
+trusted = "trusted"
+allowed_edit = ["model.py", "config.json"]
+
+[codex]
+executable = "codex"
+# Set model to a model available to your Codex account, or leave unset.
+timeout_seconds = 600
+
+[train]
+command = ["{python}", "{workspace}/train.py", "--output", "{artifacts}"]
+timeout_seconds = 120
+
+[verify]
+command = ["{python}", "{trusted}/verify.py", "--checkpoint", "{artifacts}/model.npz", "--data", "{trusted}/validation.csv", "--output", "{artifacts}/verification.json"]
+timeout_seconds = 30
+
+[metric]
+name = "accuracy"
+direction = "maximize"
+min_delta = 0.02
+minimum = 0.0
+maximum = 1.0
