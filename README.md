@@ -1,412 +1,196 @@
 # AgentForeman
 
-**v0.14.2 · 删除模型连接：** 在「订阅与模型」点击删除即可移除闲置连接，保留历史任务、用量和日志，不退出客户端账号。仍有调用运行或退出状态不明时，暂停领取新任务并提示先终止、确认退出。[操作与边界](docs/CONNECTIONS.md#删除模型连接-v0142)。
+**Clarify a task. Coordinate your agents. Come back to evidence.**
 
-**v0.14.1 · OpenCode 接入修复：** 支持 Windows 新版原生 CLI 入口与手动指定路径，补齐 OpenCode 2 的工作目录、独立服务、权限配置和结束回执兼容。现有 Codex 认证配置保持原样。[接入排查与原生 CLI 测试](docs/OPENCODE_CONNECTIONS.md)。
+AgentForeman is a local-first orchestration system for coding agents and other complex tasks. Connect your existing CLI clients or API providers, agree on a task with a chairman, and let a bounded multi-agent workflow produce, critique, revise and verify the result.
 
-**v0.14 · 三页工作台：** 首页查看任务状态与主席对话；第二页接入订阅 / API、设置分配偏好；第三页查看各连接及任务的真实已上报 token 占比。未知用量单独标注，分配偏好与实际消耗分开。夜间实验、委员会与诊断保留在「高级工具」。[中文操作与统计边界](docs/V0_14.md)。
+Built for overnight research experiments, code changes, data analysis and structured reports. Runs on **Windows, macOS and Linux** with Python 3.11+.
 
-v0.14 validation at [`b3fd2cb`](https://github.com/kumizeod/AgentForeman/actions/runs/40873285124): **229 Python tests per native job**, all **9 Windows/macOS/Linux × Python 3.11–3.13 jobs**, and **22 browser workflow groups** passed. [Pinned evidence and scripted-provider disclosure](evidence/three-page-validation.json).
+[Quick start](#quick-start) · [Interface](#interface) · [Workflows](#workflows) · [Documentation](#documentation) · [CI](https://github.com/kumizeod/AgentForeman/actions/workflows/tests.yml)
 
-**v0.13 · Three connection/control fixes:** Google AI Pro/Ultra now uses **Antigravity CLI (`agy`)**; **立即终止整个任务** interrupts active supervised calls and reports actual cancellation acknowledgements; Codex and Claude Code can **log in with another account using separate official-client profiles**, without replacing the default local login. Passwords stay on the official login page. [中文说明与边界](docs/V0_13.md).
+## Interface
 
+Three main pages keep daily operations together: **Tasks**, **Subscriptions & Models**, and **Usage**. Advanced tools expose experiments, councils and diagnostics.
 
-v0.13 validation at [`709f3ab`](https://github.com/kumizeod/AgentForeman/actions/runs/40719768093): **220 Python tests per native job**, all **9 Windows/macOS/Linux × Python 3.11–3.13 jobs**, and **18 browser workflow groups** passed. [Pinned evidence and scripted-provider disclosure](evidence/v0.13-validation.json). Real subscription login and provider-side billing cancellation still require deployment-side verification.
+### Tasks and chairman conversation
 
-**v0.12 · Quick start connection center:** add local Codex, Gemini, Claude Code, OpenCode or API/relay connections; test them, then let a chairman clarify the task and propose roles before your confirmation. Local coordinator/workers start automatically. Windows: double-click `start-windows.cmd` after installing Python 3.11+. [Setup, authentication and current limits](docs/CONNECTIONS.md).
+Review the proposed goal, deliverables, acceptance checks and role assignments before confirming execution. Follow the conversation, artifacts, verification results and task status in one place.
 
+![Tasks and chairman conversation in AgentForeman](docs/assets/workspace.webp)
 
-v0.12 validation: **200 Python tests**, **15 browser workflow groups**, and all
-**9 Windows/macOS/Linux × Python 3.11–3.13 matrix jobs** passed at
-[`c0a713a`](https://github.com/kumizeod/AgentForeman/actions/runs/40690021209).
-A subsequent presentation-only pass also completed both quick-task modes.
-[Evidence and scripted-provider disclosure](evidence/connections-validation.json).
+### Subscriptions and model connections
 
-**Assign Codex an experiment tonight. Wait through quota resets without model calls. Review verified results tomorrow.**
+Add and test local CLI or API connections, choose a preferred chairman, and set allocation preferences. Pause, retest or delete connections without erasing their historical usage.
 
-## Clarify before execution (v0.11)
+![Model connections and allocation preferences in AgentForeman](docs/assets/connections.webp)
 
-Discuss the task with a chairman before leaving: **idea → focused clarification
-→ versioned task contract → explicit human confirmation → autonomous cooperative
-or adversarial execution**. This is the default path in the shared task form.
-The contract records goals, inputs, deliverables, acceptance, constraints,
-priorities and autonomy boundaries. Waiting for human input dispatches no more
-model tasks, and the execution budget starts after confirmation.
+### Token usage
 
-Confirmation binds the reviewed version, node/budget settings, evidence and frozen
-checks. Stale confirmations are rejected; repeated or interrupted launches reuse
-the same child task ID. Manual acceptance remains unverified, and explicitly
-reported scope changes pause execution. Natural-language boundaries are instructions,
-not a guarantee of detecting every semantic deviation. [中文操作与边界](docs/BRIEFING.md).
+Inspect client-reported token usage by connection and task over the last 1, 7 or 30 days. Target allocation and observed consumption are shown separately; missing usage stays unknown.
 
-Validation at `92bab3b`: **185 local Python tests**, all **nine native
-Windows/macOS/Linux × Python 3.11/3.12/3.13 jobs**, and **12 browser workflow
-groups** passed. [CI run](https://github.com/kumizeod/AgentForeman/actions/runs/40525445422)
-· [Pinned evidence and fixture disclosure](evidence/briefing-ci.json).
+![Token usage by connection and task in AgentForeman](docs/assets/usage.webp)
 
-## Cooperative and adversarial tasks (v0.10)
+*Screenshots show the current application with scripted demonstration providers, not live subscription results. The interface currently uses Chinese labels; this README is in English. See [screenshot provenance](docs/assets/SCREENSHOTS.md).*
 
-Use member-owned workers for general reports, data analysis and design artifacts:
+## What it does
 
-- **Adversarial:** propose → independent checks → anchored criticism → revision
-  → retest, bounded by round/time budgets. No-progress stops preserve disagreements.
-- **Cooperative:** an integrator decomposes independent assignments, contributors
-  run in parallel, then the combined result enters the same independent acceptance
-  loop. Missing contributions block integration; reviewers cannot be contributors.
-
-Both modes are available in **共享委员会 → 合作与对抗任务** in the local panel,
-with task status, contributions, versions, receipts, pending questions, stop
-controls and JSON/Markdown downloads. Keep `pool serve` and workers running;
-durable task IDs and receipts support restart without resubmission.
-
-Chair summaries are advisory. Passing status covers configured checks only;
-agreement and source-quote matching do not establish general factual correctness.
-[Cooperation and dashboard guide](docs/COOPERATIVE.md) ·
-[Adversarial controls and CLI](docs/ADVERSARIAL.md).
-
-Before using real accounts overnight, run `foreman pool smoke --project ./my-experiment --config ./member.toml`:
-it exercises the configured provider through a private HTTP/native worker and
-independently checks its output. Authentication, quota and execution failures
-return nonzero exit status. [Live provider diagnostic guide](docs/WORKER_POOL.md#verify-a-real-provider-before-an-overnight-task).
-
-The browser suite exercises both forms through concurrent HTTP workers with
-scripted model replies and a real Python checker: failed result → criticism →
-revision → passing retest. It also checks escaped content, downloads, mobile
-layout and stopping. Live paid-model quality and overnight performance remain
-unmeasured. Historical CI results below apply to their pinned commits.
-
-Validation at `9575768`: local **159 Python tests** passed; all **nine native
-Windows/macOS/Linux × Python 3.11/3.12/3.13 jobs** and the browser's **ten workflow
-groups** passed in CI. [CI run](https://github.com/kumizeod/AgentForeman/actions/runs/40444781682)
-· [Pinned evidence and fixture disclosure](evidence/cooperative-ci.json).
-
-## Multiple coding agents (v0.9)
-
-Codex, Claude Code and Gemini CLI can participate through the same durable worker
-pool. An existing local LinJun/CLIProxyAPI endpoint can also supply an API worker.
-Independent code candidates share a frozen base, are validated against the edit
-allowlist, and are separately trained/verified before selecting the best archive.
-The shared council panel can start an implementation round from its research plan.
-[Multi-agent setup, boundaries and attribution](docs/MULTI_AGENT.md).
-
-Validation at `b4290fc`: nine native Windows/macOS/Linux jobs passed **136 tests
-each**, and the browser passed **eight workflow groups**, including independent
-Codex/Claude code proposals, real training/verification and best-archive download.
-[CI run](https://github.com/kumizeod/AgentForeman/actions/runs/40349365740) ·
-[Evidence and fixture disclosure](evidence/multi-agent-ci.json).
-
-## Shared overnight council (v0.8)
-
-Pool your group's member-owned Codex workers and API workers: **independent answers
-→ anonymous non-self peer review → Claude chair synthesis → independent audit**.
-Each member keeps their local login; the coordinator stores worker-token hashes,
-leases and task receipts. Quota cooldown, alternate eligible members, local night
-windows and crash recovery are supported. No human approval stage is added. Delayed starts and an optional local verified
-experiment handoff are available; measured project results attach to the report.
-
-[小组夜间使用指南（中文）](docs/COUNCIL.zh-CN.md) · [Setup the worker pool](docs/WORKER_POOL.md) · [Run a council and inspect quality gates](docs/COUNCIL.md).
-Model agreement is not verification; reports preserve source gaps, unresolved
-findings and unexecuted tests. This is a candidate-answer workflow, not a promise
-of correct novelty claims or distributed GPU training.
-
-Validation at `0bd6f27`: all nine native jobs passed **123 tests each**, and the
-browser job passed **seven workflow groups**, including three HTTP workers.
-[CI run](https://github.com/kumizeod/AgentForeman/actions/runs/39976862723) ·
-[Evidence and fixture disclosure](evidence/council-ci.json).
-
-## Automatic proposal review (v0.7)
-
-New tasks can run **proposal → independent review → revision → approved execution**,
-with a bounded review budget and no human approval stage. Rejected or unresolved
-plans stop automatically while retaining the best verified result. Discussion
-jobs preserve quota waiting, deadlines and crash recovery. The panel exposes
-criticism, proposer responses and transcript export.
-
-Incremental update: stable issue IDs track repeated criticism and suggested tests.
-Revisions that only change rhetoric or cycle back to an earlier instruction and
-plan stop with `debate_stalled`, preserving the best result and outstanding issues.
-The panel and JSON export distinguish reviewer clearance from experimental proof.
-
-```powershell
-python -m agentforeman overnight start --project .\my-experiment --goal "Improve validation accuracy" --deadline 08:00 --review --max-reviews 2
-```
-
-The initial implementation uses separate Codex CLI sessions, with optional
-`[manager]` / `[reviewer]` model overrides. [Automatic review guide](docs/AUTOMATIC_REVIEW.md).
-
-Validation at `c7d8982`: **all nine native jobs passed 96 tests each**, and the
-browser job passed its six workflow checks. [CI results](https://github.com/kumizeod/AgentForeman/actions/runs/39967197118)
-· [Machine-readable evidence and fixture disclosure](evidence/review-ci.json).
-
-## Local control panel (v0.6)
-
-The graphical panel is implemented, reusing actual MIT-licensed
-[codex-tools](https://github.com/170-carry/codex-tools) styles and ported navigation
-and quota components. Submit, monitor, stop/resume and inspect real experiments
-from the browser; download their independently verified best replay archives.
-
-```powershell
-python -m pip install -e ".[demo]"
-python -m agentforeman ui --project .\my-experiment
-```
-
-Works on native Windows, macOS and Linux. No Node/Tauri build is required.
-[Panel guide](docs/WEB_UI.md) · [Source/license notices](NOTICE.md).
-
-Validation: **86 tests passed in each Windows/macOS/Linux × Python 3.11/3.12/3.13
-test step**, plus the Chromium browser workflow. [CI](https://github.com/kumizeod/AgentForeman/actions/runs/39627355613)
-· [Exact job/step status and fixture disclosure](evidence/web-ui-ci.json).
-
-![AgentForeman local control panel](docs/assets/panel-light.png)
-
-*Browser-test screenshot: explicit test-only Codex replies, real training/verification
-and durable quota waiting. No live account results are implied.*
-
-
-v0.5 adds [quota visibility and local operations](docs/OBSERVABILITY.md): cached quota
-windows, a terminal monitor, token accounting, sanitized diagnostics and optional
-preflight waiting before new model jobs. The v0.5 implementation `b97b33a` passed
-**80 tests on all nine Windows/macOS/Linux × Python 3.11/3.12/3.13 combinations**:
-[native CI](https://github.com/kumizeod/AgentForeman/actions/runs/39609519359),
-[machine-readable evidence](evidence/operations-ci.json).
-
-v0.4 added [overnight assignments](docs/OVERNIGHT.md): detached submission, a morning
-deadline, persistent quota waiting, model-free reset lookup, partial-code continuation
-and a report explaining completed and unfinished work.
-
-```powershell
-python -m agentforeman overnight start --project .\my-experiment --goal "Improve validation accuracy within the checkpoint contract" --deadline 08:00 --max-rounds 5
-python -m agentforeman overnight status CAMPAIGN_ID --project .\my-experiment
-python -m agentforeman overnight report CAMPAIGN_ID --project .\my-experiment
-```
-
-Install/update the package and configure Codex first using the instructions below.
-`08:00` means the next local 08:00. Keep the computer awake. See the overnight guide
-for exact quota detection, reset fallback and recovery limits.
-
-The final v0.4 implementation `646c63f` passed its 67-test suite on all nine
-Windows/macOS/Linux × Python 3.11/3.12/3.13 combinations:
-[native CI results](https://github.com/kumizeod/AgentForeman/actions/runs/39451247519).
-Quota tests use explicit fixtures; live account reset behavior still needs validation.
-
-AgentForeman is an early, local-first experiment manager. Its v0.3 campaign layer
-asks a read-only Codex manager to propose an experiment, repair, retest or stop.
-The controller validates decisions, enforces round/time limits, and invokes a
-separate coding worker. Each run snapshots code, trains supervised processes,
-verifies checkpoints independently, and archives evidence. Single-run commands
-remain available. The small Python control plane uses psutil for native
-Windows/macOS process identity and Windows process-tree cancellation.
-
-[中文上手指南](docs/QUICKSTART.zh-CN.md) · [Architecture](docs/ARCHITECTURE.md) ·
-[Overnight jobs](docs/OVERNIGHT.md) · [Campaign manager](docs/CAMPAIGNS.md) · [Recovery](docs/RECOVERY.md) · [Extending experiments](docs/EXTENDING.md) ·
-[Roadmap](docs/ROADMAP.md) · [References](docs/REFERENCES.md)
-
-## Status and scope
-
-- Real Codex CLI adapter with JSON event logs and a structured handoff.
-- Real CSV files, NumPy MLP optimization, NPZ checkpoints and detached processes.
-- External evaluator recomputes predictions from checkpoint tensors; it does not
-  import candidate code or accept the worker's claimed score.
-- SQLite state, transactional event history, per-run/per-job locks, durable exit
-  receipts, process birth identities and restart reconciliation.
-- Source snapshots, exact patch, logs, metric comparison, SHA-256 manifest and a
-  relocatable replay script in each completed experiment archive.
-- Persistent multi-round campaigns: model-proposed decisions, validated action
-  references, repair lineage, independent retests, immutable best snapshots,
-  explicit round limits and elapsed wall-clock deadlines, including pauses.
-- This is a single-machine manager MVP. Distributed scheduling, GPU leases,
-  learned policies, token/money budgets and multi-user isolation remain future work.
-
-**Validation disclosure:** the development environment had no Codex CLI or model
-authentication available. Tests use an explicitly named **test-only CLI fixture**
-for planning and source edits; training, validation, process supervision and archive replay run
-for real. A live authenticated Codex run remains to be checked on the user's machine.
-No production command silently falls back to a fixture. See `evidence/VALIDATION.md`.
-
-## Requirements
-
-- Native Windows, macOS or Linux (WSL2 is also supported), Python 3.11+, Git recommended.
-- Codex CLI installed and authenticated for live editing.
-- NumPy for the bundled example. No GPU or data download required for this example.
-- A local durable filesystem with native file locking and SQLite; network filesystems
-  and multi-host execution are outside this release's support boundary.
-
-## Platform implementation and verification
-
-| Platform | Native implementation | Verified in this delivery |
-| --- | --- | --- |
-| Linux / WSL2 | flock, /proc birth receipts, detached sessions/process groups | Full local integration suite on Linux |
-| macOS | flock, psutil creation time, detached sessions/process groups | Native integration CI passed on Python 3.11/3.12/3.13 |
-| Windows PowerShell | msvcrt byte locks, psutil creation time, detached supervisors, known-tree cancellation, npm shim resolution | Native integration CI passed on Python 3.11/3.12/3.13 |
-
-The GitHub workflow runs the complete suite on Ubuntu, Windows and macOS with
-Python 3.11/3.12/3.13. All nine combinations passed for the v0.3 implementation
-commit `3a83afe`: [CI results](https://github.com/kumizeod/AgentForeman/actions/runs/39427543907).
-These tests use explicit planner/editor fixtures; live Codex inference is still pending.
-See [platform details](docs/PLATFORMS.md) for exact behavior and limits.
+- **Clarification before execution.** A chairman helps define a versioned task contract. Your confirmation freezes the reviewed goals, roles, evidence, checks and execution limits.
+- **Cooperative execution.** An integrator splits work among contributors, combines their artifacts, and sends the result through independent review and acceptance checks.
+- **Adversarial improvement.** A proposal enters a criticism → revision → retest loop. Criticism needs checkable anchors; round and time limits stop repetitive debate and preserve unresolved questions.
+- **Multi-model councils.** Independent answers, anonymous non-self peer review, chair synthesis and an independent audit support research and analysis tasks.
+- **Overnight experiments.** Codex edits an allowed scope, supervised processes train a candidate, an independent evaluator checks its checkpoint, and the system archives the result with replay instructions.
+- **Durable scheduling.** SQLite state, worker leases, process identities and exit receipts support restart and reconciliation. Recognized quota resets become persistent waiting periods without model calls during the wait.
+- **Execution controls.** Interrupt supervised calls, inspect cancellation acknowledgements and retain partial results. Offline or uncertain workers remain explicitly unconfirmed.
+- **Connection-level accounting.** Aggregate reported tokens across jobs and retries without treating unknown usage as zero or pretending allocation percentages are hard token budgets.
 
 ## Quick start
 
-After installing and initializing a project using the platform instructions below,
-start a bounded campaign (use your environment's Python on every OS):
+### Requirements
 
-```bash
-python -m agentforeman campaign start --project ./my-experiment --goal "Improve validation accuracy within the checkpoint contract" --max-rounds 3 --budget-seconds 1800
-python -m agentforeman campaign resume CAMPAIGN_ID --project ./my-experiment
-python -m agentforeman campaign report CAMPAIGN_ID --project ./my-experiment
-```
+- Python **3.11+** and a local filesystem supporting native locks and SQLite.
+- At least one installed, authenticated CLI client or a supported API connection.
+- Git to clone and update the repository. Node.js is only needed by clients that require it; the web panel needs no Node or Tauri build.
 
-The manager uses your configured Codex CLI/login in a separate read-only session.
-No extra model provider or fallback editor is installed. See [campaign behavior and recovery](docs/CAMPAIGNS.md).
+Automatic adversarial tasks require **at least three tested connection identities**; cooperative tasks require **at least four**. Multiple models on one account still share that account's capacity and do not establish model independence.
 
-From the extracted source directory, macOS/Linux:
-
-```bash
-python3 -m venv .venv
-./.venv/bin/python -m pip install -e '.[demo]'
-npm install -g @openai/codex
-codex login
-codex --version
-
-./.venv/bin/python -m agentforeman init ./my-experiment
-./.venv/bin/python -m agentforeman doctor --project ./my-experiment
-./.venv/bin/python -m agentforeman start --project ./my-experiment \
-  --goal "Improve validation accuracy; keep the checkpoint contract and use one coherent candidate."
-```
-
-Native Windows PowerShell (no WSL or venv activation required):
+### Windows
 
 ```powershell
-py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[demo]"
-npm install -g @openai/codex
-codex login
-codex --version
-.\.venv\Scripts\python.exe -m agentforeman init .\my-experiment
-.\.venv\Scripts\python.exe -m agentforeman doctor --project .\my-experiment
-.\.venv\Scripts\python.exe -m agentforeman start --project .\my-experiment --goal "Improve validation accuracy with one coherent candidate."
+git clone https://github.com/kumizeod/AgentForeman.git
+cd AgentForeman
+.\start-windows.cmd
 ```
 
-In the remaining examples, `python` means that same environment's interpreter;
-use `.\.venv\Scripts\python.exe` on Windows or `./.venv/bin/python` on macOS/Linux.
-Windows npm `codex.cmd` is resolved to its package's Node entry without a shell.
-Custom installations can set `[codex].command` to an explicit executable prefix.
+Or download and extract the repository, then double-click `start-windows.cmd`. The launcher creates a virtual environment, installs dependencies, initializes the example project when needed, and opens the local console on an available port. Keep its terminal open and the computer awake.
 
-`foreman` is also installed as a console command. The module form works even when
-your shell's PATH does not include the console scripts directory.
-
-The command prints a run ID **before** starting execution. Keep it. Codex runs
-with `workspace-write` and no interactive approval prompts; actions that cannot
-run under that sandbox fail visibly. We do not disable its sandbox automatically.
-If the CLI's flags or authentication differ on your installation, inspect
-`jobs/codex-00/stderr.log` and update `src/agentforeman/codex.py` deliberately.
-
-You may first inspect the independently measured baseline without calling Codex:
+### macOS and Linux
 
 ```bash
-python -m agentforeman start --project ./my-experiment \
-  --goal "Improve validation accuracy" --until codex
+git clone https://github.com/kumizeod/AgentForeman.git
+cd AgentForeman
+python3 -m venv .venv
+./.venv/bin/python -m pip install -e '.[demo,desktop]'
+./.venv/bin/python -m agentforeman init ./my-experiment
+./.venv/bin/python -m agentforeman ui --project ./my-experiment --port 0
 ```
 
-`--until` pauses **before** the named phase. Resume with:
+Run `init` only for a new project. If `my-experiment/foreman.toml` already exists, skip that command and open the existing project. General report and analysis tasks do not run the bundled example trainer.
+
+### Run your first task
+
+1. Open the middle navigation tab, **Subscriptions & Models**, and add your connections.
+2. Use an existing local login, open the selected client's official login terminal, or enter your API endpoint, key and model. Wait for each connection test to pass.
+3. Choose a preferred chairman and optionally set allocation percentages totaling 100%.
+4. Return to **Tasks**, create a task, and clarify the goal and acceptance criteria with the chairman.
+5. Review the exact contract and role plan, then confirm execution. Monitor results in **Tasks** and reported tokens in **Usage**.
+
+For example: “Analyze these sales rows, produce a JSON total and a short report, have another agent challenge the calculation, and accept only if the configured total check passes.”
+
+Closing the browser does not stop execution. The console process and computer must remain running. After a restart, reopen the same project to reconcile saved work. This release is not an installed background service.
+
+## Connections
+
+| Connection | Authentication | Model selection |
+| --- | --- | --- |
+| Codex / ChatGPT | Official Codex client login | Optional CLI model |
+| Claude Code | Official Claude Code client login | Optional CLI model |
+| OpenCode / Go | OpenCode's own login | Optional `provider/model`, or its configured default |
+| Antigravity | Official Antigravity client login | Optional CLI model |
+| Gemini CLI | Supported local enterprise/API authentication | Optional CLI model |
+| OpenAI-compatible API or relay | API key or existing environment variable | Required service model; Chat Completions |
+| Anthropic-compatible API or relay | API key or existing environment variable | Required service model; Messages |
+
+Local CLI connections reuse official client authentication. Codex and Claude Code also support separate official-client profiles for another account. AgentForeman does not collect account passwords or centrally exchange subscription OAuth tokens. Subscription access and API billing are separate.
+
+API keys are session-only by default, with optional OS credential-store persistence through the `desktop` extra. Local proxies may use loopback HTTP; remote API endpoints require HTTPS. Provider support is determined by the actual connection test.
+
+Windows discovery supports common CLI installation locations and manual executable paths. OpenCode 1 and 2 use version-specific invocation and completion handling. See the [OpenCode connection guide](docs/OPENCODE_CONNECTIONS.md) for troubleshooting.
+
+Connections sharing one local CLI login are serialized. API connections sharing one base URL are also conservatively serialized. Adding another model entry does not create additional subscription quota. Allocation percentages guide role selection; they do not enforce an exact consumption split.
+
+Deleting a connection preserves tasks, logs, usage and official client logins. Active or uncertain calls block deletion until their termination is confirmed. Confirmed tasks keep their frozen roles; the scheduler does not silently replace a removed participant.
+
+## Workflows
+
+### Cooperative and adversarial tasks
+
+Both modes share a durable artifact and verification loop. Contributors and reviewers have separate roles, and missing contributions block integration. A chairman can summarize disagreements and request checks; it cannot turn a claim into a verified fact by declaring consensus.
+
+Each improvement round must add evidence, change an artifact or perform verification. Bounded rounds and no-progress stops prevent endless argument. Outstanding disagreements remain in the output. Without configured automated checks, acceptance stays manual or needs evidence.
+
+### Overnight Codex experiments
+
+The bundled example uses CSV data, a NumPy MLP and a trusted checkpoint evaluator. It requires no GPU or data download. From an installed environment with Codex configured:
 
 ```bash
-python -m agentforeman resume RUN_ID --project ./my-experiment
-python -m agentforeman status RUN_ID --project ./my-experiment
-python -m agentforeman events RUN_ID --project ./my-experiment
-python -m agentforeman report RUN_ID --project ./my-experiment
+python -m agentforeman doctor --project ./my-experiment
+python -m agentforeman overnight start --project ./my-experiment \
+  --goal "Improve validation accuracy within the checkpoint contract" \
+  --deadline 08:00 --max-rounds 5 --review --max-reviews 2
+python -m agentforeman overnight status CAMPAIGN_ID --project ./my-experiment
+python -m agentforeman overnight report CAMPAIGN_ID --project ./my-experiment
 ```
 
-## Interrupt and resume
+On Windows, use `.\.venv\Scripts\python.exe`; on macOS/Linux, use `./.venv/bin/python` if the virtual environment is not activated. The deadline is the next local 08:00. Recognized reset timestamps and structured quota responses govern waiting; an arbitrary failure is not automatically treated as quota exhaustion.
 
-Ctrl-C stops the **manager**. An active supervised job continues. Resume reattaches
-to that job or consumes its existing result; it does not rerun completed phases.
-Force-termination (POSIX SIGKILL or Windows TerminateProcess) is handled the same way on resume, although the
-last stored status can still read `running` until reconciliation.
-
-To terminate an active command instead:
-
-```bash
-python -m agentforeman cancel RUN_ID --project ./my-experiment
-```
-
-Failed phases require an explicit retry, after inspecting their logs:
-
-```bash
-python -m agentforeman resume RUN_ID --project ./my-experiment --retry-failed
-```
-
-Retries are new job attempts. A failed editing attempt is reset to the frozen
-baseline before invoking Codex again. Failed training outputs are retained in
-`failed_outputs/`; the next training attempt gets an empty artifact directory.
-See [recovery semantics](docs/RECOVERY.md), particularly supervisor loss and reboot.
-
-## Results
-
-Completed evidence lives at:
-
-`.foreman/runs/RUN_ID/archive.zip`
+Completed runs retain source snapshots, patches, logs, metric comparisons, a SHA-256 manifest and a replay script:
 
 ```bash
 python -m agentforeman verify-archive ./my-experiment/.foreman/runs/RUN_ID/archive.zip
 ```
 
-After extracting it to a directory:
+A completed experiment can fail to improve its baseline. Completion and objective attainment are recorded separately. The example validates the execution loop; arbitrary architectures require a corresponding trusted evaluator.
+
+### Member-owned worker pool
+
+Advanced workflows can coordinate members' own CLI workers and API workers through a shared pool. Members keep their local logins; the coordinator tracks worker-token hashes, leases and task receipts. Availability windows, quota cooldowns and alternate eligible members support overnight use. The simple three-page workflow currently selects local managed connections; remote workers use the advanced setup.
+
+## Architecture and boundaries
+
+The Python control plane validates model decisions and persists state in SQLite. Native supervisors run child processes and record process identity, logs and terminal receipts. Controllers consume those receipts and independent check results before advancing a workflow. The browser panel uses an authenticated loopback HTTP API.
+
+- **Verification has scope.** Passing configured checks does not establish every factual claim, research novelty or overall answer quality. Model agreement is not proof.
+- **Cancellation has evidence.** Local termination acknowledgements do not guarantee upstream generation or billing has stopped.
+- **Usage has gaps.** Missing provider usage is unknown. Reported token totals are not remaining subscription allowance or monetary spend.
+- **Execution trusts the project.** This is a trusted-project runner, not a hostile-code sandbox. Use a dedicated VM or container for untrusted code. Keep the local console on loopback.
+- **Recovery is conservative.** Interrupted work is reconciled from durable state and receipts. Failures may require an explicit retry; uncertain process state is not silently accepted as success.
+
+## Development and validation
 
 ```bash
-python reproduce.py --baseline
-python reproduce.py
-```
-
-`completed` means the workflow executed and verification passed. `objective_met`
-separately records whether the candidate beat the baseline by the configured
-delta. A worse candidate is a valid experiment, not a fabricated improvement.
-
-The bundled task is synthetic two-moons classification with one fixed seed. It
-validates the engineering loop, not general architecture-search performance.
-Its supported checkpoint is a two-layer ReLU MLP; arbitrary architectures require
-a corresponding trusted evaluator. Validation data are not a final research test set.
-
-## Tests
-
-```bash
+python -m pip install -e '.[demo]'
 python -m unittest discover -s tests -v
 ```
 
-Tests actually kill managers, race supervisor launches, enforce timeout/cancel,
-inject training crashes and unauthorized edits, reject symlinks, ignore fake
-scores, detect archive tampering, and reproduce a trained candidate from an
-extracted archive. The deterministic editing fixture is in `tests/` only.
+Browser workflow tests use Playwright:
 
-## Trust boundary
-
-This is a personal, trusted-project runner, not a hostile-code sandbox. Local
-training runs with your user's permissions and inherited environment; source
-hash checks detect accidental/prohibited edits but cannot isolate malicious code
-running as the same OS user. Use a dedicated container/VM for untrusted projects.
-Checksums detect corruption relative to the manifest; they are not signatures.
-No auto-merge, publishing, package installation, or deployment is performed.
-
-## License
-
-MIT. This implementation is original; references are acknowledged without
-vendoring their code.
-
-## Quota visibility and local operations (v0.5)
-
-Inspired by [codex-tools](https://github.com/170-carry/codex-tools), AgentForeman
-now includes explicit quota snapshots, a terminal status panel, local token
-accounting, sanitized diagnostics and an optional preflight quota guard:
-
-```powershell
-python -m agentforeman usage --project .\my-experiment --refresh --json
-python -m agentforeman monitor --project .\my-experiment --watch
-python -m agentforeman stats --project .\my-experiment --json
-python -m agentforeman diagnostics --project .\my-experiment --json
-python -m agentforeman overnight start --project .\my-experiment --goal "Improve validation accuracy" --deadline 08:00 --quota-preflight
+```bash
+npm ci --prefix tests/browser
+npx --prefix tests/browser playwright install chromium
+npm test --prefix tests/browser
 ```
 
-Monitoring and cached views never launch Codex. Explicit refresh/preflight use
-read-only metadata RPCs, with no model turns. Failed refreshes retain a clearly
-stale snapshot. Missing token usage remains unknown. See
-[quota and operations](docs/OBSERVABILITY.md) for exact semantics and reference attribution.
+CI exercises Python 3.11–3.13 on Windows, macOS and Linux, browser workflows, and a pinned native OpenCode 2 integration against a local scripted model endpoint. Tests cover process supervision, restart, cancellation, quota waiting, connection management, review/revision/retest, accounting and archive replay.
+
+Most model replies in automated validation are explicitly scripted. HTTP requests, native workers, training, checks and archive replay run for real; these tests do not certify paid-provider authentication or model quality. Check the [latest CI results](https://github.com/kumizeod/AgentForeman/actions/workflows/tests.yml) and [pinned connection validation](evidence/client-connection-validation.json) for exact scope. At commit `6ff8459`, browser and native OpenCode jobs passed, while Windows/Python 3.11 hit a campaign-completion timeout; the full matrix was not green.
+
+## Documentation
+
+| Topic | Guide |
+| --- | --- |
+| Connections, authentication and key storage | [Connection center](docs/CONNECTIONS.md) |
+| OpenCode discovery and version compatibility | [OpenCode connections](docs/OPENCODE_CONNECTIONS.md) |
+| Task clarification and frozen contracts | [Briefing](docs/BRIEFING.md) |
+| Criticism, revision and acceptance | [Adversarial mode](docs/ADVERSARIAL.md) |
+| Task decomposition and integration | [Cooperative mode](docs/COOPERATIVE.md) |
+| Multi-model research councils | [Council](docs/COUNCIL.md) |
+| Member-owned and API workers | [Worker pool](docs/WORKER_POOL.md) |
+| Overnight jobs and quota handling | [Overnight](docs/OVERNIGHT.md) · [Observability](docs/OBSERVABILITY.md) |
+| Implementation, recovery and platforms | [Architecture](docs/ARCHITECTURE.md) · [Recovery](docs/RECOVERY.md) · [Platforms](docs/PLATFORMS.md) |
+| Custom experiment evaluators | [Extending experiments](docs/EXTENDING.md) |
+
+Some detailed guides currently contain Chinese sections. The English README covers the main onboarding path.
+
+## License and acknowledgements
+
+[MIT](LICENSE). The local web UI includes MIT-licensed styles and adapted components from [codex-tools](https://github.com/170-carry/codex-tools); see [third-party notices](NOTICE.md). Multi-model council ideas draw on [llm-council](https://github.com/karpathy/llm-council). Further design references and attribution are recorded in [References](docs/REFERENCES.md).
